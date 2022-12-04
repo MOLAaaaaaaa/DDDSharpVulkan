@@ -1,0 +1,26 @@
+
+//3D Surfer Scripte File
+
+var ob1 = LoadObject("D:\jian\3D Surfer\驱龙甲玛大地电磁-成矿所\01 驱龙甲玛大地电磁成果数据三维格式\ALL-L01-L08.csv.3DGrid",Grid3D,"驱龙甲码");
+
+UpdateDraw();
+
+//Sleep(200);
+SetAlpha(ob1,0.9);
+Rotate(ob1,0,0,20);
+UpdateDraw(ob1);
+
+//Sleep(200);
+SetAlpha(ob1,0.8);
+Rotate(ob1,0,0,20);
+UpdateDraw(ob1);
+
+//Sleep(200);
+SetAlpha(ob1,0.6);
+Rotate(ob1,0,0,20);
+UpdateDraw(ob1);
+
+//Sleep(200);
+SetAlpha(ob1,0.4);
+Rotate(ob1,0,0,20);
+UpdateDraw(ob1);
