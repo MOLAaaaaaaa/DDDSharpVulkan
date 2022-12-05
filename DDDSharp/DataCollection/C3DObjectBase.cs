@@ -629,9 +629,9 @@ namespace DataCollection
         public void CopyHeaderFrom(C3DObjectBase obj1)
         {
             Name = obj1.Name;
-            //  obj1.type = type;
-            //  obj1.visible = visible;
-            //  obj1.IsWireFrameMode = IsWireFrameMode;
+            Visible = obj1.Visible;
+            IsWireFrameMode = obj1.IsWireFrameMode;
+
             offset = obj1.offset;
             rotate = obj1.rotate;
             scale = obj1.scale;

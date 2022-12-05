@@ -585,7 +585,7 @@ namespace DDDSharp
         /// </summary>
         void DrawObjects()
         {
-            //ClearObjectDrawBuffer();
+            ClearObjectDrawBuffer();
 
             //set polygon mode, default is filled
             graphic.SetClearColor(1f, 1f, 1f);
@@ -1972,7 +1972,7 @@ namespace DDDSharp
             if ( !obj.Visible ) return;
 
             ClearObjectDrawBuffer(obj);
-            
+
             PolygonSlicer slicer1 = slicer;
             if (slicer == null) slicer1 = (PolygonSlicer)obj.Parent;
             foreach (Polygon2D poly in obj.Polygons)
@@ -1991,11 +1991,74 @@ namespace DDDSharp
 
             ClearObjectDrawBuffer(obj);
             
+            //DrawPolygonsBackImage(obj);            
+
             Draw2DPolygonsObj(obj.polygons,obj);
             Draw2DPolygonsObj(obj.tracedGeoObjects,obj);
 
             obj.AddRenderingBuffer(obj.polygons.RenderingBuffers);
             obj.AddRenderingBuffer(obj.tracedGeoObjects.RenderingBuffers);
+        }
+        void DrawPolygonsBackImage(PolygonSlicer obj)
+        {
+            if (obj == null) return;
+            if ( obj.backImages.Count < 1) return;
+            if (!obj.polygons.Visible) return;
+
+            double x1, y1, x2, y2;
+            Vector64 p1;
+
+            Vector64[] corners = new Vector64[4];
+            Vertex3D[] points = new Vertex3D[4];
+            int[] indices = new int[6];
+
+            graphic.ClearModelKeyBuffers();
+
+            foreach (ImageStruct im  in obj.backImages)
+            {
+                //0--x1,y1    1--x2,y1
+                //2--x1,y2    3--x2,y2
+                x1 = im.rect.x1;
+                y1 = im.rect.y1;
+                x2 = im.rect.x2;
+                y2 = im.rect.y2;                
+                corners[0] = new Vector64(x1, y1, 0);
+                corners[1] = new Vector64(x2, y1, 0);
+                corners[2] = new Vector64(x1, y2, 0);
+                corners[3] = new Vector64(x2, y2, 0);
+                for (int i = 0;i < corners.Length; i++)
+                {
+                    p1 = corners[i];
+                    p1 = obj.toTracedPoint(p1);
+                    p1 = obj.TransformedPoint(p1);
+                    p1 = toWorldVector(obj, p1);
+                    p1 = CDataModel.ToModelVector(p1);
+                    points[i] = CreateVertex(p1);
+                    points[i].color = new vec4(1,1,1,1);
+                }
+                // 0,0   1,0
+                // 0,1   1,1
+                points[0].SetTexcoord(0, 0);
+                points[2].SetTexcoord(0, 1);
+                points[1].SetTexcoord(1, 0);                
+                points[3].SetTexcoord(1, 1);
+                indices[0] = 0;
+                indices[1] = 1;
+                indices[2] = 2;
+                indices[3] = 3;
+                indices[4] = 2;
+                indices[5] = 1;
+                graphic.PushMatrix();
+                graphic.EnableTexture(true);
+                Bitmap bmp = new Bitmap(im.img);
+                graphic.BindTexture(bmp);
+                graphic.DrawTriangle(points,indices);               
+                graphic.PopMatrix();
+                graphic.EnableTexture(false);
+            }
+            
+            obj.AddRenderingBuffer(graphic.objectModelKeyBuffers);//添加到对象缓冲
+
         }
         public void DrawPolygon2DObj(Polygon2D obj)
         {

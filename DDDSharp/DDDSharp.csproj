@@ -565,6 +565,12 @@
     <Compile Include="Modeling\MeshCreateFromSlicersForm.Designer.cs">
       <DependentUpon>MeshCreateFromSlicersForm.cs</DependentUpon>
     </Compile>
+    <Compile Include="Modeling\OutlinesModelingForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Modeling\OutlinesModelingForm.Designer.cs">
+      <DependentUpon>OutlinesModelingForm.cs</DependentUpon>
+    </Compile>
     <Compile Include="Modeling\Shape3DModeling.cs">
       <SubType>Form</SubType>
     </Compile>
@@ -1011,6 +1017,9 @@
     </EmbeddedResource>
     <EmbeddedResource Include="Modeling\MeshCreateFromSlicersForm.resx">
       <DependentUpon>MeshCreateFromSlicersForm.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Modeling\OutlinesModelingForm.resx">
+      <DependentUpon>OutlinesModelingForm.cs</DependentUpon>
     </EmbeddedResource>
     <EmbeddedResource Include="Modeling\Shape3DModeling.resx">
       <DependentUpon>Shape3DModeling.cs</DependentUpon>

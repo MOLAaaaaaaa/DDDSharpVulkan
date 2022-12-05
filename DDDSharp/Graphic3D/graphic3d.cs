@@ -1959,7 +1959,12 @@ namespace Graphics3D
             }
             return bmp;
         }
-
+        public virtual int BindTexture(Image img, TextureMagFilter mode = TextureMagFilter.GL_LINEAR)
+        {
+            textureBitmap = new Bitmap(img);
+            textureMode = mode;
+            return 1;
+        }
         public virtual int BindTexture(Bitmap bmp, TextureMagFilter mode = TextureMagFilter.GL_LINEAR)
         {
             textureBitmap = bmp;

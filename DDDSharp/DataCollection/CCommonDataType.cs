@@ -1102,6 +1102,12 @@ namespace DataCollection
         {
             return (!(p1 == p2));
         }
+        public int Id1 { get { return x; } set { x = value; } }
+        public int Id2 { get { return y; } set { y = value; } }
+        public int Id3 { get { return z; } set { z = value; } }
+        public int A { get { return x; } set { x = value; } }
+        public int B { get { return y; } set { y = value; } }
+        public int C { get { return z; } set { z = value; } }
     }
     public struct UInt32XYZ
     {
@@ -1148,6 +1154,12 @@ namespace DataCollection
         {
             return (!(p1 == p2));
         }
+        public uint Id1 { get { return x; } set { x = value; } }
+        public uint Id2 { get { return y; } set { y = value; } }
+        public uint Id3 { get { return z; } set { z = value; } }
+        public uint A { get { return x; } set { x = value; } }
+        public uint B { get { return y; } set { y = value; } }
+        public uint C { get { return z; } set { z = value; } }
     }
     public struct CubeModel32
     {

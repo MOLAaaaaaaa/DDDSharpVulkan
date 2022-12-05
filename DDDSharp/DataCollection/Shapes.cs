@@ -2756,6 +2756,7 @@ namespace DataCollection
                     else return false;
                 }
             }
+            UpdateRange();
             //*/
             return true;
         }
@@ -3056,7 +3057,21 @@ namespace DataCollection
 
             return line;
         }
-
+        /// <summary>
+        /// 将切片2D对象转换成空间多边形
+        /// </summary>
+        /// <param name="poly">2D多边形对象</param>
+        /// <returns>3D多边形对象</returns>
+        public Polygon2D toTraced3DPolygon(Polygon2D poly)
+        {
+            Polygon2D poly3d = poly.Copy();
+            poly3d.points.Clear();
+            foreach (Vector64 p in poly.points)
+            {
+                poly3d.points.Add(toTracedPoint(p));
+            }
+            return poly3d;
+        }
         //更新空间定位后的坐标范围
         private void UpdateLocationRange()
         {
@@ -3109,7 +3124,64 @@ namespace DataCollection
                 maxxLocated = LocationCorner1.Z + (LocationCorner2.Z - LocationCorner1.Z) * (miny - LocationCorner1.Y) / (LocationCorner2.Y - LocationCorner1.Y);
             }
         }
+        void UpdateLocatedRange()
+        {
+            if (!IsLocated) return;
 
+            Polygon2D poly;
+            bool init = false;
+            Vector32 p1;
+            for (int i = 0; i < polygons.Count; i++)
+            {
+                poly = polygons[i];
+                foreach(Vector64 p in poly.points)
+                {
+                    p1 = toTracedPoint(p);
+                    if (init) 
+                    {
+                        minxLocated = maxxLocated = p1.X;
+                        minyLocated = maxyLocated = p1.Y;
+                        minzLocated = maxzLocated = p1.Z;
+                        init = true;
+                    }
+                    else
+                    {
+                        if (p1.X < minxLocated) minxLocated = p1.X;
+                        if (p1.Y < minyLocated) minyLocated = p1.Y;
+                        if (p1.Z < minzLocated) minzLocated = p1.Z;
+                        if (p1.X > maxxLocated) maxxLocated = p1.X;
+                        if (p1.Y > maxyLocated) maxyLocated = p1.Y;
+                        if (p1.Z > maxzLocated) maxzLocated = p1.Z;
+                    }
+                }             
+                
+            }
+
+            for (int i = 0; i < tracedGeoObjects.Count; i++)
+            {
+                poly = tracedGeoObjects[i];
+                foreach (Vector64 p in poly.points)
+                {
+                    p1 = toTracedPoint(p);
+                    if (init)
+                    {
+                        minxLocated = maxxLocated = p1.X;
+                        minyLocated = maxyLocated = p1.Y;
+                        minzLocated = maxzLocated = p1.Z;
+                        init = true;
+                    }
+                    else
+                    {
+                        if (p1.X < minxLocated) minxLocated = p1.X;
+                        if (p1.Y < minyLocated) minyLocated = p1.Y;
+                        if (p1.Z < minzLocated) minzLocated = p1.Z;
+                        if (p1.X > maxxLocated) maxxLocated = p1.X;
+                        if (p1.Y > maxyLocated) maxyLocated = p1.Y;
+                        if (p1.Z > maxzLocated) maxzLocated = p1.Z;
+                    }
+                }
+            }
+        }
         public override void UpdateRange()
         {
             Polygon2D poly;
@@ -3164,6 +3236,9 @@ namespace DataCollection
                     if (obj.maxz > maxz) maxz = obj.maxz;
                 }
             }
+
+            UpdateLocatedRange();
+
         }
         //获取指定点地层属性值
         public double GetPropertyValue(double x, double y)
@@ -4206,7 +4281,7 @@ namespace DataCollection
         public Polygon2D Copy()
         {
             Polygon2D poly = new Polygon2D(points);
-            poly.CopyHeaderFrom(this);
+            poly.CopyHeaderFrom(this);           
 
             poly.IsClosed = IsClosed;
             poly.IsFill = IsFill;

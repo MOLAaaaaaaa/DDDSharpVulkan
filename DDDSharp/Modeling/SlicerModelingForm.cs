@@ -2206,7 +2206,7 @@ namespace DDDSharp
             if (type == 1)
             {
                 ObjectPropertyForm dlg = new ObjectPropertyForm();
-                Polygon2D obj = slicer.polygons[index].Copy();                
+                Polygon2D obj = slicer.polygons[index].Copy();
                 dlg.SetObject(obj);                
                 if (dlg.ShowDialog() == DialogResult.OK)
                 {
@@ -2224,7 +2224,7 @@ namespace DDDSharp
                 if (dlg.ShowDialog() == DialogResult.OK)
                 {
                     Modified = true;
-                    slicer.tracedGeoObjects[index] = obj;
+                    slicer.tracedGeoObjects[index] = obj.Copy();
                     PushData();
                     UpdateDraw();
                 }

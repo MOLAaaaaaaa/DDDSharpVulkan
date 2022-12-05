@@ -136,13 +136,13 @@
             this.inclineAnglesToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.strataToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.interpolationToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.slicerToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.contextMenuStripBoreholeSub = new System.Windows.Forms.ContextMenuStrip(this.components);
             this.toolStripMenuItem28 = new System.Windows.Forms.ToolStripMenuItem();
             this.toolStripMenuItem29 = new System.Windows.Forms.ToolStripMenuItem();
             this.toolStripMenuItem30 = new System.Windows.Forms.ToolStripMenuItem();
             this.toolStripMenuItem31 = new System.Windows.Forms.ToolStripMenuItem();
             this.toolStripMenuItem34 = new System.Windows.Forms.ToolStripMenuItem();
-            this.slicerToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             ((System.ComponentModel.ISupportInitialize)(this.splitContainer1)).BeginInit();
             this.splitContainer1.Panel1.SuspendLayout();
             this.splitContainer1.Panel2.SuspendLayout();
@@ -230,7 +230,7 @@
             this.panel1.Controls.Add(this.NormalizeButton);
             this.panel1.Controls.Add(this.label1);
             this.panel1.Controls.Add(this.xDecButton);
-            this.panel1.Location = new System.Drawing.Point(3, 188);
+            this.panel1.Location = new System.Drawing.Point(3, 186);
             this.panel1.Name = "panel1";
             this.panel1.Size = new System.Drawing.Size(274, 78);
             this.panel1.TabIndex = 9;
@@ -359,7 +359,7 @@
             this.propertyGrid1.Location = new System.Drawing.Point(4, 4);
             this.propertyGrid1.Margin = new System.Windows.Forms.Padding(4);
             this.propertyGrid1.Name = "propertyGrid1";
-            this.propertyGrid1.Size = new System.Drawing.Size(274, 177);
+            this.propertyGrid1.Size = new System.Drawing.Size(274, 175);
             this.propertyGrid1.TabIndex = 8;
             this.propertyGrid1.PropertyValueChanged += new System.Windows.Forms.PropertyValueChangedEventHandler(this.propertyGrid1_PropertyValueChanged);
             // 
@@ -961,36 +961,38 @@
             this.toolStripMenuItem20,
             this.toolStripMenuItemEditor});
             this.contextMenuPolygonSlicer.Name = "contextMenuStripMesh";
-            this.contextMenuPolygonSlicer.Size = new System.Drawing.Size(139, 124);
+            this.contextMenuPolygonSlicer.Size = new System.Drawing.Size(211, 152);
             // 
             // toolStripMenuItem17
             // 
             this.toolStripMenuItem17.Name = "toolStripMenuItem17";
-            this.toolStripMenuItem17.Size = new System.Drawing.Size(138, 24);
+            this.toolStripMenuItem17.Size = new System.Drawing.Size(210, 24);
             this.toolStripMenuItem17.Text = "Refresh";
             // 
             // toolStripMenuItem18
             // 
             this.toolStripMenuItem18.Name = "toolStripMenuItem18";
-            this.toolStripMenuItem18.Size = new System.Drawing.Size(138, 24);
+            this.toolStripMenuItem18.Size = new System.Drawing.Size(210, 24);
             this.toolStripMenuItem18.Text = "&Remove";
+            this.toolStripMenuItem18.Click += new System.EventHandler(this.removeObjectToolStripMenuItem_Click);
             // 
             // toolStripMenuItem19
             // 
             this.toolStripMenuItem19.Name = "toolStripMenuItem19";
-            this.toolStripMenuItem19.Size = new System.Drawing.Size(138, 24);
+            this.toolStripMenuItem19.Size = new System.Drawing.Size(210, 24);
             this.toolStripMenuItem19.Text = "Re&name";
+            this.toolStripMenuItem19.Click += new System.EventHandler(this.renameToolStripMenuItem_Click);
             // 
             // toolStripMenuItem20
             // 
             this.toolStripMenuItem20.Name = "toolStripMenuItem20";
-            this.toolStripMenuItem20.Size = new System.Drawing.Size(138, 24);
+            this.toolStripMenuItem20.Size = new System.Drawing.Size(210, 24);
             this.toolStripMenuItem20.Text = "&Export";
             // 
             // toolStripMenuItemEditor
             // 
             this.toolStripMenuItemEditor.Name = "toolStripMenuItemEditor";
-            this.toolStripMenuItemEditor.Size = new System.Drawing.Size(138, 24);
+            this.toolStripMenuItemEditor.Size = new System.Drawing.Size(210, 24);
             this.toolStripMenuItemEditor.Text = "&Editor";
             this.toolStripMenuItemEditor.Click += new System.EventHandler(this.toolStripMenuItemEditor_Click);
             // 
@@ -1006,26 +1008,26 @@
             this.interpolationToolStripMenuItem,
             this.slicerToolStripMenuItem});
             this.contextMenuStripBoreholes.Name = "contextMenuPolygon2D";
-            this.contextMenuStripBoreholes.Size = new System.Drawing.Size(211, 200);
+            this.contextMenuStripBoreholes.Size = new System.Drawing.Size(174, 172);
             // 
             // toolStripMenuItem21
             // 
             this.toolStripMenuItem21.Name = "toolStripMenuItem21";
-            this.toolStripMenuItem21.Size = new System.Drawing.Size(210, 24);
+            this.toolStripMenuItem21.Size = new System.Drawing.Size(173, 24);
             this.toolStripMenuItem21.Text = "Re&fresh";
             this.toolStripMenuItem21.Click += new System.EventHandler(this.refreshToolStripMenuItem_Click);
             // 
             // toolStripMenuItem22
             // 
             this.toolStripMenuItem22.Name = "toolStripMenuItem22";
-            this.toolStripMenuItem22.Size = new System.Drawing.Size(210, 24);
+            this.toolStripMenuItem22.Size = new System.Drawing.Size(173, 24);
             this.toolStripMenuItem22.Text = "&Remove";
             this.toolStripMenuItem22.Click += new System.EventHandler(this.removeObjectToolStripMenuItem_Click);
             // 
             // toolStripMenuItem23
             // 
             this.toolStripMenuItem23.Name = "toolStripMenuItem23";
-            this.toolStripMenuItem23.Size = new System.Drawing.Size(210, 24);
+            this.toolStripMenuItem23.Size = new System.Drawing.Size(173, 24);
             this.toolStripMenuItem23.Text = "Re&name";
             this.toolStripMenuItem23.Click += new System.EventHandler(this.renameToolStripMenuItem_Click);
             // 
@@ -1035,7 +1037,7 @@
             this.toolStripMenuItem25,
             this.toolStripMenuItem26});
             this.toolStripMenuItem24.Name = "toolStripMenuItem24";
-            this.toolStripMenuItem24.Size = new System.Drawing.Size(210, 24);
+            this.toolStripMenuItem24.Size = new System.Drawing.Size(173, 24);
             this.toolStripMenuItem24.Text = "&Export";
             // 
             // toolStripMenuItem25
@@ -1057,7 +1059,7 @@
             this.inclineAnglesToolStripMenuItem,
             this.strataToolStripMenuItem});
             this.toolStripMenuItem27.Name = "toolStripMenuItem27";
-            this.toolStripMenuItem27.Size = new System.Drawing.Size(210, 24);
+            this.toolStripMenuItem27.Size = new System.Drawing.Size(173, 24);
             this.toolStripMenuItem27.Text = "&Editor";
             // 
             // wellCurvesToolStripMenuItem
@@ -1084,9 +1086,16 @@
             // interpolationToolStripMenuItem
             // 
             this.interpolationToolStripMenuItem.Name = "interpolationToolStripMenuItem";
-            this.interpolationToolStripMenuItem.Size = new System.Drawing.Size(210, 24);
+            this.interpolationToolStripMenuItem.Size = new System.Drawing.Size(173, 24);
             this.interpolationToolStripMenuItem.Text = "&Interpolation";
             this.interpolationToolStripMenuItem.Click += new System.EventHandler(this.interpolationToolStripMenuItem_Click);
+            // 
+            // slicerToolStripMenuItem
+            // 
+            this.slicerToolStripMenuItem.Name = "slicerToolStripMenuItem";
+            this.slicerToolStripMenuItem.Size = new System.Drawing.Size(173, 24);
+            this.slicerToolStripMenuItem.Text = "Slicer";
+            this.slicerToolStripMenuItem.Click += new System.EventHandler(this.slicerToolStripMenuItem_Click);
             // 
             // contextMenuStripBoreholeSub
             // 
@@ -1133,13 +1142,6 @@
             this.toolStripMenuItem34.Size = new System.Drawing.Size(138, 24);
             this.toolStripMenuItem34.Text = "&Editor";
             this.toolStripMenuItem34.Click += new System.EventHandler(this.toolEditorBoreholeSub_Click);
-            // 
-            // slicerToolStripMenuItem
-            // 
-            this.slicerToolStripMenuItem.Name = "slicerToolStripMenuItem";
-            this.slicerToolStripMenuItem.Size = new System.Drawing.Size(210, 24);
-            this.slicerToolStripMenuItem.Text = "Slicer";
-            this.slicerToolStripMenuItem.Click += new System.EventHandler(this.slicerToolStripMenuItem_Click);
             // 
             // ObjectForm
             // 

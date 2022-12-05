@@ -70,7 +70,7 @@ namespace DataCollection
         }
         public virtual TriangleObj toTriangleObject()
         {
-            TriangleObj obj = new TriangleObj();
+            TriangleObj obj = new TriangleObj(Name);
             foreach( TriangleObj tri in Faces )
             {
                 int id0 = obj.points.Count;

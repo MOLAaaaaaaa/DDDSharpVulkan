@@ -3113,7 +3113,7 @@ namespace DDDSharp
             SymbolModelingForm md = new SymbolModelingForm(null);
             if (md.ShowDialog() == DialogResult.OK)
             {
-
+               
             }
         }
 
@@ -3162,7 +3162,23 @@ namespace DDDSharp
             {
 
             }
-        }       
+        }
+
+        private void fromPolygonsToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            OutlinesModelingForm dlg = new OutlinesModelingForm();
+            if( dlg.ShowDialog() == DialogResult.OK)
+            {
+                if (dlg.modelingResult != null)
+                {
+                    bool range_updated = C3DData.AddObject(dlg.modelingResult, false);
+                    C3DData.objSelected = C3DData.lastLoaded;
+                    m_ObjectForm.AddToTree(C3DData.lastLoaded);
+                    if (range_updated) UpdateDraw();
+                    else UpdateDraw(C3DData.lastLoaded);                   
+                }
+            }
+        }
     }
 
     public class DrawUpdateEventArg : EventArgs

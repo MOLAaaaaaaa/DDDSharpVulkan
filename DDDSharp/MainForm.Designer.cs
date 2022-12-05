@@ -141,6 +141,7 @@
             this.toolStripButton2 = new System.Windows.Forms.ToolStripButton();
             this.toolStripButton3 = new System.Windows.Forms.ToolStripButton();
             this.toolStripButton4 = new System.Windows.Forms.ToolStripButton();
+            this.fromPolygonsToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.menuStrip1.SuspendLayout();
             this.toolStrip1.SuspendLayout();
             this.SuspendLayout();
@@ -887,7 +888,8 @@
             this.modelingToolStripMenuItem.DropDownItems.AddRange(new System.Windows.Forms.ToolStripItem[] {
             this.slicersSamplingToolStripMenuItem,
             this.mergeGridsToolStripMenuItem,
-            this.meshesCreatingToolStripMenuItem});
+            this.meshesCreatingToolStripMenuItem,
+            this.fromPolygonsToolStripMenuItem});
             this.modelingToolStripMenuItem.Name = "modelingToolStripMenuItem";
             this.modelingToolStripMenuItem.Size = new System.Drawing.Size(224, 26);
             this.modelingToolStripMenuItem.Text = "Modeling";
@@ -895,21 +897,21 @@
             // slicersSamplingToolStripMenuItem
             // 
             this.slicersSamplingToolStripMenuItem.Name = "slicersSamplingToolStripMenuItem";
-            this.slicersSamplingToolStripMenuItem.Size = new System.Drawing.Size(214, 26);
+            this.slicersSamplingToolStripMenuItem.Size = new System.Drawing.Size(224, 26);
             this.slicersSamplingToolStripMenuItem.Text = "Slicers Sampling";
             this.slicersSamplingToolStripMenuItem.Click += new System.EventHandler(this.slicersSamplingToolStripMenuItem_Click);
             // 
             // mergeGridsToolStripMenuItem
             // 
             this.mergeGridsToolStripMenuItem.Name = "mergeGridsToolStripMenuItem";
-            this.mergeGridsToolStripMenuItem.Size = new System.Drawing.Size(214, 26);
+            this.mergeGridsToolStripMenuItem.Size = new System.Drawing.Size(224, 26);
             this.mergeGridsToolStripMenuItem.Text = "Grids Merging";
             this.mergeGridsToolStripMenuItem.Click += new System.EventHandler(this.mergeGridsToolStripMenuItem_Click);
             // 
             // meshesCreatingToolStripMenuItem
             // 
             this.meshesCreatingToolStripMenuItem.Name = "meshesCreatingToolStripMenuItem";
-            this.meshesCreatingToolStripMenuItem.Size = new System.Drawing.Size(214, 26);
+            this.meshesCreatingToolStripMenuItem.Size = new System.Drawing.Size(224, 26);
             this.meshesCreatingToolStripMenuItem.Text = "Meshes Creating";
             this.meshesCreatingToolStripMenuItem.Click += new System.EventHandler(this.meshesCreatingToolStripMenuItem_Click);
             // 
@@ -994,13 +996,13 @@
             // settingToolStripMenuItem
             // 
             this.settingToolStripMenuItem.Name = "settingToolStripMenuItem";
-            this.settingToolStripMenuItem.Size = new System.Drawing.Size(224, 26);
+            this.settingToolStripMenuItem.Size = new System.Drawing.Size(160, 26);
             this.settingToolStripMenuItem.Text = "Setting";
             // 
             // startEndToolStripMenuItem
             // 
             this.startEndToolStripMenuItem.Name = "startEndToolStripMenuItem";
-            this.startEndToolStripMenuItem.Size = new System.Drawing.Size(224, 26);
+            this.startEndToolStripMenuItem.Size = new System.Drawing.Size(160, 26);
             this.startEndToolStripMenuItem.Text = "Start/End";
             this.startEndToolStripMenuItem.Click += new System.EventHandler(this.startEndToolStripMenuItem_Click);
             // 
@@ -1072,6 +1074,13 @@
             this.toolStripButton4.Name = "toolStripButton4";
             this.toolStripButton4.Size = new System.Drawing.Size(29, 28);
             this.toolStripButton4.Text = "toolStripButton4";
+            // 
+            // fromPolygonsToolStripMenuItem
+            // 
+            this.fromPolygonsToolStripMenuItem.Name = "fromPolygonsToolStripMenuItem";
+            this.fromPolygonsToolStripMenuItem.Size = new System.Drawing.Size(224, 26);
+            this.fromPolygonsToolStripMenuItem.Text = "from Polygons";
+            this.fromPolygonsToolStripMenuItem.Click += new System.EventHandler(this.fromPolygonsToolStripMenuItem_Click);
             // 
             // MainForm
             // 
@@ -1214,6 +1223,7 @@
         private System.Windows.Forms.ToolStripMenuItem fromWELLToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem WellCurvesInterpolationMenuItem;
         private System.Windows.Forms.ToolStripMenuItem selectedOutlineToolStripMenuItem;
+        private System.Windows.Forms.ToolStripMenuItem fromPolygonsToolStripMenuItem;
     }
 }
 
