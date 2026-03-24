@@ -209,24 +209,24 @@ namespace DataCollection
             {
                 br = new BinaryReader(new FileStream(path, FileMode.Open));
                 Name = Path.GetFileNameWithoutExtension(path);
+                bool ret = false;
+                long id = br.ReadInt32();
+                if (id == 0x42525344)//Surfer 7.0
+                {
+                    ret = ReadSurfer7(br);
+                }
+                else if (id == 0x42425344)//Surfer 6.0
+                {
+                    ret = ReadSurfer6(br);
+                }
+                br.Close();
+                return ret;
             }
             catch (IOException e)
             {
-                errMessage = "Open file failed." + Environment.NewLine + e.Message;
+                errMessage = "Open file failed." + Environment.NewLine + e.Message;                
                 return false;
             }
-            bool ret = false;
-            long id = br.ReadInt32();            
-            if (id == 0x42525344)//Surfer 7.0
-            {
-                ret = ReadSurfer7(br);
-            }
-            else if (id == 0x42425344)//Surfer 6.0
-            {
-                ret = ReadSurfer6(br);
-            }            
-            br.Close();
-            return ret;
         }
         private bool ReadSurfer7(BinaryReader br)
         {

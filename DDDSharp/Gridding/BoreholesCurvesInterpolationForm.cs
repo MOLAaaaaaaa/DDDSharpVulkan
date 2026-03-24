@@ -34,7 +34,7 @@ namespace DDDSharp.Gridding
         double nullValue = CSurferGrid.blankValue;
 
         private string errMessage = "";
-
+        
         static private bool workDisposed = false;
         private System.Object UpdateLock = new System.Object();
         static private System.Object InterpolateLock = new System.Object();
@@ -611,15 +611,15 @@ namespace DDDSharp.Gridding
             SelectedBoreholesProperties.Add(name);
             CheckPropertyIsExistInBoreholes(name);            
             UpdatePropertiesValueRange();
-            UpdateOutputFileNames();
+            UpdateOutputFileNames( Path.GetFullPath(textOutputFile.Text) );
             UpdateDataInfo();
         }
 
         void UpdateOutputFileNames(string curpath = "")
         {
             string s0 = Boreholes.Name + "_Interpolated_";
-
-            string path = System.IO.Directory.GetCurrentDirectory();//.CurrentDirectory;            
+            string path = curpath;
+            if(path == "")path = System.IO.Directory.GetCurrentDirectory();
             if (curpath.Length > 1) path = Path.GetDirectoryName(curpath);
             
             path += "\\";
@@ -715,36 +715,81 @@ namespace DDDSharp.Gridding
             progressState = 1;// 0没开始，1已开始，2已暂停
         }
 
+        bool LoadLasFiles( List<string>FileNames )
+        {
+            foreach (string file in FileNames)
+            {
+                CLasFile las = new CLasFile();
+                LasFileData data = las.Read(file);
+                if (data == null)
+                {
+                    Cursor = Cursors.Default;
+                    MessageBox.Show("Load data failed.\n" + file);
+                    return false;
+                }
+
+                data.Name = Path.GetFileNameWithoutExtension(file);
+
+                CBorehole bh = new CBorehole(data);
+                Boreholes.AddBorehole(bh);
+
+                textOutputFile.Text = file;
+
+            }//foreach (string file in dlg.FileNames)                    
+            return true;
+        }
+        bool LoadLasFilesFromControlFile(string filename)
+        {
+            this.Cursor = Cursors.WaitCursor;
+
+            AscIIColumn asc = new AscIIColumn();
+            if (!asc.Load(filename))
+            {
+                this.Cursor = Cursors.Default;
+                MessageBox.Show(asc.errMessage, "Load data failed."); 
+                return false;
+            }
+
+            this.Cursor = Cursors.Default;
+
+            BoreholeListForm bh = new BoreholeListForm();
+            bh.pData = asc;
+            bh.control_file = filename;
+
+            //载入Las data
+            if (bh.ShowDialog() == DialogResult.OK)
+            {
+                Boreholes = bh.boreholes;
+                return true;
+            }
+            return false;
+        }
         private void AddButton1_Click(object sender, EventArgs e)
         {
             using (var dlg = new OpenFileDialog())
             {
-                dlg.Filter = Resource1.FormatLASFileFilter + "|all files(*.*)|*.*";
+                dlg.Filter = Resource1.FormatLASFileFilter;
+                dlg.Filter += "|" + Resource1.BoreholeInterpolationControlFile;
+                dlg.Filter += "|all files(*.*)|*.*";
+
                 dlg.Multiselect = true;
                 if (dlg.ShowDialog() == DialogResult.OK)
                 {
                     Cursor = Cursors.WaitCursor;
                     
-                    foreach (string file in dlg.FileNames)
+                    if ( dlg.FilterIndex == 1 )
                     {
-                        CLasFile las = new CLasFile();
-                        LasFileData data = las.Read(file);
-                        if ( data == null )
-                        {
-                            Cursor = Cursors.Default;
-                            MessageBox.Show("Load data failed.\n" + file);
+                        textOutputFile.Text = dlg.FileNames[0];
+                        if (!LoadLasFiles(dlg.FileNames.ToList()))
                             return;
-                        }
-                        
-                        data.Name = Path.GetFileNameWithoutExtension(file);
-                                                
-                        CBorehole bh = new CBorehole(data);
-                        Boreholes.AddBorehole( bh );
+                    }
+                    else
+                    {
+                        textOutputFile.Text = dlg.FileName;
+                        if (!LoadLasFilesFromControlFile(dlg.FileName))
+                            return;
+                    }
 
-                        textOutputFile.Text = file;
-
-                    }//foreach (string file in dlg.FileNames)                    
-                    
                     UpdateRange();
 
                     BoreholesColumns = Boreholes.GetLasDataColumns();

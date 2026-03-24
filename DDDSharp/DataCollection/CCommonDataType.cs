@@ -1,11 +1,14 @@
-﻿using System;
-using System.IO;
+﻿using DataCollection.DelaunayVoronoi;
+using GlmNet;
+using System;
 using System.Collections.Generic;
+using System.Drawing;
+using System.Drawing.Drawing2D;
+using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using System.Drawing;
-using GlmNet;
+using System.Windows.Forms;
 
 /************************************
  * Common Data Structure defination
@@ -26,7 +29,8 @@ namespace DataCollection
     {
         xAxis = 0,
         yAxis = 1,
-        zAxis = 2
+        zAxis = 2,
+        XYExchange = 3,
     };
     public enum AxisOrderEnum
     {
@@ -312,6 +316,19 @@ namespace DataCollection
 
     static public class ConvertColor
     {
+        static public byte toGray(int r, int g, int b)
+        {
+            byte gray = (byte)((299 * r + 587 * g + 114 * b + 500) / 1000);
+            return gray;
+        }
+        static public byte toGray(Color color)
+        {
+            int r = color.R;
+            int g = color.G;
+            int b = color.B;
+            byte gray = (byte)((299 * r + 587 * g + 114 * b + 500) / 1000);
+            return gray;
+        }
         static public vec4 Convert(Color color)
         {
             float r = color.R / 255f;
@@ -337,9 +354,100 @@ namespace DataCollection
             return Color.FromArgb(a, r, g, b);
         }
     }
+    public struct TransparentColorStruct
+    {
+        public Color Color { get; set; }
+        public float Deviation { get; set; }
+        public TransparentColorStruct(Color c, float deviation = 5)
+        {
+            Color = c;
+            Deviation = deviation;
+        }
+    }
+    public struct ColorHSV
+    {
+        public double Hue { get; set; }
+        public double Saturation { get; set; }
+        public double Value { get; set; }
+
+        public ColorHSV(double hue, double saturation, double value)
+        {
+            Hue = hue;
+            Saturation = saturation;
+            Value = value;
+        }
+        public ColorHSV(Color c)
+        {
+            double r = ((double)c.R / 255.0);
+            double g = ((double)c.G / 255.0);
+            double b = ((double)c.B / 255.0);
+
+            double max = Math.Max(r, Math.Max(g, b));
+            double min = Math.Min(r, Math.Min(g, b));
+
+            Hue = 0.0;
+            if (max == r && g >= b)
+            {
+                if (max - min == 0) Hue = 0.0;
+                else Hue = 60 * (g - b) / (max - min);
+            }
+            else if (max == r && g < b)
+            {
+                Hue = 60 * (g - b) / (max - min) + 360;
+            }
+            else if (max == g)
+            {
+                Hue = 60 * (b - r) / (max - min) + 120;
+            }
+            else if (max == b)
+            {
+                Hue = 60 * (r - g) / (max - min) + 240;
+            }
+
+            Saturation = (max == 0) ? 0.0 : (1.0 - ((double)min / (double)max));
+            Value = max;
+        }
+        public double Distance(ColorHSV p)
+        {
+            double R = 100, angle = 30;
+            double h = R * Math.Cos(angle / 180 * Math.PI);
+            double r = R * Math.Sin(angle / 180 * Math.PI);
+            double x1 = r * Value * Saturation * Math.Cos(Hue / 180 * Math.PI);
+            double y1 = r * Value * Saturation * Math.Sin(Hue / 180 * Math.PI);
+            double z1 = h * (1 - Value);
+            double x2 = r * p.Value * p.Saturation * Math.Cos(p.Hue / 180 * Math.PI);
+            double y2 = r * p.Value * p.Saturation * Math.Sin(p.Hue / 180 * Math.PI);
+            double z2 = h * (1 - p.Value);
+            double dx = x1 - x2;
+            double dy = y1 - y2;
+            double dz = z1 - z2;
+            return Math.Sqrt(dx * dx + dy * dy + dz * dz);
+        }
+        public static ColorHSV operator +(ColorHSV p1, ColorHSV p2)
+        {
+            return new ColorHSV(p1.Hue + p2.Hue, p1.Saturation + p2.Saturation, p1.Value + p2.Value);
+        }
+        public static ColorHSV operator -(ColorHSV p1, ColorHSV p2)
+        {
+            return new ColorHSV(p1.Hue - p2.Hue, p1.Saturation - p2.Saturation, p1.Value - p2.Value);
+        }
+        public static ColorHSV operator *(double s, ColorHSV p1)
+        {
+            return new ColorHSV(p1.Hue * s, p1.Saturation * s, p1.Value * s);
+        }
+        public static ColorHSV operator *(ColorHSV p1, double s)
+        {
+            return new ColorHSV(p1.Hue * s, p1.Saturation * s, p1.Value * s);
+        }
+        public static ColorHSV operator /(ColorHSV p1, double s)
+        {
+            if (s == 0) return p1;
+            else return new ColorHSV(p1.Hue / s, p1.Saturation / s, p1.Value / s);
+        }
+    }
     public struct ColorRGBA
     {
-        public byte R, G, B, A;        
+        public byte R, G, B, A;
         public Color toColor()
         {
             return Color.FromArgb(A, R, G, B);
@@ -450,64 +558,108 @@ namespace DataCollection
     }
     public struct DoubleRect
     {
-        public double x1, x2, y1, y2;
+        public double X1, X2, Y1, Y2;
         public double Width
         {
-            get { return x2 - x1; }
+            get { return X2 - X1; }
         }
         public double Height
         {
-            get { return y2 - y1; }
+            get { return Y2 - Y1; }
+        }
+        public double Left
+        {
+            get { return X1; }
+            set { X1 = value; }
+        }
+        public double Right
+        {
+            get { return X2; }
+            set { X2 = value; }
+        }
+
+        public double Top
+        {
+            get { return Y1; }
+            set { Y1 = value; }
+        }
+        public double Down
+        {
+            get { return Y2; }
+            set { Y2 = value; }
+        }
+        public string toString()
+        {
+            string ss = X1 + "," + Y1 + "," + X2 + "," + Y2;
+            return ss;
+        }
+        public void fromString(string s)
+        {
+            string[] ss = s.Split(new char[] { ' ', ',', '\t' }, StringSplitOptions.RemoveEmptyEntries);
+            if (ss.Length >= 4)
+            {
+                try
+                {
+                    X1 = double.Parse(ss[0]);
+                    Y1 = double.Parse(ss[1]);
+                    X2 = double.Parse(ss[2]);
+                    Y2 = double.Parse(ss[3]);
+                }
+                catch (Exception ex)
+                {
+
+                }
+            }
         }
         public void Offset(double offx, double offy)
         {
-            x1 += offx;
-            x2 += offx;
-            y1 += offy;
-            y2 += offy;
+            X1 += offx;
+            X2 += offx;
+            Y1 += offy;
+            Y2 += offy;
         }
         //if contain rect
         public bool Contains(DoubleRect rect)
         {
-            if (x1 <= rect.x1 && x2 >= rect.x2 &&
-                y1 <= rect.y1 && y2 >= rect.y2) return true;
+            if (X1 <= rect.X1 && X2 >= rect.X2 &&
+                Y1 <= rect.Y1 && Y2 >= rect.Y2) return true;
             else return false;
         }
-        public bool Contains(double x,double y)
+        public bool Contains(double x, double y)
         {
-            if ( x >= x1 && x <= x2 && 
-                 y >= y1 && y <= y2 ) return true;
+            if (x >= X1 && x <= X2 &&
+                 y >= Y1 && y <= Y2) return true;
             else return false;
         }
         public bool IsIntersectWith(DoubleRect rect)
         {
-            if (rect.x1 > x2 || rect.x2 < x1 ||
-                rect.y1 > y2 || rect.y2 < y1 ) return false;
+            if (rect.X1 > X2 || rect.X2 < X1 ||
+                rect.Y1 > Y2 || rect.Y2 < Y1) return false;
             else return true;
         }
-        public bool IsIntersectWith(double minx,double miny,double maxx,double maxy)
+        public bool IsIntersectWith(double minx, double miny, double maxx, double maxy)
         {
-            if (minx > x2 || maxx < x1 ||
-                miny > y2 || maxy < y1) return false;
+            if (minx > X2 || maxx < X1 ||
+                miny > Y2 || maxy < Y1) return false;
             else return true;
         }
         public void Scale(double scale)
         {
-            double x0 = (x1 + x2) / 2.0;
-            double y0 = (y1 + y2) / 2.0;
+            double x0 = (X1 + X2) / 2.0;
+            double y0 = (Y1 + Y2) / 2.0;
             double ww = Width * scale;
             double hh = Height * scale;
-            x1 = x0 - ww / 2.0;
-            x2 = x0 + ww / 2.0;
-            y1 = y0 - hh / 2.0;
-            y2 = y0 + hh / 2.0;
+            X1 = x0 - ww / 2.0;
+            X2 = x0 + ww / 2.0;
+            Y1 = y0 - hh / 2.0;
+            Y2 = y0 + hh / 2.0;
         }
         public DoubleRect(double _x1, double _y1, double _x2, double _y2)
         {
-            x1 = _x1;
-            y1 = _y1;
-            x2 = _x2;
-            y2 = _y2;
+            X1 = _x1;
+            Y1 = _y1;
+            X2 = _x2;
+            Y2 = _y2;
         }
     }
     public enum CPUCoding
@@ -520,6 +672,18 @@ namespace DataCollection
         static public int checkCPU()
         {
             return 1;
+        }
+        /// <summary>
+        /// 在误差范围内将小数转化成整数
+        /// </summary>
+        /// <param name="err"></param>
+        /// <returns></returns>
+        static public int Double2Int(double val, double err = 1e-6)
+        {
+            int n = (int)val;
+            double e = val - n;
+            if (e >= 1 - err) return n + 1;
+            else return n;
         }
         static public byte[] ReverseBytes(byte[] buf)
         {
@@ -678,14 +842,14 @@ namespace DataCollection
             }
         }
         */
-        public static float toIEEEfloat(byte[]cc)
+        public static float toIEEEfloat(byte[] cc)
         {
             //S1 E8        F23
             //00000000011111111111111111111111
             //10000000000000000000000000000000
             //0 00000000 00000000000000000000000
             uint val = BitConverter.ToUInt32(ReverseBytes(cc), 0);
-            
+
             uint a = val >> 31;
             int s = 1;
             if (a > 0) s = -1;
@@ -701,7 +865,7 @@ namespace DataCollection
             uint M = C + F;
             //A=16;B=64;C=0;ibm
 
-             return (float)(s* M * Math.Pow(A, E - B));
+            return (float)(s * M * Math.Pow(A, E - B));
         }
         public static float IBMtoIEEE(byte[] bb)
         {
@@ -711,7 +875,7 @@ namespace DataCollection
             uint ui;
 
             ////根据情况看是否进行字节转换  
-            System.Array.Reverse(bb);  
+            System.Array.Reverse(bb);
 
             // @ 标识符号位     
             // # 标识阶数位     
@@ -780,7 +944,7 @@ namespace DataCollection
                 fraction <<= 1;
             }
 
-            done:
+        done:
             ui = (uint)((exponent << 23) | (sign << 31));
             ui = ui | (fraction >> 9);
 
@@ -788,176 +952,79 @@ namespace DataCollection
 
             return System.BitConverter.ToSingle(bb, 0);
         }
-       
-       public static float IEEEtoIBM(float from)
-       {  
-          uint fraction;  
-          int exponent;  
-          int sign;  
-          uint ui;  
-  
-          ////根据情况看是否进行字节转换  
-          //System.Array.Reverse(bb);  
-  
-          // @ 标识符号位     
-          // # 标识阶数位     
-          // * 标识尾数位  
-          //IBM浮点数： SEEEEEEE MMMMMMMM MMMMMMMM MMMMMMMM        Value = (-1)^s * M * 16^(E-64)  
-          //IEEE浮点数：SEEEEEEE EMMMMMMM MMMMMMMM MMMMMMMM        Value = (-1)^s * (1 +  M) * 2^(E-127)  
-          byte[] bb = BitConverter.GetBytes(from);  
-          fraction = System.BitConverter.ToUInt32(bb, 0);  
-  
-          sign = (int) (fraction >> 31);           // 获取符号位;  
-          fraction <<= 1;                         // 左移移出符号位，右侧填0;  
-          exponent = (int) (fraction >> 24);       // 获取阶数;  
-          fraction <<= 8;                         //移出符号位 和 阶数 剩余的部分：尾数部分;  
-  
-  
-          /* 
-           * 特定概念值处理 
-           *  
-           * 如果尾数部分为0,则说明该数是特定值：0或者无穷。 
-           * 当指数=255，说明当前数是无穷大; 对应的IBM无穷大时，指数为127。 
-           * 当指数=0,说明当前数为0; 对应的IBM为0时，指数为0. 
-           *  
-           * IEEE非数字：指数为255，小数部分不为零。 
-           * IBM非数字：指数为127，小数部分最高位为1，其他位为0. 
-          */  
-          if (fraction == 0) //如果尾数为零 判断是否是 无穷大 或 0  
-          {  
-              if (exponent == 0) //0  
-                  goto done;  
-              else if (exponent == 255) //无穷大  
-              {  
-                  exponent = 127;  
-                  goto done;  
-              }  
-          }  
-          else if (exponent == 255)  //判断是否是数字  
-          {  
-              fraction = 0x80000000;  
-              goto done;  
-          }  
-  
-          //执行（M+1）/2;  
-          fraction = (fraction >> 1) | 0x80000000;  
-  
-          //因为IBM 和 IEEE 的指数都是整数  
-          //但是（IEEE阶码 +130）/4= IBM阶码。为了保证IBM 阶码是整数。必须对IBM 尾数进行移位处理。  
-          int remainder = (exponent + 130) % 4; //余数  
-          exponent = (exponent + 130) >> 2;  //商  
-          if (remainder > 0)  
-          {  
-              exponent++;  
-              fraction = fraction >> (4-remainder);  
-          }  
-  
-        done:  
-          ui = (uint) ((exponent << 24) | (sign << 31));  
-          ui = ui | (fraction >> 8);  
-  
-          bb = System.BitConverter.GetBytes(ui);  
-  
-          return System.BitConverter.ToSingle(bb, 0);  
+
+        public static float IEEEtoIBM(float from)
+        {
+            uint fraction;
+            int exponent;
+            int sign;
+            uint ui;
+
+            ////根据情况看是否进行字节转换  
+            //System.Array.Reverse(bb);  
+
+            // @ 标识符号位     
+            // # 标识阶数位     
+            // * 标识尾数位  
+            //IBM浮点数： SEEEEEEE MMMMMMMM MMMMMMMM MMMMMMMM        Value = (-1)^s * M * 16^(E-64)  
+            //IEEE浮点数：SEEEEEEE EMMMMMMM MMMMMMMM MMMMMMMM        Value = (-1)^s * (1 +  M) * 2^(E-127)  
+            byte[] bb = BitConverter.GetBytes(from);
+            fraction = System.BitConverter.ToUInt32(bb, 0);
+
+            sign = (int)(fraction >> 31);           // 获取符号位;  
+            fraction <<= 1;                         // 左移移出符号位，右侧填0;  
+            exponent = (int)(fraction >> 24);       // 获取阶数;  
+            fraction <<= 8;                         //移出符号位 和 阶数 剩余的部分：尾数部分;  
+
+
+            /* 
+             * 特定概念值处理 
+             *  
+             * 如果尾数部分为0,则说明该数是特定值：0或者无穷。 
+             * 当指数=255，说明当前数是无穷大; 对应的IBM无穷大时，指数为127。 
+             * 当指数=0,说明当前数为0; 对应的IBM为0时，指数为0. 
+             *  
+             * IEEE非数字：指数为255，小数部分不为零。 
+             * IBM非数字：指数为127，小数部分最高位为1，其他位为0. 
+            */
+            if (fraction == 0) //如果尾数为零 判断是否是 无穷大 或 0  
+            {
+                if (exponent == 0) //0  
+                    goto done;
+                else if (exponent == 255) //无穷大  
+                {
+                    exponent = 127;
+                    goto done;
+                }
+            }
+            else if (exponent == 255)  //判断是否是数字  
+            {
+                fraction = 0x80000000;
+                goto done;
+            }
+
+            //执行（M+1）/2;  
+            fraction = (fraction >> 1) | 0x80000000;
+
+            //因为IBM 和 IEEE 的指数都是整数  
+            //但是（IEEE阶码 +130）/4= IBM阶码。为了保证IBM 阶码是整数。必须对IBM 尾数进行移位处理。  
+            int remainder = (exponent + 130) % 4; //余数  
+            exponent = (exponent + 130) >> 2;  //商  
+            if (remainder > 0)
+            {
+                exponent++;
+                fraction = fraction >> (4 - remainder);
+            }
+
+        done:
+            ui = (uint)((exponent << 24) | (sign << 31));
+            ui = ui | (fraction >> 8);
+
+            bb = System.BitConverter.GetBytes(ui);
+
+            return System.BitConverter.ToSingle(bb, 0);
         }
 
-       //---------------------------------------------------------------
-        public static bool StringToInt(string ss, out int value)
-        {
-            value = 0;
-            try
-            {
-                value = int.Parse(ss);
-            }
-#pragma warning disable CS0168 // 声明了变量“e”，但从未使用过
-            catch (Exception e)
-#pragma warning restore CS0168 // 声明了变量“e”，但从未使用过
-            {
-                return false;
-            }
-            return true;
-        }
-        public static bool StringToFloat(string ss, out float value)
-        {
-            value = 0;
-            try
-            {
-                value = float.Parse(ss);
-            }
-#pragma warning disable CS0168 // 声明了变量“e”，但从未使用过
-            catch (Exception e)
-#pragma warning restore CS0168 // 声明了变量“e”，但从未使用过
-            {
-                return false;
-            }
-            return true;
-        }
-        public static bool StringToDouble(string ss, out double value)
-        {
-            value = 0;
-            try
-            {
-                value = double.Parse(ss);
-            }
-#pragma warning disable CS0168 // 声明了变量“e”，但从未使用过
-            catch (Exception e)
-#pragma warning restore CS0168 // 声明了变量“e”，但从未使用过
-            {
-                return false;
-            }
-            return true;
-        }
-        //---------------------------------------------------
-        public static double StringToDouble(string ss)
-        {
-            return toDouble(ss);
-        }
-        public static int StringToInt(string ss)
-        {
-            return toInt(ss);
-        }
-        public static float StringToFloat(string ss)
-        {
-            return toFloat(ss);
-        }
-        //-----------------------------------------------------
-        public static double toDouble(string ss)
-        {
-            double ret = 0;
-            try
-            {
-                ret = double.Parse(ss);
-            }
-#pragma warning disable CS0168 // 声明了变量“e”，但从未使用过
-            catch (Exception e) { }
-#pragma warning restore CS0168 // 声明了变量“e”，但从未使用过
-            return ret;           
-        }
-        public static int toInt(string ss)
-        {
-            int ret = 0;
-            try
-            {
-                ret = int.Parse(ss);
-            }
-#pragma warning disable CS0168 // 声明了变量“e”，但从未使用过
-            catch (Exception e) { }
-#pragma warning restore CS0168 // 声明了变量“e”，但从未使用过
-            return ret;
-        }
-        public static float toFloat(string ss)
-        {
-            float ret = 0;
-            try
-            {
-                ret = float.Parse(ss);
-            }
-#pragma warning disable CS0168 // 声明了变量“e”，但从未使用过
-            catch (Exception e) { }
-#pragma warning restore CS0168 // 声明了变量“e”，但从未使用过
-            return ret;
-        }
-        //-----------------------------------------------------
     }
     public struct Int16XYZ
     {
@@ -1161,6 +1228,86 @@ namespace DataCollection
         public uint B { get { return y; } set { y = value; } }
         public uint C { get { return z; } set { z = value; } }
     }
+
+    static public class MyMath
+    {
+        static public double Clamp(double val,double min,double max) 
+        {
+            if (val < min) return min;
+            else if (val > max) return max;
+            else return val;
+        }
+        static public int Clamp(int val, int min, int max)
+        {
+            if (val < min) return min;
+            else if (val > max) return max;
+            else return val;
+        }
+
+        /// <summary>
+        /// 判别多边形顶点的顺时针/逆时针排列
+        /// </summary>
+        /// <param name="polygonPoints">多边形顶点数组（闭合/非闭合均可，至少3个点）</param>
+        /// <param name="epsilon">浮点精度阈值（默认1e-8，避免精度误差）</param>
+        /// <returns>方向枚举值</returns>
+        /// <exception cref="ArgumentNullException">点数组为空</exception>
+        /// <exception cref="ArgumentException">点数量不足3个</exception>
+        public static ClockDirection DetectDirection(List<Vector64> polygonPoints, double epsilon = 1e-8)
+        {
+            // 1. 输入校验
+            if (polygonPoints == null)
+                throw new ArgumentNullException(nameof(polygonPoints), "多边形点数组不能为空");
+            if (polygonPoints.Count < 3)
+                throw new ArgumentException("多边形至少需要3个顶点", nameof(polygonPoints));
+
+            // 2. 处理闭合多边形：若首尾点重合，移除最后一个点（避免重复计算）
+            List<Vector64> points = new List<Vector64>(polygonPoints);
+            if (IsPointEqual(points.First(), points.Last(), epsilon))
+                points.RemoveAt(points.Count - 1);
+            if (points.Count < 3)
+                throw new ArgumentException("移除重复首尾点后，多边形顶点不足3个", nameof(polygonPoints));
+
+            // 3. 鞋带公式计算有向面积的2倍（避免除法，简化符号判断）
+            double signedArea2 = 0;
+            int n = points.Count;
+            for (int i = 0; i < n; i++)
+            {
+                Vector64 p = points[i];
+                Vector64 nextP = points[(i + 1) % n]; // 最后一个点的下一个点是第一个点
+                signedArea2 += (p.X * nextP.Y) - (nextP.X * p.Y);
+            }
+
+            // 4. 根据有向面积符号判断方向
+            if (Math.Abs(signedArea2) < epsilon)
+                return ClockDirection.Collinear; // 共线，非有效多边形
+            return signedArea2 > 0 ? ClockDirection.Counterclockwise : ClockDirection.Clockwise;
+        }
+
+        /// <summary>
+        /// 浮点精度兼容的点相等判断
+        /// </summary>
+        private static bool IsPointEqual(Vector64 p1, Vector64 p2, double epsilon)
+        {
+            return Math.Abs(p1.X - p2.X) < epsilon && Math.Abs(p1.Y - p2.Y) < epsilon;
+        }
+
+        /// <summary>
+        /// 辅助方法：反转多边形顶点顺序（顺时针↔逆时针）
+        /// </summary>
+        /// <param name="polygonPoints">原多边形顶点</param>
+        /// <returns>反转后的顶点数组</returns>
+        public static List<Vector64> ReverseDirection(List<Vector64> polygonPoints)
+        {
+            List<Vector64> reversed = new List<Vector64>(polygonPoints);
+            reversed.Reverse();
+            // 若原多边形闭合，保证反转后仍闭合
+            if (IsPointEqual(reversed.First(), reversed.Last(), 1e-8))
+                return reversed;
+            reversed.Add(reversed.First());
+            return reversed;
+        }
+    }
+
     public struct CubeModel32
     {
         public float X1, Y1, Z1, X2, Y2, Z2;
@@ -1252,6 +1399,12 @@ namespace DataCollection
         public CubeModel64 Copy()
         {
             return new CubeModel64(X1,Y1,Z1,X2,Y2,Z2);            
+        }
+        public bool IsValid()
+        {
+            if (X1 == X2 || Y1 == Y2 || Z1 == Z2) 
+                 return false;
+            else return true;
         }
         public bool IsIdentityCube
         {
@@ -1408,7 +1561,15 @@ namespace DataCollection
             Y = (float)_y;
             Z = (float)_z;
             V = (float)_v;
-        }        
+        }
+        public float []toArray(int count = 3)
+        {
+            if (count == 1) return new float[1] { X };
+            else if (count == 2) return new float[2] { X,Y };
+            else if (count == 3) return new float[3] { X, Y, Z };
+            else  if (count == 4) return new float[4] { X, Y, Z, V };
+            else return null;
+        }
         public Vector64 toVector64()
         {
             return new Vector64(x,y,z,v);
@@ -1444,7 +1605,12 @@ namespace DataCollection
 
             return ss;
         }
-        
+        public bool IsValid()
+        {
+            return !float.IsNaN(X) && !float.IsInfinity(X) &&
+                   !float.IsNaN(Y) && !float.IsInfinity(Y) &&
+                   !float.IsNaN(Z) && !float.IsInfinity(Z);
+        }
         static public bool TryParse(string text,out Vector32 p, int dimension = 4)
         {
             float x1 = 0, y1 = 0, z1 = 0, v1 = 0;
@@ -1579,6 +1745,22 @@ namespace DataCollection
                    Y.Equals(p.Y) &&
                    Z.Equals(p.Z) &&
                    V.Equals(p.V);
+        }
+        public bool Write(BinaryWriter wr, int len = 4)
+        {
+            if (len >= 1) wr.Write(X);
+            if (len >= 2) wr.Write(Y);
+            if (len >= 3) wr.Write(Z);
+            if (len >= 4) wr.Write(V);
+            return true;
+        }
+        public bool Load(BinaryReader br, int len = 4)
+        {
+            if (len >= 1) X = br.ReadSingle();
+            if (len >= 2) Y = br.ReadSingle();
+            if (len >= 3) Z = br.ReadSingle();
+            if (len >= 4) V = br.ReadSingle();
+            return true;
         }
         static public List<Vector64> toVector64List(List<Vector32> points)
         {
@@ -1814,7 +1996,252 @@ namespace DataCollection
             }
             return removed;
         }
+        /// <summary>
+        /// 多边形点排序
+        /// </summary>
+        /// <param name="points"></param>
+        /// <returns></returns>
+        public static List<Vector32> SortBoundaryPoints(List<Vector32> points)
+        {
+            if (points.Count <= 1)
+                return points;
 
+            // 计算所有点的中心点
+            double avgX = points.Average(p => p.X);
+            double avgY = points.Average(p => p.Y);
+            Vector64 center = new Vector64(avgX, avgY, 0);
+
+            // 按极角排序
+            return points.OrderBy(p =>
+            {
+                double dx = p.X - center.X;
+                double dy = p.Y - center.Y;
+                return Math.Atan2(dy, dx); // 极角（弧度）
+            }).ToList();
+        }
+        /// <summary>
+        /// 过滤三维曲线中Z坐标突变/不连续的点（所有点在同一平面，且到起点的累积距离递增）
+        /// </summary>
+        /// <param name="points">三维坐标点列表（第一个点为起点）</param>
+        /// <param name="madMultiplier">MAD异常阈值倍数（推荐2.5~3.5）</param>
+        /// <param name="useInterpolate">是否插值修正（false=删除，true=插值）</param>
+        /// <returns>过滤后的坐标列表</returns>
+        /// <exception cref="ArgumentNullException">点列表为空</exception>
+        /// <exception cref="ArgumentException">距离未递增/点数量不足</exception>
+        public static List<Vector32> FilterZJumpPoints(List<Vector32> points, double madMultiplier = 2.0, bool useInterpolate = false)
+        {
+            // 1. 基础输入校验
+            if (points == null || points.Count < 2)
+                throw new ArgumentNullException(nameof(points), "点列表不能为空且至少包含2个三维点");
+
+            // 2. 计算每个点到起点的累积距离，并校验距离严格递增
+            Vector32 startPoint = points[0];
+            double[] cumulativeDistances = new double[points.Count];
+            cumulativeDistances[0] = 0; // 起点距离为0
+
+            for (int i = 1; i < points.Count; i++)
+            {
+                cumulativeDistances[i] = cumulativeDistances[i - 1] + points[i].Distance(points[i - 1]);
+                // 校验：累积距离必须严格递增（允许极小误差，避免浮点精度问题）
+                if (cumulativeDistances[i] - cumulativeDistances[i - 1] <= 1e-8)
+                {
+                    throw new ArgumentException($"第{i}个点的累积距离未递增，当前距离：{cumulativeDistances[i]}, 前一距离：{cumulativeDistances[i - 1]}", nameof(points));
+                }
+            }
+
+            // 3. 提取Z值并计算相邻点的Z差分（dz = Z[i] - Z[i-1]）
+            float[] zVals = points.Select(p => p.Z).ToArray();
+            double[] dz = new double[zVals.Length - 1];
+            for (int i = 0; i < dz.Length; i++)
+            {
+                dz[i] = zVals[i + 1] - zVals[i];
+            }
+
+            // 4. 基于MAD计算Z突变的异常阈值（鲁棒抗干扰）
+            double medianDz = GetMedian(dz);
+            double[] absDev = dz.Select(d => Math.Abs(d - medianDz)).ToArray();
+            double madDz = GetMedian(absDev);
+
+            // 若MAD为0，说明Z无突变，直接返回原数据
+            if (madDz < 1e-8)
+                return new List<Vector32>(points);
+
+            // 双边异常阈值
+            double thresholdUpper = medianDz + madMultiplier * madDz;
+            double thresholdLower = medianDz - madMultiplier * madDz;
+
+            // 5. 定位Z突变点的索引（dz超出阈值对应Z[i+1]为异常点）
+            List<int> abnormalPointIndices = new List<int>();
+            for (int i = 0; i < dz.Length; i++)
+            {
+                if (dz[i] > thresholdUpper || dz[i] < thresholdLower)
+                {
+                    abnormalPointIndices.Add(i + 1); // dz[i]对应Z[i+1]-Z[i]，异常点是i+1
+                }
+            }
+
+            // 6. 过滤/修正异常点（倒序处理，避免索引偏移）
+            List<Vector32> filteredPoints = new List<Vector32>(points);
+            if (useInterpolate)
+            {
+                // 插值修正：基于累积距离的线性插值替换异常点的Z值
+                foreach (int idx in abnormalPointIndices.OrderByDescending(i => i))
+                {
+                    if (idx == 0 || idx == filteredPoints.Count - 1)
+                    {
+                        // 首尾点异常直接删除（无足够点插值）
+                        filteredPoints.RemoveAt(idx);
+                    }
+                    else
+                    {
+                        // 获取异常点前后的正常点及对应累积距离
+                        Vector32 prevPoint = filteredPoints[idx - 1];
+                        Vector32 nextPoint = filteredPoints[idx + 1];
+                        double dPrev = cumulativeDistances[idx - 1];
+                        double dCurrent = cumulativeDistances[idx];
+                        double dNext = cumulativeDistances[idx + 1];
+
+                        // 线性插值计算修正后的Z值（基于累积距离）
+                        double zInterp = prevPoint.Z + (nextPoint.Z - prevPoint.Z) * (dCurrent - dPrev) / (dNext - dPrev);
+                        // 保留X/Y，仅修正Z
+                        filteredPoints[idx] = new Vector64(filteredPoints[idx].X, filteredPoints[idx].Y, zInterp);
+                    }
+                }
+            }
+            else
+            {
+                // 直接删除异常点
+                foreach (int idx in abnormalPointIndices.OrderByDescending(i => i))
+                {
+                    if (idx < filteredPoints.Count)
+                        filteredPoints.RemoveAt(idx);
+                }
+            }
+
+            return filteredPoints;
+        }
+        #region 新增：梯度法过滤Z突变点
+        /// <summary>
+        /// 基于梯度法过滤三维曲线中Z坐标突变/不连续的点
+        /// 核心：计算Z相对于累积距离的梯度（dz/dd），识别梯度异常的突变点
+        /// </summary>
+        /// <param name="points">三维坐标点列表（第一个点为起点）</param>
+        /// <param name="madMultiplier">MAD异常阈值倍数（推荐2.5~3.5）</param>
+        /// <param name="useInterpolate">是否插值修正（false=删除，true=插值）</param>
+        /// <returns>过滤后的坐标列表</returns>
+        /// <exception cref="ArgumentNullException">点列表为空</exception>
+        /// <exception cref="ArgumentException">距离未递增/点数量不足</exception>
+        public static List<Vector32> FilterZJumpByGradient(List<Vector32> points, double madMultiplier = 3.0, bool useInterpolate = false)
+        {
+            // 1. 基础输入校验
+            if (points == null || points.Count < 2)
+                throw new ArgumentNullException(nameof(points), "点列表不能为空且至少包含2个三维点");
+
+            // 2. 计算累积距离并校验递增性
+            Vector32 startPoint = points[0];
+            double[] cumulativeDistances = new double[points.Count];
+            cumulativeDistances[0] = 0; // 起点距离为0
+
+            for (int i = 1; i < points.Count; i++)
+            {
+                cumulativeDistances[i] = cumulativeDistances[i - 1] + points[i].Distance(points[i - 1]);
+                if (cumulativeDistances[i] - cumulativeDistances[i - 1] <= 1e-8)
+                {
+                    throw new ArgumentException($"第{i}个点的累积距离未递增，当前距离：{cumulativeDistances[i]}, 前一距离：{cumulativeDistances[i - 1]}", nameof(points));
+                }
+            }
+
+            // 3. 计算Z相对于累积距离的梯度（dz/dd）
+            // 梯度定义：g[i] = (Z[i+1] - Z[i]) / (d[i+1] - d[i])，反映Z随距离的变化率
+            float[] zVals = points.Select(p => p.Z).ToArray();
+            double[] gradients = new double[zVals.Length - 1];
+            for (int i = 0; i < gradients.Length; i++)
+            {
+                double deltaZ = zVals[i + 1] - zVals[i];
+                double deltaD = cumulativeDistances[i + 1] - cumulativeDistances[i];
+                gradients[i] = deltaZ / deltaD; // 核心：Z的距离梯度
+            }
+
+            // 4. 基于MAD计算梯度的异常阈值（鲁棒抗干扰）
+            double medianGrad = GetMedian(gradients);
+            double[] absGradDev = gradients.Select(g => Math.Abs(g - medianGrad)).ToArray();
+            double madGrad = GetMedian(absGradDev);
+
+            // 若梯度无波动（MAD接近0），直接返回原数据
+            if (madGrad < 1e-8)
+                return new List<Vector32>(points);
+
+            // 双边异常阈值：梯度超出该范围判定为突变
+            double gradUpper = medianGrad + madMultiplier * madGrad;
+            double gradLower = medianGrad - madMultiplier * madGrad;
+
+            // 5. 定位梯度异常对应的Z突变点（梯度[i]异常 → 点[i+1]为突变点）
+            List<int> abnormalPointIndices = new List<int>();
+            for (int i = 0; i < gradients.Length; i++)
+            {
+                if (gradients[i] > gradUpper || gradients[i] < gradLower)
+                {
+                    abnormalPointIndices.Add(i + 1);
+                }
+            }
+
+            // 6. 过滤/修正异常点（逻辑与差分法一致，保证接口统一）
+            List<Vector32> filteredPoints = new List<Vector32>(points);
+            if (useInterpolate)
+            {
+                // 插值修正：基于累积距离的线性插值更新Z值
+                foreach (int idx in abnormalPointIndices.OrderByDescending(i => i))
+                {
+                    if (idx == 0 || idx == filteredPoints.Count - 1)
+                    {
+                        filteredPoints.RemoveAt(idx); // 首尾点异常直接删除
+                    }
+                    else
+                    {
+                        Vector32 prev = filteredPoints[idx - 1];
+                        Vector32 next = filteredPoints[idx + 1];
+                        double dPrev = cumulativeDistances[idx - 1];
+                        double dCurr = cumulativeDistances[idx];
+                        double dNext = cumulativeDistances[idx + 1];
+
+                        // 线性插值修正Z，保留X/Y不变
+                        double zInterp = prev.Z + (next.Z - prev.Z) * (dCurr - dPrev) / (dNext - dPrev);
+                        filteredPoints[idx] = new Vector32(filteredPoints[idx].X, filteredPoints[idx].Y, zInterp);
+                    }
+                }
+            }
+            else
+            {
+                // 直接删除异常点（倒序处理避免索引偏移）
+                foreach (int idx in abnormalPointIndices.OrderByDescending(i => i))
+                {
+                    if (idx < filteredPoints.Count)
+                        filteredPoints.RemoveAt(idx);
+                }
+            }
+
+            return filteredPoints;
+        }
+        #endregion
+        /// <summary>
+        /// 计算数组的中位数（兼容奇偶长度）
+        /// </summary>
+        private static double GetMedian(double[] array)
+        {
+            if (array.Length == 0) return 0;
+            double[] sortedArray = (double[])array.Clone();
+            Array.Sort(sortedArray);
+
+            int length = sortedArray.Length;
+            if (length % 2 == 0)
+            {
+                return (sortedArray[length / 2 - 1] + sortedArray[length / 2]) / 2.0;
+            }
+            else
+            {
+                return sortedArray[length / 2];
+            }
+        }
         static public Vector32 GetNormal(Vector32 p1, Vector32 p2, Vector32 p3)
         {
             Vector64 pn = new Vector64(0, 0, 0);
@@ -1971,9 +2398,31 @@ namespace DataCollection
                                     (p1.Y - p2.Y) * (p1.Y - p2.Y) +
                                     (p1.Z - p2.Z) * (p1.Z - p2.Z));            
         }
+        public static double Distance2D(Vector32 p1, Vector32 p2, int pow = 2)
+        {
+            if (pow == 1) //曼哈顿距离
+                return Math.Abs(p1.X - p2.X) + Math.Abs(p1.Y - p2.Y);
+            else if (pow == 4) //距离平方
+                return (p1.X - p2.X) * (p1.X - p2.X) +
+                                (p1.Y - p2.Y) * (p1.Y - p2.Y);
+            else //if (pow == 2) //标准欧式距离
+                return Math.Sqrt((p1.X - p2.X) * (p1.X - p2.X) +
+                                    (p1.Y - p2.Y) * (p1.Y - p2.Y));
+        }
         public double Distance(Vector32 p,int pow = 2)
         {
             return Distance(this, p,pow);
+        }
+        public double Distance2D(Vector32 p, int pow = 2)
+        {
+            return Distance2D(this, p, pow);
+        }
+        public double DistancePower2(Vector32 p)
+        {
+            double xx = (p.X - this.X);
+            double yy = (p.Y - this.Y);
+            double zz = (p.Z - this.Z);
+            return xx * xx + yy * yy + zz * zz;
         }
         //mode
         public static double GetLength(Vector32 p1)
@@ -2358,31 +2807,15 @@ namespace DataCollection
             } set { X = value[0]; Y = value[1]; Z = value[2]; V = value[3]; }
         }
 
-        /// <summary>
-        /// export as x,y,z,v ASCII format
-        /// </summary>
-        /// <param name="path"></param>
-        static public bool ExportAs(string path,List<Vector32>points)
+        public override string ToString()
         {
-            try
-            {
-                StreamWriter wr = new StreamWriter(new FileStream(path, FileMode.Create));
-                string line = "x,   y,  z,  value";
-                wr.WriteLine(line);
-                Vector32 p;
-                for (int i = 0; i < points.Count; i++)
-                {
-                    p = points[i];
-                    line = p.X + ", " + p.Y + ", " + p.Z + ", " + p.V;
-                    wr.WriteLine(line);
-                }
-                wr.Close();
-                return true;
-            }
-            catch (Exception ex)
-            {                
-                return false;
-            }
+            string ss = X + "," + Y + "," + Z + "," + V;
+            return ss;
+        }
+        public string ToString3()
+        {
+            string ss = X + "," + Y + "," + Z;
+            return ss;
         }
 
     }
@@ -2404,19 +2837,25 @@ namespace DataCollection
         {
             return new Vector32(x,y,z,v);
         }
+
         public string toString(int n = 4)
         {
             string ss = "";
-            ss += X;
+            ss += X.ToString();
             if( n > 1 )ss += ",";
-            if (n > 1) ss += Y;
+            if (n > 1) ss += Y.ToString();
             if (n > 2) ss += ",";
-            if (n > 2) ss += Z;
+            if (n > 2) ss += Z.ToString();
             if (n > 3) ss += ",";
-            if (n > 3) ss += V;
+            if (n > 3) ss += V.ToString();
             return ss;
         }
-
+        public bool IsValid()
+        {
+            return !double.IsNaN(X) && !double.IsInfinity(X) &&
+                   !double.IsNaN(Y) && !double.IsInfinity(Y) &&
+                   !double.IsNaN(Z) && !double.IsInfinity(Z);
+        }
         /// <summary>
         /// 折半查找从，points V中查找与指定值最相近的值
         /// </summary>
@@ -2529,6 +2968,30 @@ namespace DataCollection
                    Z.Equals(p.Z) &&
                    V.Equals(p.V);
         }
+        public double[] toArray(int count = 3)
+        {
+            if (count == 1) return new double[1] { X };
+            else if (count == 2) return new double[2] { X, Y };
+            else if (count == 3) return new double[3] { X, Y, Z };
+            else if (count == 4) return new double[4] { X, Y, Z, V };
+            else return null;
+        }
+        public bool Write(BinaryWriter wr, int len = 4)
+        {
+            if (len >= 1) wr.Write(X);
+            if (len >= 2) wr.Write(Y);
+            if (len >= 3) wr.Write(Z);
+            if (len >= 4) wr.Write(V);
+            return true;
+        }
+        public bool Load(BinaryReader br, int len = 4)
+        {
+            if (len >= 1) X = br.ReadDouble();
+            if (len >= 2) Y = br.ReadDouble();
+            if (len >= 3) Z = br.ReadDouble();
+            if (len >= 4) V = br.ReadDouble();
+            return true;
+        }
         static public List<Vector32> toVector32List(List<Vector64> points)
         {
             List<Vector32> points32 = new List<Vector32>();
@@ -2542,17 +3005,15 @@ namespace DataCollection
         /// 删除散乱点中的距离小于某个数的重复点，点距小于最大值的 * zerobase
         /// </summary>
         /// <param name="points"></param>
-        /// <param name="zerobase">一个极小值，最大的点距的</param>
+        /// <param name="percent">点集范围最大值的，比例（0-100）%一个极小值</param>
         /// <returns></returns>
-        static public int RemoveDuplicated(ref List<Vector64> points, double zerobase = 1.0E-10)
+        static public int DuplicatedFilter(ref List<Vector64> points, double percent)
         {
-            if (points.Count < 2) return 0;
+            if ( points.Count < 1 ) return 0;
+            
+            Vector64 p, p1,p2;
 
-            double dist;
-            Vector64 p,p1, p2;
-
-            //计算点集的最大值边maxlen
-            double maxlen = 0;
+            //计算点集的最大值边maxlen            
             double x1 = 0, y1 = 0, z1 = 0;
             double x2 = 0, y2 = 0, z2 = 0;
             for (int i = 0; i < points.Count; i++)
@@ -2574,12 +3035,12 @@ namespace DataCollection
                     if (p.z > z2) z2 = p.z;
                 }
             }
-            maxlen = x2 - x1;
+            double maxlen = x2 - x1;
             if (y2 - y1 > maxlen) maxlen = y2 - y1;
             if (z2 - z1 > maxlen) maxlen = z2 - z1;
 
             //最小值参考
-            double err = maxlen * zerobase;
+            double err = maxlen * percent/100;
 
             bool[] del = new bool[points.Count];
             for (int i = 0; i < points.Count; i++) del[i] = false;
@@ -2591,18 +3052,22 @@ namespace DataCollection
                 //找出与i点距离小于指定值的点
                 for (int j = i + 1; j < points.Count; j++)
                 {
-                    if (del[j]) continue;
+                    if ( del[j] ) continue;
                     p2 = points[j];
                     if ( p1.Distance(p2) <= err ) del[j] = true;
                 }
             }
 
-            int num = 0;
-            for (int i = points.Count - 1; i >= 0; i--)
+            int num = 0;            
+            List<Vector64> points_filtered = new List<Vector64>();
+            for (int i = 0; i <points.Count; i++)
             {
-                if (del[i]) { points.RemoveAt(i); num++; }
+                if (del[i]) num++;
+                else points_filtered.Add(points[i]);                 
             }
             del = null;
+            points.Clear();
+            points = points_filtered;            
             return num;
         }
 
@@ -2759,7 +3224,29 @@ namespace DataCollection
             }
             return removed;
         }
+        /// <summary>
+        /// 多边形点极角排序
+        /// </summary>
+        /// <param name="points"></param>
+        /// <returns></returns>
+        public static List<Vector64> SortBoundaryPoints(List<Vector64> points)
+        {
+            if (points.Count <= 1)
+                return points;
 
+            // 计算所有点的中心点
+            double avgX = points.Average(p => p.X);
+            double avgY = points.Average(p => p.Y);
+            Vector64 center = new Vector64(avgX, avgY, 0);
+
+            // 按极角排序
+            return points.OrderBy(p =>
+            {
+                double dx = p.X - center.X;
+                double dy = p.Y - center.Y;
+                return Math.Atan2(dy, dx); // 极角（弧度）
+            }).ToList();
+        }
         static public Vector64 GetNormal(Vector64 p1, Vector64 p2, Vector64 p3)
         {
             Vector64 pn = new Vector64(0, 0, 0);
@@ -2785,6 +3272,131 @@ namespace DataCollection
             }
             return pn;
         }
+
+
+        /// <summary>
+        /// 过滤三维曲线中Z坐标突变/不连续的点（所有点在同一平面，且到起点的累积距离递增）
+        /// </summary>
+        /// <param name="points">三维坐标点列表（第一个点为起点）</param>
+        /// <param name="madMultiplier">MAD异常阈值倍数（推荐2.5~3.5）</param>
+        /// <param name="useInterpolate">是否插值修正（false=删除，true=插值）</param>
+        /// <returns>过滤后的坐标列表</returns>
+        /// <exception cref="ArgumentNullException">点列表为空</exception>
+        /// <exception cref="ArgumentException">距离未递增/点数量不足</exception>
+        public static List<Vector64> FilterZJumpPoints(List<Vector64> points, double madMultiplier = 3.0, bool useInterpolate = false)
+        {
+            // 1. 基础输入校验
+            if (points == null || points.Count < 2)
+                throw new ArgumentNullException(nameof(points), "点列表不能为空且至少包含2个三维点");
+
+            // 2. 计算每个点到起点的累积距离，并校验距离严格递增
+            Vector64 startPoint = points[0];
+            double[] cumulativeDistances = new double[points.Count];
+            cumulativeDistances[0] = 0; // 起点距离为0
+
+            for (int i = 1; i < points.Count; i++)
+            {
+                cumulativeDistances[i] = cumulativeDistances[i - 1] + points[i].Distance(points[i - 1]);
+                // 校验：累积距离必须严格递增（允许极小误差，避免浮点精度问题）
+                if (cumulativeDistances[i] - cumulativeDistances[i - 1] <= 1e-8)
+                {
+                    throw new ArgumentException($"第{i}个点的累积距离未递增，当前距离：{cumulativeDistances[i]}, 前一距离：{cumulativeDistances[i - 1]}", nameof(points));
+                }
+            }
+
+            // 3. 提取Z值并计算相邻点的Z差分（dz = Z[i] - Z[i-1]）
+            double[] zVals = points.Select(p => p.Z).ToArray();
+            double[] dz = new double[zVals.Length - 1];
+            for (int i = 0; i < dz.Length; i++)
+            {
+                dz[i] = zVals[i + 1] - zVals[i];
+            }
+
+            // 4. 基于MAD计算Z突变的异常阈值（鲁棒抗干扰）
+            double medianDz = GetMedian(dz);
+            double[] absDev = dz.Select(d => Math.Abs(d - medianDz)).ToArray();
+            double madDz = GetMedian(absDev);
+
+            // 若MAD为0，说明Z无突变，直接返回原数据
+            if (madDz < 1e-8)
+                return new List<Vector64>(points);
+
+            // 双边异常阈值
+            double thresholdUpper = medianDz + madMultiplier * madDz;
+            double thresholdLower = medianDz - madMultiplier * madDz;
+
+            // 5. 定位Z突变点的索引（dz超出阈值对应Z[i+1]为异常点）
+            List<int> abnormalPointIndices = new List<int>();
+            for (int i = 0; i < dz.Length; i++)
+            {
+                if (dz[i] > thresholdUpper || dz[i] < thresholdLower)
+                {
+                    abnormalPointIndices.Add(i + 1); // dz[i]对应Z[i+1]-Z[i]，异常点是i+1
+                }
+            }
+
+            // 6. 过滤/修正异常点（倒序处理，避免索引偏移）
+            List<Vector64> filteredPoints = new List<Vector64>(points);
+            if (useInterpolate)
+            {
+                // 插值修正：基于累积距离的线性插值替换异常点的Z值
+                foreach (int idx in abnormalPointIndices.OrderByDescending(i => i))
+                {
+                    if (idx == 0 || idx == filteredPoints.Count - 1)
+                    {
+                        // 首尾点异常直接删除（无足够点插值）
+                        filteredPoints.RemoveAt(idx);
+                    }
+                    else
+                    {
+                        // 获取异常点前后的正常点及对应累积距离
+                        Vector64 prevPoint = filteredPoints[idx - 1];
+                        Vector64 nextPoint = filteredPoints[idx + 1];
+                        double dPrev = cumulativeDistances[idx - 1];
+                        double dCurrent = cumulativeDistances[idx];
+                        double dNext = cumulativeDistances[idx + 1];
+
+                        // 线性插值计算修正后的Z值（基于累积距离）
+                        double zInterp = prevPoint.Z + (nextPoint.Z - prevPoint.Z) * (dCurrent - dPrev) / (dNext - dPrev);
+                        // 保留X/Y，仅修正Z
+                        filteredPoints[idx] = new Vector64(filteredPoints[idx].X, filteredPoints[idx].Y, zInterp);
+                    }
+                }
+            }
+            else
+            {
+                // 直接删除异常点
+                foreach (int idx in abnormalPointIndices.OrderByDescending(i => i))
+                {
+                    if (idx < filteredPoints.Count)
+                        filteredPoints.RemoveAt(idx);
+                }
+            }
+
+            return filteredPoints;
+        }
+
+        /// <summary>
+        /// 计算数组的中位数（兼容奇偶长度）
+        /// </summary>
+        private static double GetMedian(double[] array)
+        {
+            if (array.Length == 0) return 0;
+            double[] sortedArray = (double[])array.Clone();
+            Array.Sort(sortedArray);
+
+            int length = sortedArray.Length;
+            if (length % 2 == 0)
+            {
+                return (sortedArray[length / 2 - 1] + sortedArray[length / 2]) / 2.0;
+            }
+            else
+            {
+                return sortedArray[length / 2];
+            }
+        }
+
+
 
         /// <summary>
         /// 在误差范围内比较两个数是否相等
@@ -3093,12 +3705,10 @@ namespace DataCollection
         }
         public static double toRad(double angle)
         {
-            double rad = angle * Math.PI / 180;
-
-            int n = (int)(0.5 * rad / Math.PI);
-
-            if (n > 0) rad = rad - n * 2 * Math.PI;
-
+            double a = angle % 360;
+            double rad = a * Math.PI / 180;
+            //int n = (int)(0.5 * rad / Math.PI);
+            //if (n > 0) rad = rad - n * 2 * Math.PI;
             return rad;
         }
         //return angle ,not rad
@@ -3144,26 +3754,73 @@ namespace DataCollection
                                     (p1.Y - p2.Y) * (p1.Y - p2.Y) +
                                     (p1.Z - p2.Z) * (p1.Z - p2.Z));
         }
-
+        public static double Distance2D(Vector64 p1, Vector64 p2, int pow = 2)
+        {
+            if (pow == 1) //曼哈顿距离
+                return Math.Abs(p1.X - p2.X) + Math.Abs(p1.Y - p2.Y);
+            else if (pow == 4) //距离平方
+                return (p1.X - p2.X) * (p1.X - p2.X) +
+                                (p1.Y - p2.Y) * (p1.Y - p2.Y);
+            else //if (pow == 2) //标准欧式距离
+                return Math.Sqrt((p1.X - p2.X) * (p1.X - p2.X) +
+                                    (p1.Y - p2.Y) * (p1.Y - p2.Y));
+        }
         public static double GetLength(Vector64 p1)
         {
             return Math.Sqrt(p1.X * p1.X + p1.Y * p1.Y + p1.Z * p1.Z);
         }
+        /// <summary>
+        /// 计算点到线段的三维垂直距离（道格拉斯-普克核心，增加数值保护）
+        /// </summary>
+        public static double DistanceToLineSegment(Vector64 p, Vector64 lineStart, Vector64 lineEnd)
+        {
+            // 向量AB
+            Vector64 ab = lineEnd - lineStart;
+            // 向量AP
+            Vector64 ap = p - lineStart;
 
+            // 计算投影长度（AP在AB上的投影），增加极小值保护
+            double abLenSq = ab.X * ab.X + ab.Y * ab.Y + ab.Z * ab.Z;
+            if (abLenSq < 1e-12) // 更小的阈值，避免浮点误差
+                return Math.Sqrt(Math.Max(ap.X * ap.X + ap.Y * ap.Y + ap.Z * ap.Z, 1e-12));
+
+            double dotProduct = ap.X * ab.X + ap.Y * ab.Y + ap.Z * ab.Z;
+            double t = Math.Max(0.0, Math.Min(1.0, dotProduct / abLenSq));
+
+            // 投影点
+            Vector64 proj = lineStart + ab * t;
+            // 点到投影点的距离，增加数值保护
+            Vector64 diff = p - proj;
+            double distSq = diff.X * diff.X + diff.Y * diff.Y + diff.Z * diff.Z;
+            return Math.Sqrt(Math.Max(distSq, 1e-12));
+        }
         public double Distance(Vector64 p,int pow=2)
         {
             return Distance(this, p,pow);
+        }
+        public double Distance2D(Vector64 p, int pow = 2)
+        {
+            return Distance2D(this, p, pow);
+        }
+        public double DistancePower2(Vector64 p)
+        {
+            double xx = (p.X - this.X);
+            double yy = (p.Y - this.Y);
+            double zz = (p.Z - this.Z);
+            return xx * xx + yy * yy + zz * zz;
         }
         /// <summary>
         /// 计算从第0点到第index点的总长
         /// </summary>
         /// <param name="points"></param>
         /// <param name="index">-1计算全部点长度</param>
+        /// <param name="colosed">是否封闭多边形</param>
         /// <returns></returns>
-        public static double GetLength(List<Vector64>points, int index = -1)
+        public static double GetLength(List<Vector64>points, int index = -1,bool isclosed = false)
         {
             int n = points.Count;
             if ( n < 2 ) return 0;
+
             if (index >= 0 && index < n) n = index + 1;
 
             double len = 0;
@@ -3175,6 +3832,14 @@ namespace DataCollection
                 p2 = points[i];
                 len += p1.Distance(p2);
                 p1 = p2;
+            }
+
+            //封闭多边形
+            if (isclosed && (index<0 && n == points.Count - 1 ) ) 
+            {
+                p1 = points[0];
+                p2 = points[points.Count - 1];
+                len+= p1.Distance(p2);
             }
 
             return len;
@@ -3204,6 +3869,11 @@ namespace DataCollection
             Z * v.X - X * v.Z,
             X * v.Y - Y * v.X);
         }
+        public double CrossProduct(Vector64 a, Vector64 b)
+        {
+            return (a.X - X) * (b.Y - Y) - (a.Y - Y) * (b.X - X);
+        }
+
         static public double Dot(Vector64 p1, Vector64 p2)
         {
             return p1.X * p2.X + p1.Y * p2.Y + p1.Z * p2.Z;
@@ -3332,33 +4002,257 @@ namespace DataCollection
             set { X = value[0]; Y = value[1]; Z = value[2]; V = value[3]; }
         }
 
-        /// <summary>
-        /// export as x,y,z,v ASCII format
-        /// </summary>
-        /// <param name="path"></param>
-        static public bool ExportAs(string path, List<Vector64> points)
+        public override string ToString()
         {
-            try
-            {
-                StreamWriter wr = new StreamWriter(new FileStream(path, FileMode.Create));
-                string line = "x,   y,  z,  value";
-                wr.WriteLine(line);
-                Vector64 p;
-                for (int i = 0; i < points.Count; i++)
-                {
-                    p = points[i];
-                    line = p.X + ", " + p.Y + ", " + p.Z + ", " + p.V;
-                    wr.WriteLine(line);
-                }
-                wr.Close();
-                return true;
-            }
-            catch (Exception ex)
-            {
-                return false;
-            }
+            string ss = X + "," + Y + "," + Z + "," + V;
+            return ss;
         }
+        public string ToString3()
+        {
+            string ss = X + "," + Y + "," + Z;
+            return ss;
+        }        
     }
+    /// <summary>
+    /// 多边形点排序工具类（支持凹多边形，保留所有共线点）
+    /// </summary>
+    public static class PolygonSorter
+    {
+        public const double Epsilon = 1e-9; // 浮点精度容差
+        /// <summary>
+        /// 对无序多边形边界点排序，生成封闭的凹/凸多边形（保留所有共线点）
+        /// </summary>
+        /// <param name="unorderedPoints">无序边界点集合</param>
+        /// <returns>排序后的封闭多边形点列表（最后一个点=第一个点）</returns>
+        /// <exception cref="ArgumentException">点集不合法时抛出</exception>
+        public static List<Vector64> SortPolygonPoints(List<Vector64> unorderedPoints)
+        {
+            // 极端情况1：空/点数不足
+            if (unorderedPoints == null || unorderedPoints.Count == 0)
+                throw new ArgumentException("点集不能为空");
+            if (unorderedPoints.Count < 3)
+                throw new ArgumentException("多边形至少需要3个不共线的点");
+
+            // 步骤1：预处理 - 仅去重（移除重复点，保留所有共线点）
+            var cleanedPoints = CleanPoints(unorderedPoints);
+            if (cleanedPoints.Count < 3)
+                throw new ArgumentException("去重后有效点数不足3个，无法构成多边形");
+
+            // 步骤2：找到基准点（最左下点，保证排序起点固定）
+            var basePoint = FindBasePoint(cleanedPoints);
+
+            // 步骤3：极角排序（基础排序，兼容凹多边形，保留共线点）
+            var sortedByPolar = SortByPolarAngle(cleanedPoints, basePoint);
+
+            // 步骤4：修正凹多边形连接（处理极角排序导致的凹部错误连接）
+            var finalSorted = FixConcaveConnections(sortedByPolar);
+
+            // 步骤5：封闭多边形（最后一个点=第一个点）
+            if (!finalSorted.First().Equals(finalSorted.Last()))
+                finalSorted.Add(finalSorted.First());
+
+            return finalSorted;
+        }
+
+        #region 核心辅助方法
+        /// <summary>
+        /// 点集预处理：仅去重（不再剔除共线冗余点）
+        /// </summary>
+        private static List<Vector64> CleanPoints(List<Vector64> points)
+        {
+            // 仅去重，保留所有共线点
+            return points.Distinct().ToList();
+        }
+
+        /// <summary>
+        /// 找到基准点：最左下点（Y最小，Y相同则X最小）
+        /// </summary>
+        private static Vector64 FindBasePoint(List<Vector64> points)
+        {
+            return points.Aggregate((min, next) =>
+            {
+                if (next.Y < min.Y - Epsilon)
+                    return next;
+                if (Math.Abs(next.Y - min.Y) < Epsilon && next.X < min.X - Epsilon)
+                    return next;
+                return min;
+            });
+        }
+
+        /// <summary>
+        /// 按相对于基准点的极角排序（逆时针），共线点按距离基准点由近到远排序
+        /// </summary>
+        private static List<Vector64> SortByPolarAngle(List<Vector64> points, Vector64 basePoint)
+        {
+            // 移除基准点，避免排序时重复
+            var tempPoints = points.Where(p => !p.Equals(basePoint)).ToList();
+
+            // 按极角排序：先按极角（共线点极角相同），极角相同则按距离基准点由近到远
+            var sorted = tempPoints.OrderBy(p => GetPolarAngle(basePoint, p))
+                                  .ThenBy(p => basePoint.Distance(p))
+                                  .ToList();
+
+            // 基准点插入到第一个位置
+            sorted.Insert(0, basePoint);
+
+            return sorted;
+        }
+
+        /// <summary>
+        /// 计算点p相对于基准点base的极角（弧度）
+        /// </summary>
+        private static double GetPolarAngle(Vector64 basePoint, Vector64 p)
+        {
+            double dx = p.X - basePoint.X;
+            double dy = p.Y - basePoint.Y;
+            return Math.Atan2(dy, dx); // 范围：-π ~ π
+        }
+
+        /// <summary>
+        /// 修正凹多边形连接：解决极角排序后凹部的错误连接问题
+        /// 核心逻辑：通过叉积判断转向，调整凹点的连接顺序
+        /// </summary>
+        private static List<Vector64> FixConcaveConnections(List<Vector64> sortedPoints)
+        {
+            if (sortedPoints.Count <= 3)
+                return sortedPoints; // 三角形无需修正
+
+            var fixedPoints = new List<Vector64>(sortedPoints);
+            int i = 2;
+
+            while (i < fixedPoints.Count)
+            {
+                // 取连续三个点：p0, p1, p2
+                Vector64 p0 = fixedPoints[i - 2];
+                Vector64 p1 = fixedPoints[i - 1];
+                Vector64 p2 = fixedPoints[i];
+
+                // 计算叉积判断转向：<0 表示右拐（凹点特征）
+                double cross = p0.CrossProduct(p1,p2);
+                if (cross < - Epsilon)
+                {
+                    // 检查是否有更优的连接点（凹部修正）
+                    int bestIndex = FindBestConcaveConnection(fixedPoints, i - 1);
+                    if (bestIndex != i && bestIndex > i - 1)
+                    {
+                        // 交换位置，修正连接
+                        (fixedPoints[i], fixedPoints[bestIndex]) = (fixedPoints[bestIndex], fixedPoints[i]);
+                    }
+                }
+
+                i++;
+            }
+
+            return fixedPoints;
+        }
+
+        /// <summary>
+        /// 为凹点找到最优连接点
+        /// </summary>
+        private static int FindBestConcaveConnection(List<Vector64> points, int currentIndex)
+        {
+            Vector64 current = points[currentIndex];
+            double minAngle = double.MaxValue;
+            int bestIndex = currentIndex + 1;
+
+            for (int j = currentIndex + 1; j < points.Count; j++)
+            {
+                // 计算当前点到候选点的向量与基准向量的夹角
+                double angle = GetAngleBetweenVectors(points[currentIndex - 1], current, points[j]);
+                if (angle < minAngle)
+                {
+                    minAngle = angle;
+                    bestIndex = j;
+                }
+            }
+
+            return bestIndex;
+        }
+
+        /// <summary>
+        /// 计算向量 (a→b) 和 (b→c) 之间的夹角（弧度）
+        /// </summary>
+        private static double GetAngleBetweenVectors(Vector64 a, Vector64 b, Vector64 c)
+        {
+            // 向量1：b - a
+            double v1x = b.X - a.X;
+            double v1y = b.Y - a.Y;
+            // 向量2：c - b
+            double v2x = c.X - b.X;
+            double v2y = c.Y - b.Y;
+
+            // 点积公式计算夹角
+            double dot = v1x * v2x + v1y * v2y;
+            double mag1 = Math.Sqrt(v1x * v1x + v1y * v1y);
+            double mag2 = Math.Sqrt(v2x * v2x + v2y * v2y);
+
+            if (mag1 < Epsilon || mag2 < Epsilon)
+                return 0;
+
+            double cosTheta = dot / (mag1 * mag2);
+            // 限制范围避免浮点误差导致超出[-1,1]
+            cosTheta = MyMath.Clamp(cosTheta, -1.0, 1.0);
+            return Math.Acos(cosTheta);
+        }
+        #endregion
+
+        #region 辅助验证方法
+        /// <summary>
+        /// 验证多边形是否为凹多边形（调试用）
+        /// </summary>
+        public static bool IsConcavePolygon(List<Vector64> polygon)
+        {
+            if (polygon.Count < 4)
+                return false; // 三角形必为凸
+
+            bool hasRightTurn = false;
+            bool hasLeftTurn = false;
+
+            for (int i = 0; i < polygon.Count - 1; i++)
+            {
+                Vector64 p0 = polygon[i];
+                Vector64 p1 = polygon[(i + 1) % (polygon.Count - 1)];
+                Vector64 p2 = polygon[(i + 2) % (polygon.Count - 1)];
+
+                double cross = p0.CrossProduct(p1, p2);
+                if (cross > Epsilon)
+                    hasLeftTurn = true;
+                else if (cross < Epsilon)
+                    hasRightTurn = true;
+
+                // 同时有左拐和右拐 → 凹多边形
+                if (hasLeftTurn && hasRightTurn)
+                    return true;
+            }
+
+            return false;
+        }
+
+        /// <summary>
+        /// 验证点集中是否包含共线点（调试用）
+        /// </summary>
+        public static bool HasCollinearPoints(List<Vector64> points)
+        {
+            if (points.Count < 3)
+                return false;
+
+            for (int i = 0; i < points.Count; i++)
+            {
+                for (int j = i + 1; j < points.Count; j++)
+                {
+                    for (int k = j + 1; k < points.Count; k++)
+                    {
+                        double cross = points[i].CrossProduct(points[j], points[k]);
+                        if (Math.Abs(cross) < Epsilon)
+                            return true;
+                    }
+                }
+            }
+            return false;
+        }
+        #endregion
+    }
+
     //金字塔，四面体模型
     public class CPyramid
     {
@@ -4048,6 +4942,152 @@ namespace DataCollection
             else if (dot < 0) return -1;
             else return 1;            
         }
+        /// <summary>
+        /// 计算三角形内角，返回度数
+        /// </summary>
+        /// <param name="verticIndex">顶点序号</param>
+        /// <returns></returns>
+        public double GetAngle(int verticIndex)
+        {
+            double a = p2.Distance(p3);
+            double b = p1.Distance(p3);
+            double c = p1.Distance(p2);
+            double err = 1e-6;
+            if (verticIndex == 0) 
+            {
+                if (b == 0 || c == 0) return Math.PI; //端点
+                else if (a == 0) return 0; //无效棱柱（长度为0）
+                else if (Math.Abs(b + c - a) <= err) return Math.PI;//共线
+                else if (Math.Abs(a + b - c) <= err) return 0;//棱柱之外
+                else if (Math.Abs(c + a - b) <= err) return 0;//棱柱之外
+                else return Math.Acos((b * b + c * c - a * a) / (2 * b * c)); 
+            }
+            else if (verticIndex == 1) 
+            {
+                if (a == 0 || c == 0) return Math.PI; //端点
+                else if (b == 0) return 0; //无效棱柱（长度为0）
+                else if (Math.Abs(b + c - a) <= err) return 0;//棱柱之外
+                else if (Math.Abs(a + b - c) <= err) return 0;//棱柱之外
+                else if (Math.Abs(c + a - b) <= err) return Math.PI;//共线
+                else Math.Acos((a * a + c * c - b * b) / (2 * a * c)); 
+            }
+            else if (verticIndex == 2) 
+            {
+                if (a == 0 || b == 0) return Math.PI; //端点
+                else if (c == 0 ) return 0; //无效棱柱（长度为0）
+                else if (Math.Abs(a + b - c) <= err) return Math.PI;//共线
+                else if (Math.Abs(c + b - a) <= err) return 0;//棱柱之外
+                else if (Math.Abs(c + a - b) <= err) return 0;//棱柱之外
+                else return Math.Acos((b * b + a * a - c * c) / (2 * a * b)); 
+            }
+            return 0;
+        }
     }
-    
+    public struct CPlane3F
+    {
+        Vector64 P1, P2, P3;
+        double A, B, C, D;
+        public CPlane3F(Vector64 p1, Vector64 p2, Vector64 p3)
+        {
+            P1 = p1;
+            P2 = p2;
+            P3 = p3;
+            A = ((p2.y - p1.y) * (p3.z - p1.z) - (p2.z - p1.z) * (p3.y - p1.y));
+            B = ((p2.z - p1.z) * (p3.x - p1.x) - (p2.x - p1.x) * (p3.z - p1.z));
+            C = ((p2.x - p1.x) * (p3.y - p1.y) - (p2.y - p1.y) * (p3.x - p1.x));
+            D = (0 - (A * p1.x + B * p1.y + C * p1.z));
+        }       
+
+        public Vector64 Projected(Vector64 p)
+        {
+            double abc = A * A + B * B + C * C;
+            double x = ((B * B + C * C) * p.x - A * (B * p.y + C * p.z + D)) / abc;
+            double y = ((A * A + C * C) * p.y - B * (A * p.x + C * p.z + D)) / abc;
+            double z = ((A * A + B * B) * p.z - C * (A * p.x + B * p.y + D)) / abc;
+            return new Vector64(x, y, z);
+        }
+        public Vector64 get_Normal(Vector64 p1, Vector64 p2, Vector64 p3)
+        {
+            double a = ((p2.y - p1.y) * (p3.z - p1.z) - (p2.z - p1.z) * (p3.y - p1.y));
+            double b = ((p2.z - p1.z) * (p3.x - p1.x) - (p2.x - p1.x) * (p3.z - p1.z));
+            double c = ((p2.x - p1.x) * (p3.y - p1.y) - (p2.y - p1.y) * (p3.x - p1.x));
+            return new Vector64(a, b, c);
+        }
+        public double Distance(Vector64 pt)
+        {
+            return Math.Abs(A * pt.x + B * pt.y + C * pt.z + D) / Math.Sqrt(A * A + B * B + C * C);
+        }
+    }
+    static public class GeometryDrawing
+    {
+        static public void DrawArrow(Graphics g, RectangleF rect,
+            Color fillColor,
+            Color boderColor,
+            DirectionEnum direc = DirectionEnum.up,
+            float boderLineWidth = 1.0f,
+            DashStyle lineStyle = DashStyle.Solid,
+            bool drawBoder = true)
+        {
+            PointF[] points = new PointF[3];
+            float x = 0, y = 0;
+            if (direc == DirectionEnum.up)
+            {
+                x = (rect.Left + rect.Right) / 2;
+                y = rect.Top;
+                points[0] = new PointF(x, y);
+                x = rect.Left;
+                y = rect.Bottom;
+                points[1] = new PointF(x, y);
+                x = rect.Right;
+                y = rect.Bottom;
+                points[2] = new PointF(x, y);
+            }
+            else if (direc == DirectionEnum.down)
+            {
+                x = (rect.Left + rect.Right) / 2f;
+                y = rect.Bottom;
+                points[0] = new PointF(x, y);
+                x = rect.Left;
+                y = rect.Top;
+                points[1] = new PointF(x, y);
+                x = rect.Right;
+                y = rect.Top;
+                points[2] = new PointF(x, y);
+            }
+            else if (direc == DirectionEnum.left)
+            {
+                x = rect.Left;
+                y = (rect.Top + rect.Bottom) / 2f;
+                points[0] = new PointF(x, y);
+                x = rect.Right;
+                y = rect.Top;
+                points[1] = new PointF(x, y);
+                x = rect.Right;
+                y = rect.Bottom;
+                points[2] = new PointF(x, y);
+            }
+            else if (direc == DirectionEnum.right)
+            {
+                x = rect.Right;
+                y = (rect.Top + rect.Bottom) / 2f;
+                points[0] = new PointF(x, y);
+                x = rect.Left;
+                y = rect.Top;
+                points[1] = new PointF(x, y);
+                x = rect.Left;
+                y = rect.Bottom;
+                points[2] = new PointF(x, y);
+            }
+            g.FillPolygon(new SolidBrush(fillColor), points);
+            if (drawBoder)
+            {
+                Pen pen = new Pen(boderColor, boderLineWidth);
+                pen.DashStyle = lineStyle;
+                g.DrawPolygon(pen, points);
+            }
+        }
+    }
+
+
+
 }

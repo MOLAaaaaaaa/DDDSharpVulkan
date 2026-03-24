@@ -8,7 +8,7 @@
     <OutputType>WinExe</OutputType>
     <RootNamespace>DDDSharp</RootNamespace>
     <AssemblyName>3D Surfer</AssemblyName>
-    <TargetFrameworkVersion>v4.6.1</TargetFrameworkVersion>
+    <TargetFrameworkVersion>v4.8</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
     <TargetFrameworkProfile />
     <NuGetPackageImportStamp>
@@ -145,18 +145,23 @@
     <SignAssembly>false</SignAssembly>
   </PropertyGroup>
   <ItemGroup>
+    <Reference Include="CircularProgressBar, Version=2.8.0.16, Culture=neutral, PublicKeyToken=310fd07b25df79b3, processorArchitecture=MSIL">
+      <HintPath>..\packages\CircularProgressBar.2.8.0.16\lib\net40\CircularProgressBar.dll</HintPath>
+    </Reference>
     <Reference Include="GlmNet, Version=0.7.0.0, Culture=neutral, processorArchitecture=MSIL">
       <HintPath>..\packages\GlmNet.0.7.0\lib\net40\GlmNet.dll</HintPath>
     </Reference>
-    <Reference Include="IxMilia.Dxf, Version=0.7.3.0, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\packages\IxMilia.Dxf.0.7.3\lib\net45\IxMilia.Dxf.dll</HintPath>
+    <Reference Include="IxMilia.Dxf, Version=0.8.3.0, Culture=neutral, processorArchitecture=MSIL">
+      <HintPath>..\packages\IxMilia.Dxf.0.8.3\lib\netstandard2.0\IxMilia.Dxf.dll</HintPath>
     </Reference>
-    <Reference Include="KdTreeLib, Version=1.3.0.0, Culture=neutral, processorArchitecture=MSIL">
-      <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\packages\KdTree.1.3.0\lib\net45\KdTreeLib.dll</HintPath>
+    <Reference Include="KdTreeLib, Version=1.4.1.0, Culture=neutral, processorArchitecture=MSIL">
+      <HintPath>..\packages\KdTree.1.4.1\lib\net471\KdTreeLib.dll</HintPath>
     </Reference>
-    <Reference Include="MathNet.Numerics, Version=4.8.0.0, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\packages\MathNet.Numerics.4.8.0-beta01\lib\net40\MathNet.Numerics.dll</HintPath>
+    <Reference Include="MathNet.Numerics, Version=5.0.0.0, Culture=neutral, processorArchitecture=MSIL">
+      <HintPath>..\packages\MathNet.Numerics.5.0.0\lib\net48\MathNet.Numerics.dll</HintPath>
+    </Reference>
+    <Reference Include="NetTopologySuite, Version=2.0.0.0, Culture=neutral, PublicKeyToken=f580a05016ebada1, processorArchitecture=MSIL">
+      <HintPath>..\packages\NetTopologySuite.2.6.0\lib\netstandard2.0\NetTopologySuite.dll</HintPath>
     </Reference>
     <Reference Include="OpenGL.Net, Version=0.8.4.0, Culture=neutral, processorArchitecture=MSIL">
       <HintPath>..\packages\OpenGL.Net.0.8.4\lib\net461\OpenGL.Net.dll</HintPath>
@@ -166,6 +171,9 @@
     </Reference>
     <Reference Include="OpenGL.Net.WinForms, Version=0.8.4.0, Culture=neutral, processorArchitecture=MSIL">
       <HintPath>..\packages\OpenGL.Net.WinForms.0.8.4\lib\net461\OpenGL.Net.WinForms.dll</HintPath>
+    </Reference>
+    <Reference Include="Poly2Tri.NetStandard, Version=1.0.2.0, Culture=neutral, processorArchitecture=MSIL">
+      <HintPath>..\packages\Poly2Tri.NetStandard.1.0.2\lib\net46\Poly2Tri.NetStandard.dll</HintPath>
     </Reference>
     <Reference Include="SharpGLES, Version=1.0.6.0, Culture=neutral, processorArchitecture=MSIL">
       <HintPath>..\packages\SharpGLES.1.0.7\lib\net40\SharpGLES.dll</HintPath>
@@ -177,18 +185,27 @@
       <HintPath>..\packages\SharpVulkanWPF.0.0.3\lib\SharpVulkanWpf.dll</HintPath>
     </Reference>
     <Reference Include="System" />
+    <Reference Include="System.Buffers, Version=4.0.4.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51, processorArchitecture=MSIL">
+      <HintPath>..\packages\System.Buffers.4.6.0\lib\net462\System.Buffers.dll</HintPath>
+    </Reference>
     <Reference Include="System.ComponentModel.Composition" />
     <Reference Include="System.Core" />
     <Reference Include="System.IO.Compression.FileSystem" />
     <Reference Include="System.Management" />
-    <Reference Include="System.Numerics" />
-    <Reference Include="System.Numerics.Vectors, Version=4.1.2.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL">
-      <HintPath>..\packages\System.Numerics.Vectors.4.3.0\lib\net46\System.Numerics.Vectors.dll</HintPath>
+    <Reference Include="System.Memory, Version=4.0.2.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51, processorArchitecture=MSIL">
+      <HintPath>..\packages\System.Memory.4.6.0\lib\net462\System.Memory.dll</HintPath>
     </Reference>
-    <Reference Include="System.Runtime.CompilerServices.Unsafe, Version=4.0.2.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL">
-      <HintPath>..\packages\System.Runtime.CompilerServices.Unsafe.4.3.0\lib\netstandard1.0\System.Runtime.CompilerServices.Unsafe.dll</HintPath>
+    <Reference Include="System.Numerics" />
+    <Reference Include="System.Numerics.Vectors, Version=4.1.5.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL">
+      <HintPath>..\packages\System.Numerics.Vectors.4.6.0\lib\net462\System.Numerics.Vectors.dll</HintPath>
+    </Reference>
+    <Reference Include="System.Runtime.CompilerServices.Unsafe, Version=6.0.1.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL">
+      <HintPath>..\packages\System.Runtime.CompilerServices.Unsafe.6.1.0\lib\net462\System.Runtime.CompilerServices.Unsafe.dll</HintPath>
     </Reference>
     <Reference Include="System.Runtime.Serialization" />
+    <Reference Include="System.Text.Encoding.CodePages, Version=8.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL">
+      <HintPath>..\packages\System.Text.Encoding.CodePages.8.0.0\lib\net462\System.Text.Encoding.CodePages.dll</HintPath>
+    </Reference>
     <Reference Include="System.Xml.Linq" />
     <Reference Include="System.Data.DataSetExtensions" />
     <Reference Include="Microsoft.CSharp" />
@@ -234,6 +251,18 @@
     <Compile Include="About.Designer.cs">
       <DependentUpon>About.cs</DependentUpon>
     </Compile>
+    <Compile Include="Analyze\Fault2DPropertyMoreForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Analyze\Fault2DPropertyMoreForm.Designer.cs">
+      <DependentUpon>Fault2DPropertyMoreForm.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Analyze\OverlayAnalyseForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Analyze\OverlayAnalyseForm.Designer.cs">
+      <DependentUpon>OverlayAnalyseForm.cs</DependentUpon>
+    </Compile>
     <Compile Include="AscIIProfile.cs" />
     <Compile Include="AVIWriter\AudioStream.cs" />
     <Compile Include="AVIWriter\Avi.cs" />
@@ -253,6 +282,18 @@
     </Compile>
     <Compile Include="Boreholes\BoreholeListForm.Designer.cs">
       <DependentUpon>BoreholeListForm.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Boreholes\BoreholesInclinesEditor.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Boreholes\BoreholesInclinesEditor.Designer.cs">
+      <DependentUpon>BoreholesInclinesEditor.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Boreholes\BoreholesSampleForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Boreholes\BoreholesSampleForm.Designer.cs">
+      <DependentUpon>BoreholesSampleForm.cs</DependentUpon>
     </Compile>
     <Compile Include="Boreholes\BoreholesSlicerForm.cs">
       <SubType>Form</SubType>
@@ -278,6 +319,12 @@
     <Compile Include="Boreholes\BoreholeInclineForm.Designer.cs">
       <DependentUpon>BoreholeInclineForm.cs</DependentUpon>
     </Compile>
+    <Compile Include="Boreholes\GeoLayerEditor.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Boreholes\GeoLayerEditor.Designer.cs">
+      <DependentUpon>GeoLayerEditor.cs</DependentUpon>
+    </Compile>
     <Compile Include="Boreholes\ImportFromMeshesForm.cs">
       <SubType>Form</SubType>
     </Compile>
@@ -299,16 +346,30 @@
     <Compile Include="CGeoFile.cs" />
     <Compile Include="CGridding.cs" />
     <Compile Include="CLUnit\BoreholesPropertiesInterpolation.cs" />
+    <Compile Include="CLUnit\BoreholesStratumInterpolation.cs" />
     <Compile Include="CLUnit\CLPolygonTrim.cs" />
     <Compile Include="CLUnit\MeshesRestrictedProfilesInterpolation.cs" />
+    <Compile Include="CLUnit\SlicerInterpolation.cs" />
     <Compile Include="CModelRangeForm.cs">
       <SubType>Form</SubType>
     </Compile>
     <Compile Include="CModelRangeForm.Designer.cs">
       <DependentUpon>CModelRangeForm.cs</DependentUpon>
     </Compile>
+    <Compile Include="ColorPicker\ColorPickerDlg.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="ColorPicker\ColorPickerDlg.Designer.cs">
+      <DependentUpon>ColorPickerDlg.cs</DependentUpon>
+    </Compile>
     <Compile Include="ColorScale\ColorScaleCombox.cs">
       <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="ColorScale\ColorScaleEditForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="ColorScale\ColorScaleEditForm.Designer.cs">
+      <DependentUpon>ColorScaleEditForm.cs</DependentUpon>
     </Compile>
     <Compile Include="ColorScale\ColorScaleForm.cs">
       <SubType>Form</SubType>
@@ -321,6 +382,12 @@
     </Compile>
     <Compile Include="ColumnDataImportForm.Designer.cs">
       <DependentUpon>ColumnDataImportForm.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Coordinate\AxisLableForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Coordinate\AxisLableForm.Designer.cs">
+      <DependentUpon>AxisLableForm.cs</DependentUpon>
     </Compile>
     <Compile Include="Coordinate\AxisOptionForm.cs">
       <SubType>Form</SubType>
@@ -360,6 +427,21 @@
       <DependentUpon>CrossValidationForm.cs</DependentUpon>
     </Compile>
     <Compile Include="DataCollection\Arrow.cs" />
+    <Compile Include="DataCollection\Axis3DArrow.cs" />
+    <Compile Include="DataCollection\BinarySearch.cs" />
+    <Compile Include="DataCollection\C3DGridDataStratum.cs" />
+    <Compile Include="DataCollection\CustomArrowWithPropertyGrid.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="DataCollection\MyImageConvert.cs" />
+    <Compile Include="DataCollection\Object3DFile.cs" />
+    <Compile Include="DataCollection\PatPatternFile.cs" />
+    <Compile Include="DataCollection\PCL\LZF.cs" />
+    <Compile Include="DataCollection\PCL\PcdReader.cs" />
+    <Compile Include="DataCollection\PntsReader.cs" />
+    <Compile Include="DataCollection\PolygonFillPattern.cs" />
+    <Compile Include="DataCollection\PolygonSmooth2D.cs" />
+    <Compile Include="DataCollection\ProfilesStratumModeling\StratumInterpolationByProfiles.cs" />
     <Compile Include="DataCollection\RectRuler.cs" />
     <Compile Include="DataCollection\DelaunayVoronoi\Delaunay.cs" />
     <Compile Include="DataCollection\DelaunayVoronoi\Edge.cs" />
@@ -408,14 +490,41 @@
     <Compile Include="DataCollection\Trianglate\Poly2Tri\Utility\FixedArray3.cs" />
     <Compile Include="DataCollection\Trianglate\Poly2Tri\Utility\FixedBitArray3.cs" />
     <Compile Include="DataCollection\Trianglate\PolygonTriangulate.cs" />
+    <Compile Include="DataCollection\Trianglate\PolygonTriangulator.cs" />
     <Compile Include="DataCollection\Trianglate\Triangulate.cs" />
     <Compile Include="DataCollection\Trianglate\Triangle.cs" />
     <Compile Include="DataCollection\Trianglate\Vertex.cs" />
+    <Compile Include="DataCollection\TypeConverterOfCategoriesSorte.cs" />
+    <Compile Include="DataCollection\PCL\VTKFile.cs" />
+    <Compile Include="Dialogs\ColorAndTextPickerForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Dialogs\ColorAndTextPickerForm.Designer.cs">
+      <DependentUpon>ColorAndTextPickerForm.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Dialogs\MessageBoxInputDlg.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Dialogs\MessageBoxInputDlg.Designer.cs">
+      <DependentUpon>MessageBoxInputDlg.cs</DependentUpon>
+    </Compile>
     <Compile Include="Dialogs\MessageBoxOnListForm.cs">
       <SubType>Form</SubType>
     </Compile>
     <Compile Include="Dialogs\MessageBoxOnListForm.Designer.cs">
       <DependentUpon>MessageBoxOnListForm.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Dialogs\RectangleInputDlg.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Dialogs\RectangleInputDlg.Designer.cs">
+      <DependentUpon>RectangleInputDlg.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Dialogs\TopographyBlankForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Dialogs\TopographyBlankForm.Designer.cs">
+      <DependentUpon>TopographyBlankForm.cs</DependentUpon>
     </Compile>
     <Compile Include="Graphic3D\CTexture.cs" />
     <Compile Include="CutWithForm.cs">
@@ -451,6 +560,36 @@
     <Compile Include="Graphic3D\SharpGLES.cs" />
     <Compile Include="Graphic3D\SharpGLNet.cs" />
     <Compile Include="Graphic3D\TextureStruct.cs" />
+    <Compile Include="Grid3DProperty\ClosedValuesForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Grid3DProperty\ClosedValuesForm.Designer.cs">
+      <DependentUpon>ClosedValuesForm.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Grid3DProperty\Grid3DOverlayForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Grid3DProperty\Grid3DOverlayForm.Designer.cs">
+      <DependentUpon>Grid3DOverlayForm.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Grid3DProperty\Grid3DSampleForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Grid3DProperty\Grid3DSampleForm.Designer.cs">
+      <DependentUpon>Grid3DSampleForm.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Grid3DProperty\Grid3DTransformForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Grid3DProperty\Grid3DTransformForm.Designer.cs">
+      <DependentUpon>Grid3DTransformForm.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Grid3DProperty\MeshesFrom3DGridsForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Grid3DProperty\MeshesFrom3DGridsForm.Designer.cs">
+      <DependentUpon>MeshesFrom3DGridsForm.cs</DependentUpon>
+    </Compile>
     <Compile Include="GridBlankDlg.cs">
       <SubType>Form</SubType>
     </Compile>
@@ -498,10 +637,10 @@
     <Compile Include="Gridding\ReplaceWithInputForm.Designer.cs">
       <DependentUpon>ReplaceWithInputForm.cs</DependentUpon>
     </Compile>
-    <Compile Include="GridOverlayForm.cs">
+    <Compile Include="Grid3DProperty\GridOverlayForm.cs">
       <SubType>Form</SubType>
     </Compile>
-    <Compile Include="GridOverlayForm.Designer.cs">
+    <Compile Include="Grid3DProperty\GridOverlayForm.Designer.cs">
       <DependentUpon>GridOverlayForm.cs</DependentUpon>
     </Compile>
     <Compile Include="IntersetWithMeshesForm.cs">
@@ -528,6 +667,12 @@
     <Compile Include="Meshes\CreateMeshLayersFrom.Designer.cs">
       <DependentUpon>CreateMeshLayersFrom.cs</DependentUpon>
     </Compile>
+    <Compile Include="Meshes\LayersFromMeshesForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Meshes\LayersFromMeshesForm.Designer.cs">
+      <DependentUpon>LayersFromMeshesForm.cs</DependentUpon>
+    </Compile>
     <Compile Include="Meshes\LinesMeshForm.cs">
       <SubType>Form</SubType>
     </Compile>
@@ -546,17 +691,48 @@
     <Compile Include="Meshes\MeshToSolidForm.Designer.cs">
       <DependentUpon>MeshToSolidForm.cs</DependentUpon>
     </Compile>
+    <Compile Include="Meshes\MeshTransform.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Meshes\MeshTransform.Designer.cs">
+      <DependentUpon>MeshTransform.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Meshes\TrimMeshWithPoly2DForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Meshes\TrimMeshWithPoly2DForm.Designer.cs">
+      <DependentUpon>TrimMeshWithPoly2DForm.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Modeling\AddSlicersFromLoadedForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Modeling\AddSlicersFromLoadedForm.Designer.cs">
+      <DependentUpon>AddSlicersFromLoadedForm.cs</DependentUpon>
+    </Compile>
     <Compile Include="Modeling\BuffersOverlapForm.cs">
       <SubType>Form</SubType>
     </Compile>
     <Compile Include="Modeling\BuffersOverlapForm.Designer.cs">
       <DependentUpon>BuffersOverlapForm.cs</DependentUpon>
     </Compile>
+    <Compile Include="DataCollection\OutLinesModeling\DSI3DTriangulator.cs" />
     <Compile Include="Modeling\GridsOverlapForm.cs">
       <SubType>Form</SubType>
     </Compile>
     <Compile Include="Modeling\GridsOverlapForm.Designer.cs">
       <DependentUpon>GridsOverlapForm.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Modeling\ImageTrimForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Modeling\ImageTrimForm.Designer.cs">
+      <DependentUpon>ImageTrimForm.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Modeling\InterpolatedSlicerModelingForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Modeling\InterpolatedSlicerModelingForm.Designer.cs">
+      <DependentUpon>InterpolatedSlicerModelingForm.cs</DependentUpon>
     </Compile>
     <Compile Include="Modeling\LayerProperty.cs" />
     <Compile Include="Modeling\MeshCreateFromSlicersForm.cs">
@@ -571,11 +747,23 @@
     <Compile Include="Modeling\OutlinesModelingForm.Designer.cs">
       <DependentUpon>OutlinesModelingForm.cs</DependentUpon>
     </Compile>
+    <Compile Include="Modeling\PatternForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Modeling\PatternForm.designer.cs">
+      <DependentUpon>PatternForm.cs</DependentUpon>
+    </Compile>
     <Compile Include="Modeling\Shape3DModeling.cs">
       <SubType>Form</SubType>
     </Compile>
     <Compile Include="Modeling\Shape3DModeling.Designer.cs">
       <DependentUpon>Shape3DModeling.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Modeling\SlicerImagesRecognitionForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Modeling\SlicerImagesRecognitionForm.Designer.cs">
+      <DependentUpon>SlicerImagesRecognitionForm.cs</DependentUpon>
     </Compile>
     <Compile Include="Modeling\SlicerModelingDlg.cs">
       <SubType>Form</SubType>
@@ -583,11 +771,23 @@
     <Compile Include="Modeling\SlicerModelingDlg.Designer.cs">
       <DependentUpon>SlicerModelingDlg.cs</DependentUpon>
     </Compile>
+    <Compile Include="Modeling\SlicersSamplingForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Modeling\SlicersSamplingForm.Designer.cs">
+      <DependentUpon>SlicersSamplingForm.cs</DependentUpon>
+    </Compile>
     <Compile Include="Modeling\SymbolModelingForm.cs">
       <SubType>Form</SubType>
     </Compile>
     <Compile Include="Modeling\SymbolModelingForm.Designer.cs">
       <DependentUpon>SymbolModelingForm.cs</DependentUpon>
+    </Compile>
+    <Compile Include="MouseControlForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="MouseControlForm.Designer.cs">
+      <DependentUpon>MouseControlForm.cs</DependentUpon>
     </Compile>
     <Compile Include="OpenCL\AlignedArray.cs" />
     <Compile Include="OpenCL\CommandQueue.cs" />
@@ -686,6 +886,7 @@
     <Compile Include="ScatterPoint\ScatterPointsResampleForm.Designer.cs">
       <DependentUpon>ScatterPointsResampleForm.cs</DependentUpon>
     </Compile>
+    <Compile Include="ColorPicker\ScreenImageBase.cs" />
     <Compile Include="Script\Scripts.cs" />
     <Compile Include="Slicer\C2DSlicerViewer.cs">
       <SubType>Form</SubType>
@@ -703,10 +904,10 @@
     </Compile>
     <Compile Include="Graphic3D\BitmapString.cs" />
     <Compile Include="DataCollection\C3DGridData.cs" />
-    <Compile Include="C3DGridDataPropertyForm.cs">
+    <Compile Include="Grid3DProperty\C3DGridDataPropertyForm.cs">
       <SubType>Form</SubType>
     </Compile>
-    <Compile Include="C3DGridDataPropertyForm.Designer.cs">
+    <Compile Include="Grid3DProperty\C3DGridDataPropertyForm.Designer.cs">
       <DependentUpon>C3DGridDataPropertyForm.cs</DependentUpon>
     </Compile>
     <Compile Include="ColorScale\CColorScale.cs" />
@@ -791,6 +992,7 @@
     </Compile>
     <Compile Include="Slicer\FloodFill\AbstractFloodFiller.cs" />
     <Compile Include="Slicer\FloodFill\EditableBitmap.cs" />
+    <Compile Include="Slicer\FloodFill\FloodFillEx.cs" />
     <Compile Include="Slicer\FloodFill\FloodFillRangeQueue.cs" />
     <Compile Include="Slicer\FloodFill\QueueLinearFloodFiller.cs" />
     <Compile Include="Slicer\GeoLine.cs" />
@@ -876,11 +1078,23 @@
     <EmbeddedResource Include="About.resx">
       <DependentUpon>About.cs</DependentUpon>
     </EmbeddedResource>
+    <EmbeddedResource Include="Analyze\Fault2DPropertyMoreForm.resx">
+      <DependentUpon>Fault2DPropertyMoreForm.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Analyze\OverlayAnalyseForm.resx">
+      <DependentUpon>OverlayAnalyseForm.cs</DependentUpon>
+    </EmbeddedResource>
     <EmbeddedResource Include="Boreholes\BoreholeCurvesForm.resx">
       <DependentUpon>BoreholeCurvesForm.cs</DependentUpon>
     </EmbeddedResource>
     <EmbeddedResource Include="Boreholes\BoreholeListForm.resx">
       <DependentUpon>BoreholeListForm.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Boreholes\BoreholesInclinesEditor.resx">
+      <DependentUpon>BoreholesInclinesEditor.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Boreholes\BoreholesSampleForm.resx">
+      <DependentUpon>BoreholesSampleForm.cs</DependentUpon>
     </EmbeddedResource>
     <EmbeddedResource Include="Boreholes\BoreholesSlicerForm.resx">
       <DependentUpon>BoreholesSlicerForm.cs</DependentUpon>
@@ -894,10 +1108,31 @@
     <EmbeddedResource Include="Boreholes\BoreholeInclineForm.resx">
       <DependentUpon>BoreholeInclineForm.cs</DependentUpon>
     </EmbeddedResource>
+    <EmbeddedResource Include="Boreholes\GeoLayerEditor.resx">
+      <DependentUpon>GeoLayerEditor.cs</DependentUpon>
+    </EmbeddedResource>
     <EmbeddedResource Include="Boreholes\ImportFromMeshesForm.resx">
       <DependentUpon>ImportFromMeshesForm.cs</DependentUpon>
     </EmbeddedResource>
-    <EmbeddedResource Include="C3DGridDataPropertyForm.resx">
+    <EmbeddedResource Include="ColorPicker\ColorPickerDlg.resx">
+      <DependentUpon>ColorPickerDlg.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="ColorScale\ColorScaleEditForm.resx">
+      <DependentUpon>ColorScaleEditForm.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Dialogs\ColorAndTextPickerForm.resx">
+      <DependentUpon>ColorAndTextPickerForm.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Dialogs\MessageBoxInputDlg.resx">
+      <DependentUpon>MessageBoxInputDlg.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Dialogs\RectangleInputDlg.resx">
+      <DependentUpon>RectangleInputDlg.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Dialogs\TopographyBlankForm.resx">
+      <DependentUpon>TopographyBlankForm.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Grid3DProperty\C3DGridDataPropertyForm.resx">
       <DependentUpon>C3DGridDataPropertyForm.cs</DependentUpon>
     </EmbeddedResource>
     <EmbeddedResource Include="C3DLinePropertyForm.resx">
@@ -914,6 +1149,9 @@
     </EmbeddedResource>
     <EmbeddedResource Include="ColumnDataImportForm.resx">
       <DependentUpon>ColumnDataImportForm.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Coordinate\AxisLableForm.resx">
+      <DependentUpon>AxisLableForm.cs</DependentUpon>
     </EmbeddedResource>
     <EmbeddedResource Include="Coordinate\AxisOptionForm.resx">
       <DependentUpon>AxisOptionForm.cs</DependentUpon>
@@ -958,6 +1196,21 @@
     <EmbeddedResource Include="GraphicDeviceDlg.resx">
       <DependentUpon>GraphicDeviceDlg.cs</DependentUpon>
     </EmbeddedResource>
+    <EmbeddedResource Include="Grid3DProperty\ClosedValuesForm.resx">
+      <DependentUpon>ClosedValuesForm.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Grid3DProperty\Grid3DOverlayForm.resx">
+      <DependentUpon>Grid3DOverlayForm.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Grid3DProperty\Grid3DSampleForm.resx">
+      <DependentUpon>Grid3DSampleForm.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Grid3DProperty\Grid3DTransformForm.resx">
+      <DependentUpon>Grid3DTransformForm.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Grid3DProperty\MeshesFrom3DGridsForm.resx">
+      <DependentUpon>MeshesFrom3DGridsForm.cs</DependentUpon>
+    </EmbeddedResource>
     <EmbeddedResource Include="GridBlankDlg.resx">
       <DependentUpon>GridBlankDlg.cs</DependentUpon>
     </EmbeddedResource>
@@ -976,7 +1229,7 @@
     <EmbeddedResource Include="Gridding\ReplaceWithInputForm.resx">
       <DependentUpon>ReplaceWithInputForm.cs</DependentUpon>
     </EmbeddedResource>
-    <EmbeddedResource Include="GridOverlayForm.resx">
+    <EmbeddedResource Include="Grid3DProperty\GridOverlayForm.resx">
       <DependentUpon>GridOverlayForm.cs</DependentUpon>
     </EmbeddedResource>
     <EmbeddedResource Include="IntersetWithMeshesForm.resx">
@@ -1000,6 +1253,9 @@
     <EmbeddedResource Include="Meshes\CreateMeshLayersFrom.resx">
       <DependentUpon>CreateMeshLayersFrom.cs</DependentUpon>
     </EmbeddedResource>
+    <EmbeddedResource Include="Meshes\LayersFromMeshesForm.resx">
+      <DependentUpon>LayersFromMeshesForm.cs</DependentUpon>
+    </EmbeddedResource>
     <EmbeddedResource Include="Meshes\LinesMeshForm.resx">
       <DependentUpon>LinesMeshForm.cs</DependentUpon>
     </EmbeddedResource>
@@ -1009,11 +1265,26 @@
     <EmbeddedResource Include="Meshes\MeshToSolidForm.resx">
       <DependentUpon>MeshToSolidForm.cs</DependentUpon>
     </EmbeddedResource>
+    <EmbeddedResource Include="Meshes\MeshTransform.resx">
+      <DependentUpon>MeshTransform.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Meshes\TrimMeshWithPoly2DForm.resx">
+      <DependentUpon>TrimMeshWithPoly2DForm.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Modeling\AddSlicersFromLoadedForm.resx">
+      <DependentUpon>AddSlicersFromLoadedForm.cs</DependentUpon>
+    </EmbeddedResource>
     <EmbeddedResource Include="Modeling\BuffersOverlapForm.resx">
       <DependentUpon>BuffersOverlapForm.cs</DependentUpon>
     </EmbeddedResource>
     <EmbeddedResource Include="Modeling\GridsOverlapForm.resx">
       <DependentUpon>GridsOverlapForm.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Modeling\ImageTrimForm.resx">
+      <DependentUpon>ImageTrimForm.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Modeling\InterpolatedSlicerModelingForm.resx">
+      <DependentUpon>InterpolatedSlicerModelingForm.cs</DependentUpon>
     </EmbeddedResource>
     <EmbeddedResource Include="Modeling\MeshCreateFromSlicersForm.resx">
       <DependentUpon>MeshCreateFromSlicersForm.cs</DependentUpon>
@@ -1021,14 +1292,26 @@
     <EmbeddedResource Include="Modeling\OutlinesModelingForm.resx">
       <DependentUpon>OutlinesModelingForm.cs</DependentUpon>
     </EmbeddedResource>
+    <EmbeddedResource Include="Modeling\PatternForm.resx">
+      <DependentUpon>PatternForm.cs</DependentUpon>
+    </EmbeddedResource>
     <EmbeddedResource Include="Modeling\Shape3DModeling.resx">
       <DependentUpon>Shape3DModeling.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Modeling\SlicerImagesRecognitionForm.resx">
+      <DependentUpon>SlicerImagesRecognitionForm.cs</DependentUpon>
     </EmbeddedResource>
     <EmbeddedResource Include="Modeling\SlicerModelingDlg.resx">
       <DependentUpon>SlicerModelingDlg.cs</DependentUpon>
     </EmbeddedResource>
+    <EmbeddedResource Include="Modeling\SlicersSamplingForm.resx">
+      <DependentUpon>SlicersSamplingForm.cs</DependentUpon>
+    </EmbeddedResource>
     <EmbeddedResource Include="Modeling\SymbolModelingForm.resx">
       <DependentUpon>SymbolModelingForm.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="MouseControlForm.resx">
+      <DependentUpon>MouseControlForm.cs</DependentUpon>
     </EmbeddedResource>
     <EmbeddedResource Include="ObjectForm.resx">
       <DependentUpon>ObjectForm.cs</DependentUpon>
@@ -1067,6 +1350,7 @@
     <EmbeddedResource Include="Resource1.resx">
       <Generator>ResXFileCodeGenerator</Generator>
       <LastGenOutput>Resource1.Designer.cs</LastGenOutput>
+      <SubType>Designer</SubType>
     </EmbeddedResource>
     <EmbeddedResource Include="ScatterPoint\ImportScatterPointsForm.resx">
       <DependentUpon>ImportScatterPointsForm.cs</DependentUpon>
@@ -1177,6 +1461,7 @@
   <ItemGroup>
     <Content Include="app24.ico" />
     <Content Include="icos\app24.ico" />
+    <None Include="icos\ColorPicker.ico" />
     <Content Include="icos\Locate24.ico" />
     <None Include="Resources\PolygonSlicer.ico" />
     <None Include="Resources\Grid3D.ico" />

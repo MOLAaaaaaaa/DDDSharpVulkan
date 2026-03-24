@@ -115,7 +115,7 @@ namespace DataCollection
             if (nValue < 2) return;
 
             double filter;
-            if( !ConvertData.StringToDouble(FilterValue_textBox.Text, out filter) )
+            if( !double.TryParse(FilterValue_textBox.Text, out filter) )
             {
                 MessageBox.Show("filter value not correct.");
                 return;

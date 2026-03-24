@@ -272,24 +272,24 @@ namespace DataCollection
             DoubleRect rect = new DoubleRect();
             if (Plan == planEnum.XOY)
             {
-                rect.x1 = x1;
-                rect.y1 = y1;
-                rect.x2 = x2;
-                rect.y2 = y2;
+                rect.X1 = x1;
+                rect.Y1 = y1;
+                rect.X2 = x2;
+                rect.Y2 = y2;
             }
             else if (Plan == planEnum.YOZ)
             {
-                rect.x1 = y1;
-                rect.y1 = z1;
-                rect.x2 = y2;
-                rect.y2 = z2;
+                rect.X1 = y1;
+                rect.Y1 = z1;
+                rect.X2 = y2;
+                rect.Y2 = z2;
             }
             else //if (Plan == planEnum.XOZ)
             {
-                rect.x1 = x1;
-                rect.y1 = z1;
-                rect.x2 = x2;
-                rect.y2 = z2;
+                rect.X1 = x1;
+                rect.Y1 = z1;
+                rect.X2 = x2;
+                rect.Y2 = z2;
             }
             List<Vector64> lists = new List<Vector64>();
 
@@ -1546,7 +1546,7 @@ namespace DataCollection
             return ImportData(file);
         }
 
-        public override bool SaveAs(string path)
+        public override bool SaveAs(string path,int version = 0)
         {
             return ExportSlicer(path);
         }
@@ -1928,7 +1928,7 @@ namespace DataCollection
 
             double x = 0;
             Vector64 v1 = pBaseLine[0], v2;
-            //add locations
+            //add locations---多个瞄点坐标转换有问题，取消中间节点的瞄点2025-9-19
             for (int i = 0; i < pBaseLine.Count; i++)
             {
                 v2 = pBaseLine[i];
@@ -1936,7 +1936,7 @@ namespace DataCollection
 
                 if (i == 0) slicer.AddLocationPoint(new Vector64(x, minHeight, 0), p1);
                 else if (i == pBaseLine.Count - 1) slicer.AddLocationPoint(new Vector64(x, maxHeight, 0), p2);
-                else slicer.AddLocationPoint(new Vector64(x, maxHeight, 0), pBaseLine[i]);
+                //else slicer.AddLocationPoint(new Vector64(x, maxHeight, 0), pBaseLine[i]);
                 v1 = pBaseLine[i];
             }
 
@@ -2018,7 +2018,7 @@ namespace DataCollection
                     brush.Dispose();
                 }
             }
-            im.img = bmp;
+            im.bmp = bmp;
             return im;
         }
 

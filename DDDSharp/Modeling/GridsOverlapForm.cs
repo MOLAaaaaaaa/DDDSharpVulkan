@@ -139,11 +139,11 @@ namespace DDDSharp
             this.Cursor = Cursors.WaitCursor;
 
             //背景填充
-            for (long id = 0; id < data.pGridData.Length; id++)
+            for (long id = 0; id < data.Length; id++)
             {
-                if (data.IsBlankValue(data.pGridData[id]))
+                if (data.IsBlankValue(data[(int)id]))
                 {
-                    data.pGridData[id] = bkvalue;
+                    data[(int)id] = bkvalue;
                 }
             }            
             
@@ -183,7 +183,7 @@ namespace DDDSharp
             //update value range
             if ( count > 0 )
             {
-                data.UpdateDataRange();
+                data.UpdateRange();
                 OutputValueTextBox1.Text = data.minv.ToString();
                 OutputValueTextBox2.Text = data.maxv.ToString();
                 MessageBox.Show("Overlaped " + count + " grids.");

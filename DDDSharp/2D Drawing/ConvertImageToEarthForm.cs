@@ -94,14 +94,14 @@ namespace DDDSharp
 
         void LPtoDP(ref double x, ref double y)
         {
-            x = DrawRect.Left + DrawRect.Width * (x - DataRect.x1) / DataRect.Width;
-            y = DrawRect.Top + DrawRect.Height * (y - DataRect.y1) / DataRect.Height;
+            x = DrawRect.Left + DrawRect.Width * (x - DataRect.X1) / DataRect.Width;
+            y = DrawRect.Top + DrawRect.Height * (y - DataRect.Y1) / DataRect.Height;
         }
 
         void DPtoLP(ref double x, ref double y)
         {
-            x = DataRect.x1 + DataRect.Width * (x - DrawRect.Left) / DrawRect.Width;
-            y = DataRect.y1 + DataRect.Height * (y - DrawRect.Top) / DrawRect.Height;
+            x = DataRect.X1 + DataRect.Width * (x - DrawRect.Left) / DrawRect.Width;
+            y = DataRect.Y1 + DataRect.Height * (y - DrawRect.Top) / DrawRect.Height;
         }
         void UpdateDraw()
         {
@@ -112,10 +112,10 @@ namespace DDDSharp
         {
             if (bmp == null) return;
 
-            double x1 = DataRect.x1;
-            double x2 = DataRect.x2;
-            double y1 = DataRect.y1;
-            double y2 = DataRect.y2;
+            double x1 = DataRect.X1;
+            double x2 = DataRect.X2;
+            double y1 = DataRect.Y1;
+            double y2 = DataRect.Y2;
 
             double dx1 = x1;
             double dy1 = y1;
@@ -165,17 +165,17 @@ namespace DDDSharp
 
             if (scale * DrawRect.Width < DrawRect.Height)
             {
-                DataRect.x1 = x1;
-                DataRect.x2 = x2;
-                DataRect.y1 = y0 - height / 2.0;
-                DataRect.y2 = y0 + height / 2.0;
+                DataRect.X1 = x1;
+                DataRect.X2 = x2;
+                DataRect.Y1 = y0 - height / 2.0;
+                DataRect.Y2 = y0 + height / 2.0;
             }
             else
             {
-                DataRect.y1 = y1;
-                DataRect.y2 = y2;
-                DataRect.x1 = x0 - width / 2.0;
-                DataRect.x2 = x0 + width / 2.0;
+                DataRect.Y1 = y1;
+                DataRect.Y2 = y2;
+                DataRect.X1 = x0 - width / 2.0;
+                DataRect.X2 = x0 + width / 2.0;
             }
         }
 
@@ -369,10 +369,10 @@ namespace DDDSharp
                 xx = yy / scale;
             }
 
-            DataRect.x1 = x0 - xx / 2.0;
-            DataRect.y1 = y0 - yy / 2.0;
-            DataRect.x2 = x0 + xx / 2.0;
-            DataRect.y2 = y0 + yy / 2.0; ;
+            DataRect.X1 = x0 - xx / 2.0;
+            DataRect.Y1 = y0 - yy / 2.0;
+            DataRect.X2 = x0 + xx / 2.0;
+            DataRect.Y2 = y0 + yy / 2.0; ;
         }
 
         //以p0点为中心缩放
@@ -396,10 +396,10 @@ namespace DDDSharp
             DPtoLP(ref x0, ref y0);
             double xx = DataRect.Width * scale;
             double yy = DataRect.Height * scale;
-            DataRect.x1 = x0 - xx / 2;
-            DataRect.x2 = x0 + xx / 2;
-            DataRect.y1 = y0 - yy / 2;
-            DataRect.y2 = y0 + yy / 2;
+            DataRect.X1 = x0 - xx / 2;
+            DataRect.X2 = x0 + xx / 2;
+            DataRect.Y1 = y0 - yy / 2;
+            DataRect.Y2 = y0 + yy / 2;
 
             //滚轮缩放时，重新计算点
             if (first.X != -1 && second.X != -1)

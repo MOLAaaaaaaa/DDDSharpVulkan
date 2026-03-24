@@ -61,18 +61,18 @@ namespace DataCollection
         //曲线方向校正，以第1条曲线为准
         private void ReviseLinesDirection()
         {
-            C3DLine line1 = lines[0];
-            C3DLine line2;
-            Vector64 p,p1, p2;
-            for (int i=1;i<lines.Count;i++)
+            C3DLine line1 = lines[0],line2;
+            Vector64 p11, p12, p21,p22;
+            for (int i = 1; i < lines.Count; i++ )
             {
                 line2 = lines[i];
-
-                p = line1.points[0];
-                p1 = line2.points[0];
-                p2 = line2.points[line2.Count - 1];
-                
-                if( p.Distance(p1) > p.Distance(p2) )
+                p11 = line1.points[0];
+                p12 = line1.points[line1.Count-1];
+                p21 = line2.points[0];
+                p22 = line2.points[line2.Count - 1];
+                double dist1 = p11.Distance(p21) + p12.Distance(p22);
+                double dist2 = p11.Distance(p22) + p12.Distance(p21);
+                if ( dist1 > dist2 )
                 {
                     line2.OrderInverse();
                     lines[i] = line2;
@@ -117,7 +117,8 @@ namespace DataCollection
             }            
             linemesh.UpdateRange();
             return linemesh;
-        }
+        }        
+        
         /// <summary>
         /// 创建网格化的曲面
         /// </summary>
@@ -127,10 +128,10 @@ namespace DataCollection
             if ( lines.Count < 2 ) return null;
 
             //曲线方向校正
-           // ReviseLinesDirection();
-
-            //先做横向曲线平滑
-            LineMesh linemesh = new LineMesh();
+             ReviseLinesDirection();
+            
+             //先做横向曲线平滑
+             LineMesh linemesh = new LineMesh();
             for (int i = 0; i < lines.Count; i++)
             {
                 linemesh.Add(lines[i].Resample(horGridNum) );
@@ -159,7 +160,7 @@ namespace DataCollection
                 line = linemesh1.lines[i];
                 for (int j = 0; j < verGridNum; j++)
                 {
-                    mesh.AddPoint(j, i, line[j]);
+                    mesh.AddPoint(i, j, line[j]);
                 }
             }            
             mesh.UpdateRange();

@@ -32,14 +32,15 @@ namespace DDDSharp.Modeling
             this.groupBox2 = new System.Windows.Forms.GroupBox();
             this.listBox2 = new System.Windows.Forms.ListBox();
             this.groupBox1 = new System.Windows.Forms.GroupBox();
+            this.Clear = new System.Windows.Forms.Button();
+            this.Remove = new System.Windows.Forms.Button();
             this.DownButton = new System.Windows.Forms.Button();
             this.listBox1 = new System.Windows.Forms.ListBox();
             this.UpButton = new System.Windows.Forms.Button();
             this.LoadSlicerButton = new System.Windows.Forms.Button();
             this.CreateButton = new System.Windows.Forms.Button();
             this.Cancel = new System.Windows.Forms.Button();
-            this.Remove = new System.Windows.Forms.Button();
-            this.Clear = new System.Windows.Forms.Button();
+            this.OK = new System.Windows.Forms.Button();
             this.groupBox2.SuspendLayout();
             this.groupBox1.SuspendLayout();
             this.SuspendLayout();
@@ -87,6 +88,28 @@ namespace DDDSharp.Modeling
             this.groupBox1.TabIndex = 31;
             this.groupBox1.TabStop = false;
             this.groupBox1.Text = "Slicers";
+            // 
+            // Clear
+            // 
+            this.Clear.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
+            this.Clear.Location = new System.Drawing.Point(448, 125);
+            this.Clear.Name = "Clear";
+            this.Clear.Size = new System.Drawing.Size(65, 26);
+            this.Clear.TabIndex = 17;
+            this.Clear.Text = "Clear";
+            this.Clear.UseVisualStyleBackColor = true;
+            this.Clear.Click += new System.EventHandler(this.Clear_Click);
+            // 
+            // Remove
+            // 
+            this.Remove.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
+            this.Remove.Location = new System.Drawing.Point(448, 83);
+            this.Remove.Name = "Remove";
+            this.Remove.Size = new System.Drawing.Size(64, 26);
+            this.Remove.TabIndex = 16;
+            this.Remove.Text = "Remove";
+            this.Remove.UseVisualStyleBackColor = true;
+            this.Remove.Click += new System.EventHandler(this.Remove_Click);
             // 
             // DownButton
             // 
@@ -138,7 +161,7 @@ namespace DDDSharp.Modeling
             // CreateButton
             // 
             this.CreateButton.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
-            this.CreateButton.Location = new System.Drawing.Point(12, 559);
+            this.CreateButton.Location = new System.Drawing.Point(409, 559);
             this.CreateButton.Name = "CreateButton";
             this.CreateButton.Size = new System.Drawing.Size(213, 32);
             this.CreateButton.TabIndex = 33;
@@ -157,33 +180,23 @@ namespace DDDSharp.Modeling
             this.Cancel.UseVisualStyleBackColor = true;
             this.Cancel.Click += new System.EventHandler(this.Cancel_Click);
             // 
-            // Remove
+            // OK
             // 
-            this.Remove.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
-            this.Remove.Location = new System.Drawing.Point(448, 83);
-            this.Remove.Name = "Remove";
-            this.Remove.Size = new System.Drawing.Size(64, 26);
-            this.Remove.TabIndex = 16;
-            this.Remove.Text = "Remove";
-            this.Remove.UseVisualStyleBackColor = true;
-            this.Remove.Click += new System.EventHandler(this.Remove_Click);
-            // 
-            // Clear
-            // 
-            this.Clear.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
-            this.Clear.Location = new System.Drawing.Point(448, 125);
-            this.Clear.Name = "Clear";
-            this.Clear.Size = new System.Drawing.Size(65, 26);
-            this.Clear.TabIndex = 17;
-            this.Clear.Text = "Clear";
-            this.Clear.UseVisualStyleBackColor = true;
-            this.Clear.Click += new System.EventHandler(this.Clear_Click);
+            this.OK.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
+            this.OK.Location = new System.Drawing.Point(12, 559);
+            this.OK.Name = "OK";
+            this.OK.Size = new System.Drawing.Size(213, 32);
+            this.OK.TabIndex = 35;
+            this.OK.Text = "OK";
+            this.OK.UseVisualStyleBackColor = true;
+            this.OK.Click += new System.EventHandler(this.OK_Click);
             // 
             // OutlinesModelingForm
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(8F, 15F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.ClientSize = new System.Drawing.Size(843, 650);
+            this.Controls.Add(this.OK);
             this.Controls.Add(this.Cancel);
             this.Controls.Add(this.CreateButton);
             this.Controls.Add(this.groupBox2);
@@ -210,5 +223,6 @@ namespace DDDSharp.Modeling
         private System.Windows.Forms.Button Cancel;
         private System.Windows.Forms.Button Clear;
         private System.Windows.Forms.Button Remove;
+        private System.Windows.Forms.Button OK;
     }
 }

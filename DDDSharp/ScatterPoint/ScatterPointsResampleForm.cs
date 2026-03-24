@@ -168,10 +168,10 @@ namespace DDDSharp
             DPtoLP(ref x1, ref y1);
             DPtoLP(ref x2, ref y2);
             DoubleRect rect = new DoubleRect();
-            rect.x1 = Math.Min(x1, x2);
-            rect.x2 = Math.Max(x1, x2);
-            rect.y1 = Math.Min(y1, y2);
-            rect.y2 = Math.Max(y1, y2);
+            rect.X1 = Math.Min(x1, x2);
+            rect.X2 = Math.Max(x1, x2);
+            rect.Y1 = Math.Min(y1, y2);
+            rect.Y2 = Math.Max(y1, y2);
             return Splite(rect);
         }
         int Splite(DoubleRect rect)
@@ -202,10 +202,10 @@ namespace DDDSharp
             DPtoLP(ref x1, ref y1);
             DPtoLP(ref x2, ref y2);
             DoubleRect rect = new DoubleRect();
-            rect.x1 = Math.Min(x1, x2);
-            rect.x2 = Math.Max(x1, x2);
-            rect.y1 = Math.Min(y1, y2);
-            rect.y2 = Math.Max(y1, y2);
+            rect.X1 = Math.Min(x1, x2);
+            rect.X2 = Math.Max(x1, x2);
+            rect.Y1 = Math.Min(y1, y2);
+            rect.Y2 = Math.Max(y1, y2);
             return Sample(rect, xx, yy);
         }
         /// <summary>
@@ -332,8 +332,8 @@ namespace DDDSharp
             for(int i = 0; i < indices.Count; i++ )
             {
                 p = sc.points[indices[i]];
-                ix = (int)( (p.x - rect.x1) / xx );
-                iy = (int)( (p.y - rect.y1) / yy );
+                ix = (int)( (p.x - rect.X1) / xx );
+                iy = (int)( (p.y - rect.Y1) / yy );
                 grids[ix + iy * nx].Add(indices[i]);
             }
 
@@ -342,8 +342,8 @@ namespace DDDSharp
             {
                 for(ix = 0;ix<nx;ix++)
                 {
-                    x0 = rect.x1 + ix * xx + xx / 2;
-                    y0 = rect.y1 + iy * yy + yy / 2;
+                    x0 = rect.X1 + ix * xx + xx / 2;
+                    y0 = rect.Y1 + iy * yy + yy / 2;
                     grids[ix + iy * nx].Sample(x0,y0,marked,sc.points);
                 }
             }

@@ -117,13 +117,25 @@
   <resheader name="writer">
     <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
   </resheader>
+  <data name="AnalyzeParametersStructerFilter" xml:space="preserve">
+    <value>Analysing Parameters files(*.analyze)|*.analyze</value>
+  </data>
   <data name="BitmapFileFilter" xml:space="preserve">
     <value>Bitmap File (*.bmp;*.jpg;*.gif;*.png)|*.bmp;*.jpg;*.gif;*.png</value>
+  </data>
+  <data name="BoreholeInterpolationControlFile" xml:space="preserve">
+    <value>Boreholes Control File (*.csv,*.dat,*.txt)|*.csv;*.dat;*.txt</value>
+  </data>
+  <data name="BoreholesInclinesFileFormatFilter" xml:space="preserve">
+    <value>formatted line files(*.csv,*.dat,*.txt)|*.csv;*.dat;*.txt</value>
+  </data>
+  <assembly alias="System.Windows.Forms" name="System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089" />
+  <data name="ColorPicker" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>icos\ColorPicker.ico;System.Drawing.Icon, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
   </data>
   <data name="DXFFileFormatFilter" xml:space="preserve">
     <value>DXF File (*.dxf)|*.dxf</value>
   </data>
-  <assembly alias="System.Windows.Forms" name="System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089" />
   <data name="Folder01" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>resources\folder01.ico;System.Drawing.Icon, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
   </data>
@@ -144,6 +156,9 @@
   </data>
   <data name="Grid3DFileFormatFilter" xml:space="preserve">
     <value>3D Grid file(*.3DGrid)|*.3DGrid</value>
+  </data>
+  <data name="ImageFilesFormatFilter" xml:space="preserve">
+    <value>Images File(*.jpg,*.png,*.bmp,*.gif,*.tif)|*.jpg;*.png;*.bmp;*.gif;*.tif|all files(*.*)|*.*</value>
   </data>
   <data name="LineFileFormatFilter" xml:space="preserve">
     <value>Formatted Line File (*.line)|*.line</value>
@@ -166,6 +181,9 @@
   <data name="PolygonSlicer" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>resources\polygonslicer.ico;System.Drawing.Icon, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
   </data>
+  <data name="PolygonSlicerPoly3DXYZ" xml:space="preserve">
+    <value>Polygon3D XYZ(*.csv,*.dat,*.txt)|*.csv;*.dat;*.txt</value>
+  </data>
   <data name="SHPFileFormatFilter" xml:space="preserve">
     <value>SHP File (*.shp)|*.shp</value>
   </data>
@@ -174,6 +192,9 @@
   </data>
   <data name="STLFileFormatedFilter" xml:space="preserve">
     <value>STL 3D Triangles File (*.stl)|*.stl</value>
+  </data>
+  <data name="StratumColorSchemeFilter" xml:space="preserve">
+    <value>formatted line files(*.StratumColor,*.dat,*.txt)|*.StratumColor;*.dat;*.txt</value>
   </data>
   <data name="SurferGridFileFormatFilter" xml:space="preserve">
     <value>Surfer gridded File (*.grd)|*.grd</value>
@@ -191,7 +212,7 @@
     <value>Borehole well stratum files(*.csv,*.dat,*.txt)|*.csv;*.dat;*.txt</value>
   </data>
   <data name="XYZVFileFormatFilter" xml:space="preserve">
-    <value>XYZV ACSII File (*.csv,*.dat,*.txt)|*.csv;*.dat;*.txt;</value>
+    <value>XYZV ACSII File (*.pcd,*.vtk,*.csv,*.dat,*.txt)|*.pcd;*.vtk;*.pnts;*.csv;*.dat;*.txt;</value>
   </data>
   <data name="XYZVFormatLineFilter" xml:space="preserve">
     <value>formatted line files(*.csv,*.dat,*.txt)|*.csv;*.dat;*.txt</value>

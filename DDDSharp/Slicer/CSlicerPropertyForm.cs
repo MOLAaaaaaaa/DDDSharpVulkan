@@ -42,11 +42,10 @@ namespace DDDSharp
 
             DataGridViewCheckBoxColumn dtCheck = new DataGridViewCheckBoxColumn();
             dtCheck.DataPropertyName = "check";
-            dtCheck.HeaderText = "check";
-            dataGridView1.Columns.Add(dtCheck);
-            
-            dataGridView1.Columns.Add("check", "");
-            dataGridView1.Columns.Add("No", "ID");
+            dtCheck.HeaderText = "";
+            dataGridView1.Columns.Add(dtCheck);            
+           
+            dataGridView1.Columns.Add("No", "No");
             dataGridView1.Columns.Add("Value", "Value");
             dataGridView1.Columns.Add("Color", "Color");
 
@@ -57,6 +56,7 @@ namespace DDDSharp
                 dataGridView1.Rows[i].Cells[0].Value = colorScale[i].Visible;
                 dataGridView1.Rows[i].Cells[1].Value = i + 1;
                 dataGridView1.Rows[i].Cells[2].Value = colorScale.GetScaledValue(i) ;
+                dataGridView1.Rows[i].Cells[3].Value = "";
                 dataGridView1.Rows[i].Cells[3].Style.ForeColor = colorScale.GetColor(i);
                 dataGridView1.Rows[i].Cells[3].Style.BackColor = colorScale.GetColor(i);
                 
@@ -239,6 +239,28 @@ namespace DDDSharp
             Graphics g = ColorBarBox.CreateGraphics();
             Rectangle rect = new Rectangle(0, 0, ColorBarBox.Width, ColorBarBox.Height);
             mesh.ColorScale.DrawColorBar(g, rect);
+        }
+       
+        private void dataGridView1_CellDoubleClick(object sender, DataGridViewCellEventArgs e)
+        {
+            CMesh mesh = (CMesh)curObj;
+            if (mesh == null) return;
+            if (dataGridView1.CurrentCell.ColumnIndex != 3) return;
+            CColorScale colorScale = mesh.ColorScale;
+
+            Color color = dataGridView1.CurrentCell.Style.BackColor;
+            ColorDialog cd = new ColorDialog();
+            cd.Color = color;
+            if (cd.ShowDialog() == DialogResult.OK)
+            {
+                color = cd.Color;
+                int id = dataGridView1.CurrentCell.RowIndex;
+                colorScale.SetColor(id, color);
+                dataGridView1.CurrentCell.Style.BackColor = color;
+                dataGridView1.CurrentCell.Style.ForeColor = color;
+                mesh.RenderMode = RenderingUpdateMode.Redraw;
+                Program.m_MainForm.UpdateDraw(mesh);
+            }
         }
     }
 }

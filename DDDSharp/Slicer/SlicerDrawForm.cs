@@ -124,19 +124,19 @@ namespace DDDSharp
             double len;
             if ( xx * scale >= yy )
             {
-                DataRect.x1 = x1;
-                DataRect.x2 = x2;
+                DataRect.X1 = x1;
+                DataRect.X2 = x2;
                 len = (xx * scale - yy) / 2.0;
-                DataRect.y1 = y1 - len;
-                DataRect.y2 = y2 + len;
+                DataRect.Y1 = y1 - len;
+                DataRect.Y2 = y2 + len;
             }
             else
             {
-                DataRect.y1 = y1;
-                DataRect.y2 = y2;
+                DataRect.Y1 = y1;
+                DataRect.Y2 = y2;
                 len = (yy / scale - xx) / 2.0;
-                DataRect.x1 = x1 - len;
-                DataRect.x2 = x2 + len;
+                DataRect.X1 = x1 - len;
+                DataRect.X2 = x2 + len;
             }
         }
         public void SetDataGrid(C3DGridData _data)
@@ -906,8 +906,8 @@ namespace DDDSharp
 
         private void Zoom(double x0, double y0, double scale = 0.8)
         {
-            double offx = x0 - (DataRect.x1 + DataRect.x2) / 2.0;
-            double offy = y0 - (DataRect.y1 + DataRect.y2) / 2.0;
+            double offx = x0 - (DataRect.X1 + DataRect.X2) / 2.0;
+            double offy = y0 - (DataRect.Y1 + DataRect.Y2) / 2.0;
             DataRect.Offset(offx, offy);
             DataRect.Scale(scale);
         }
@@ -916,8 +916,8 @@ namespace DDDSharp
             double x0 = p0.X;
             double y0 = p0.Y;
             DPtoLP(ref x0, ref y0);
-            double offx = x0 - (DataRect.x1 + DataRect.x2) / 2.0;
-            double offy = y0 - (DataRect.y1 + DataRect.y2) / 2.0;
+            double offx = x0 - (DataRect.X1 + DataRect.X2) / 2.0;
+            double offy = y0 - (DataRect.Y1 + DataRect.Y2) / 2.0;
             DataRect.Offset(offx, offy);
             DataRect.Scale(scale);
         }
@@ -1137,8 +1137,8 @@ namespace DDDSharp
                 int x = DrawRect.Left - 50;
                 int y = DrawRect.Top - 10;
                 ruler.windowRect = new Rectangle(x, y, DrawRect.Width + 60, DrawRect.Height + 60);
-                ruler.leftRuler.SetValuesRange(DataRect.y1, DataRect.y2);
-                ruler.bottomRuler.SetValuesRange(DataRect.x1, DataRect.x2);
+                ruler.leftRuler.SetValuesRange(DataRect.Y1, DataRect.Y2);
+                ruler.bottomRuler.SetValuesRange(DataRect.X1, DataRect.X2);
 
                 bmp = new Bitmap(ruler.drawRect.Width, ruler.drawRect.Height);
                 Graphics g = Graphics.FromImage(bmp);
@@ -1148,6 +1148,7 @@ namespace DDDSharp
                 DrawGrid(g);
                 DrawSlicerBaseLines(g);
                 DrawScatterPoints(g);
+                DrawBoreholes(g);
             }
             pictureBox1.Invalidate();
         }
@@ -1235,7 +1236,70 @@ namespace DDDSharp
                 }
             }            
         }
+        private void DrawBoreholes(Graphics e)
+        {
+            CBorehole bh;
+            CBoreholes boreholes;
+            List<C3DObjectBase> objects = C3DData.GetObjects();
+            for (int i = 0; i < objects.Count; i++)
+            {
+                if (objects[i].type == ShapeEnum.Boreholes)
+                {
+                    boreholes = (CBoreholes)objects[i];
+                    for(int j=0;j<boreholes.Count;j++)
+                    {
+                        bh = boreholes[j];
+                        if (bh.Visible) DrawBorehole(bh, e); 
+                    }
+                }
+                else if (objects[i].type == ShapeEnum.Borehole)
+                {
+                    bh = (CBorehole)objects[i];
+                    if (bh.Visible) DrawBorehole(bh, e);
+                }
+            }
+        }
+        void DrawBorehole(CBorehole obj, Graphics g)
+        {
+            Vector32 p, p1;
+            double x = 0, y = 0;
+            Color color = Color.Black;
+            int size = 10;
+            Rectangle rect;            
+            SolidBrush cy_brush = new SolidBrush(Color.Red);
+            SolidBrush label_brush = new SolidBrush(Color.Black);
+            Font font = new Font("System", 8);
+            var stringFormat = new StringFormat();
+            stringFormat.Alignment = StringAlignment.Center;
 
+            p = obj.Position;            
+            p1 = p;
+            //p1 = obj.TransformedPoint(p);
+            //p1 = toWorldVector(obj, p1);
+            //p1 = CDataModel.ToModelVector(p1);
+            if (plan == planEnum.XOY)
+            {
+                x = p1.X;
+                y = p1.Y;
+            }
+            if (plan == planEnum.XOZ)
+            {
+                x = p1.X;
+                y = p1.Z;
+            }
+            if (plan == planEnum.YOZ)
+            {
+                x = p1.Y;
+                y = p1.Z;
+            }
+            
+            LPtoDP(ref x, ref y);
+            rect = new Rectangle((int)x, (int)y, size, size);
+            g.FillEllipse(cy_brush, rect);            
+            g.DrawString(obj.Name, font, label_brush, (float)x, (float)y + size, stringFormat);
+            cy_brush.Dispose();
+            label_brush.Dispose();
+        }
         void DrawScatterPoint(ScatteredPoints obj,Graphics g)
         {
             Vector32 p,p1;
@@ -1286,10 +1350,10 @@ namespace DDDSharp
         }
         private void DrawXYGrid(Graphics e)
         {
-            double x1 = DataRect.x1;
-            double x2 = DataRect.x2;
-            double y1 = DataRect.y1;
-            double y2 = DataRect.y2;
+            double x1 = DataRect.X1;
+            double x2 = DataRect.X2;
+            double y1 = DataRect.Y1;
+            double y2 = DataRect.Y2;
 
             double xx = DrawRect.Width / ((x2 - x1) / xstep);
             double yy = DrawRect.Height / ((y2 - y1) / ystep);
@@ -1333,10 +1397,10 @@ namespace DDDSharp
         }
         private void DrawXZGrid(Graphics e)
         {
-            double x1 = DataRect.x1;
-            double x2 = DataRect.x2;
-            double y1 = DataRect.y1;
-            double y2 = DataRect.y2;
+            double x1 = DataRect.X1;
+            double x2 = DataRect.X2;
+            double y1 = DataRect.Y1;
+            double y2 = DataRect.Y2;
 
             double xx = DrawRect.Width / ((x2 - x1) / xstep);
             double yy = DrawRect.Height / ((y2 - y1) / zstep);
@@ -1378,10 +1442,10 @@ namespace DDDSharp
         }
         private void DrawYZGrid(Graphics e)
         {
-            double x1 = DataRect.x1;
-            double x2 = DataRect.x2;
-            double y1 = DataRect.y1;
-            double y2 = DataRect.y2;
+            double x1 = DataRect.X1;
+            double x2 = DataRect.X2;
+            double y1 = DataRect.Y1;
+            double y2 = DataRect.Y2;
 
             double xx = DrawRect.Width / ((x2 - x1) / ystep);
             double yy = DrawRect.Height / ((y2 - y1) / zstep);

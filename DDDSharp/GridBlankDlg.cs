@@ -18,6 +18,7 @@ namespace DDDSharp
         public bool exchangeXY = false;
         public bool keepUpper = false;
         public bool geoCoordinateSystem = false;
+        public int blankMethod = 0;
         public GridBlankDlg()
         {
             InitializeComponent();            
@@ -112,6 +113,9 @@ namespace DDDSharp
             if (comboBox1.SelectedIndex == 0) keepUpper = false;
             else keepUpper = true;
 
+            if (radioButton1.Checked) blankMethod = 0;
+            if (radioButton2.Checked) blankMethod = 1;
+
             DialogResult = DialogResult.OK;
             this.Close();
         }
@@ -125,6 +129,59 @@ namespace DDDSharp
         private void comboBox1_SelectedIndexChanged(object sender, EventArgs e)
         {
 
+        }
+
+        private void CopyFromButton3D_Click(object sender, EventArgs e)
+        {
+            grid2d.minx = grid3d.minx;
+            grid2d.maxx = grid3d.maxx;
+            grid2d.miny = grid3d.miny;
+            grid2d.maxy = grid3d.maxy;
+            toControl();
+        }
+
+        private void CopyFromButton2D_Click(object sender, EventArgs e)
+        {
+            grid3d.minx = grid2d.minx;
+            grid3d.maxx = grid2d.maxx;
+            grid3d.miny = grid2d.miny;
+            grid3d.maxy = grid2d.maxy;
+            toControl();
+        }
+
+        private void Update2D_Click(object sender, EventArgs e)
+        {
+            try 
+            {
+                grid2d.minx = double.Parse(X12DtextBox.Text);
+                grid2d.maxx = double.Parse(X22DtextBox.Text);
+                grid2d.miny = double.Parse(Y12DtextBox.Text);
+                grid2d.maxy = double.Parse(Y22DtextBox.Text);
+                grid2d.minz = double.Parse(Z12DtextBox.Text);
+                grid2d.maxz = double.Parse(Z22DtextBox.Text);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(ex.Message);
+            }
+            
+        }
+
+        private void Update3D_Click(object sender, EventArgs e)
+        {
+            try
+            {
+                grid3d.minx = double.Parse(X13DtextBox.Text);
+                grid3d.maxx = double.Parse(X23DtextBox.Text);
+                grid3d.miny = double.Parse(Y13DtextBox.Text);
+                grid3d.maxy = double.Parse(Y23DtextBox.Text);
+                grid3d.minz = double.Parse(Z13DtextBox.Text);
+                grid3d.maxz = double.Parse(Z23DtextBox.Text);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(ex.Message);
+            }
         }
     }
 }

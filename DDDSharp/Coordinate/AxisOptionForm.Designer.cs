@@ -30,17 +30,9 @@ namespace DDDSharp
         private void InitializeComponent()
         {
             System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(AxisOptionForm));
-            this.textBoxX1 = new System.Windows.Forms.TextBox();
-            this.label1 = new System.Windows.Forms.Label();
-            this.label6 = new System.Windows.Forms.Label();
-            this.textBoxZ1 = new System.Windows.Forms.TextBox();
-            this.textBoxY1 = new System.Windows.Forms.TextBox();
-            this.label4 = new System.Windows.Forms.Label();
             this.Cancelbutton2 = new System.Windows.Forms.Button();
             this.Okbutton1 = new System.Windows.Forms.Button();
             this.groupBox1 = new System.Windows.Forms.GroupBox();
-            this.label3 = new System.Windows.Forms.Label();
-            this.TextSizeBox1 = new System.Windows.Forms.TextBox();
             this.pictureBox1 = new System.Windows.Forms.PictureBox();
             this.pictureBox2 = new System.Windows.Forms.PictureBox();
             this.radioButton1 = new System.Windows.Forms.RadioButton();
@@ -51,23 +43,13 @@ namespace DDDSharp
             this.groupBox4 = new System.Windows.Forms.GroupBox();
             this.radioButton3 = new System.Windows.Forms.RadioButton();
             this.groupBox5 = new System.Windows.Forms.GroupBox();
-            this.label5 = new System.Windows.Forms.Label();
-            this.textBoxX2 = new System.Windows.Forms.TextBox();
-            this.label7 = new System.Windows.Forms.Label();
-            this.label8 = new System.Windows.Forms.Label();
-            this.TextSizeBox2 = new System.Windows.Forms.TextBox();
-            this.textBoxZ2 = new System.Windows.Forms.TextBox();
-            this.textBoxY2 = new System.Windows.Forms.TextBox();
-            this.label9 = new System.Windows.Forms.Label();
             this.groupBox6 = new System.Windows.Forms.GroupBox();
-            this.label10 = new System.Windows.Forms.Label();
-            this.textBoxX3 = new System.Windows.Forms.TextBox();
-            this.label11 = new System.Windows.Forms.Label();
-            this.label12 = new System.Windows.Forms.Label();
-            this.TextSizeBox3 = new System.Windows.Forms.TextBox();
-            this.textBoxZ3 = new System.Windows.Forms.TextBox();
-            this.textBoxY3 = new System.Windows.Forms.TextBox();
-            this.label13 = new System.Windows.Forms.Label();
+            this.propertyGrid1 = new System.Windows.Forms.PropertyGrid();
+            this.propertyGrid2 = new System.Windows.Forms.PropertyGrid();
+            this.propertyGrid3 = new System.Windows.Forms.PropertyGrid();
+            this.comboBox1 = new System.Windows.Forms.ComboBox();
+            this.comboBox2 = new System.Windows.Forms.ComboBox();
+            this.comboBox3 = new System.Windows.Forms.ComboBox();
             this.groupBox1.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox1)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox2)).BeginInit();
@@ -79,66 +61,13 @@ namespace DDDSharp
             this.groupBox6.SuspendLayout();
             this.SuspendLayout();
             // 
-            // textBoxX1
-            // 
-            this.textBoxX1.Location = new System.Drawing.Point(39, 22);
-            this.textBoxX1.Margin = new System.Windows.Forms.Padding(4, 3, 4, 3);
-            this.textBoxX1.Name = "textBoxX1";
-            this.textBoxX1.Size = new System.Drawing.Size(182, 25);
-            this.textBoxX1.TabIndex = 0;
-            // 
-            // label1
-            // 
-            this.label1.AutoSize = true;
-            this.label1.Location = new System.Drawing.Point(17, 27);
-            this.label1.Margin = new System.Windows.Forms.Padding(4, 0, 4, 0);
-            this.label1.Name = "label1";
-            this.label1.Size = new System.Drawing.Size(15, 15);
-            this.label1.TabIndex = 1;
-            this.label1.Text = "X";
-            // 
-            // label6
-            // 
-            this.label6.AutoSize = true;
-            this.label6.Location = new System.Drawing.Point(17, 87);
-            this.label6.Margin = new System.Windows.Forms.Padding(4, 0, 4, 0);
-            this.label6.Name = "label6";
-            this.label6.Size = new System.Drawing.Size(15, 15);
-            this.label6.TabIndex = 9;
-            this.label6.Text = "Z";
-            // 
-            // textBoxZ1
-            // 
-            this.textBoxZ1.Location = new System.Drawing.Point(39, 82);
-            this.textBoxZ1.Margin = new System.Windows.Forms.Padding(4, 3, 4, 3);
-            this.textBoxZ1.Name = "textBoxZ1";
-            this.textBoxZ1.Size = new System.Drawing.Size(182, 25);
-            this.textBoxZ1.TabIndex = 8;
-            // 
-            // textBoxY1
-            // 
-            this.textBoxY1.Location = new System.Drawing.Point(39, 52);
-            this.textBoxY1.Margin = new System.Windows.Forms.Padding(4, 3, 4, 3);
-            this.textBoxY1.Name = "textBoxY1";
-            this.textBoxY1.Size = new System.Drawing.Size(182, 25);
-            this.textBoxY1.TabIndex = 4;
-            // 
-            // label4
-            // 
-            this.label4.AutoSize = true;
-            this.label4.Location = new System.Drawing.Point(17, 57);
-            this.label4.Margin = new System.Windows.Forms.Padding(4, 0, 4, 0);
-            this.label4.Name = "label4";
-            this.label4.Size = new System.Drawing.Size(15, 15);
-            this.label4.TabIndex = 5;
-            this.label4.Text = "Y";
-            // 
             // Cancelbutton2
             // 
-            this.Cancelbutton2.Location = new System.Drawing.Point(563, 417);
+            this.Cancelbutton2.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
+            this.Cancelbutton2.Location = new System.Drawing.Point(529, 562);
             this.Cancelbutton2.Margin = new System.Windows.Forms.Padding(4, 3, 4, 3);
             this.Cancelbutton2.Name = "Cancelbutton2";
-            this.Cancelbutton2.Size = new System.Drawing.Size(187, 41);
+            this.Cancelbutton2.Size = new System.Drawing.Size(213, 32);
             this.Cancelbutton2.TabIndex = 18;
             this.Cancelbutton2.Text = "Cancel";
             this.Cancelbutton2.UseVisualStyleBackColor = true;
@@ -146,10 +75,11 @@ namespace DDDSharp
             // 
             // Okbutton1
             // 
-            this.Okbutton1.Location = new System.Drawing.Point(19, 417);
+            this.Okbutton1.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
+            this.Okbutton1.Location = new System.Drawing.Point(31, 562);
             this.Okbutton1.Margin = new System.Windows.Forms.Padding(4, 3, 4, 3);
             this.Okbutton1.Name = "Okbutton1";
-            this.Okbutton1.Size = new System.Drawing.Size(187, 41);
+            this.Okbutton1.Size = new System.Drawing.Size(205, 32);
             this.Okbutton1.TabIndex = 17;
             this.Okbutton1.Text = "Update";
             this.Okbutton1.UseVisualStyleBackColor = true;
@@ -157,40 +87,18 @@ namespace DDDSharp
             // 
             // groupBox1
             // 
-            this.groupBox1.Controls.Add(this.label3);
-            this.groupBox1.Controls.Add(this.textBoxX1);
-            this.groupBox1.Controls.Add(this.label1);
-            this.groupBox1.Controls.Add(this.label6);
-            this.groupBox1.Controls.Add(this.TextSizeBox1);
-            this.groupBox1.Controls.Add(this.textBoxZ1);
-            this.groupBox1.Controls.Add(this.textBoxY1);
-            this.groupBox1.Controls.Add(this.label4);
+            this.groupBox1.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
+            | System.Windows.Forms.AnchorStyles.Left)));
+            this.groupBox1.Controls.Add(this.comboBox1);
+            this.groupBox1.Controls.Add(this.propertyGrid1);
             this.groupBox1.Location = new System.Drawing.Point(19, 220);
             this.groupBox1.Margin = new System.Windows.Forms.Padding(4, 3, 4, 3);
             this.groupBox1.Name = "groupBox1";
             this.groupBox1.Padding = new System.Windows.Forms.Padding(4, 3, 4, 3);
-            this.groupBox1.Size = new System.Drawing.Size(229, 148);
+            this.groupBox1.Size = new System.Drawing.Size(229, 320);
             this.groupBox1.TabIndex = 16;
             this.groupBox1.TabStop = false;
-            this.groupBox1.Text = "Axis Text";
-            // 
-            // label3
-            // 
-            this.label3.AutoSize = true;
-            this.label3.Location = new System.Drawing.Point(17, 118);
-            this.label3.Margin = new System.Windows.Forms.Padding(4, 0, 4, 0);
-            this.label3.Name = "label3";
-            this.label3.Size = new System.Drawing.Size(79, 15);
-            this.label3.TabIndex = 24;
-            this.label3.Text = "Text Size";
-            // 
-            // TextSizeBox1
-            // 
-            this.TextSizeBox1.Location = new System.Drawing.Point(98, 113);
-            this.TextSizeBox1.Margin = new System.Windows.Forms.Padding(4, 3, 4, 3);
-            this.TextSizeBox1.Name = "TextSizeBox1";
-            this.TextSizeBox1.Size = new System.Drawing.Size(123, 25);
-            this.TextSizeBox1.TabIndex = 23;
+            this.groupBox1.Text = "Cartesian Coordinates";
             // 
             // pictureBox1
             // 
@@ -259,7 +167,7 @@ namespace DDDSharp
             this.pictureBox3.BackgroundImage = ((System.Drawing.Image)(resources.GetObject("pictureBox3.BackgroundImage")));
             this.pictureBox3.ErrorImage = null;
             this.pictureBox3.InitialImage = null;
-            this.pictureBox3.Location = new System.Drawing.Point(14, 38);
+            this.pictureBox3.Location = new System.Drawing.Point(33, 37);
             this.pictureBox3.Name = "pictureBox3";
             this.pictureBox3.Size = new System.Drawing.Size(155, 151);
             this.pictureBox3.TabIndex = 29;
@@ -289,190 +197,110 @@ namespace DDDSharp
             // 
             // groupBox5
             // 
-            this.groupBox5.Controls.Add(this.label5);
-            this.groupBox5.Controls.Add(this.textBoxX2);
-            this.groupBox5.Controls.Add(this.label7);
-            this.groupBox5.Controls.Add(this.label8);
-            this.groupBox5.Controls.Add(this.TextSizeBox2);
-            this.groupBox5.Controls.Add(this.textBoxZ2);
-            this.groupBox5.Controls.Add(this.textBoxY2);
-            this.groupBox5.Controls.Add(this.label9);
+            this.groupBox5.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
+            | System.Windows.Forms.AnchorStyles.Left)));
+            this.groupBox5.Controls.Add(this.comboBox2);
+            this.groupBox5.Controls.Add(this.propertyGrid2);
             this.groupBox5.Location = new System.Drawing.Point(273, 220);
             this.groupBox5.Margin = new System.Windows.Forms.Padding(4, 3, 4, 3);
             this.groupBox5.Name = "groupBox5";
             this.groupBox5.Padding = new System.Windows.Forms.Padding(4, 3, 4, 3);
-            this.groupBox5.Size = new System.Drawing.Size(229, 148);
+            this.groupBox5.Size = new System.Drawing.Size(229, 320);
             this.groupBox5.TabIndex = 31;
             this.groupBox5.TabStop = false;
-            this.groupBox5.Text = "Axis Text";
-            // 
-            // label5
-            // 
-            this.label5.AutoSize = true;
-            this.label5.Location = new System.Drawing.Point(17, 118);
-            this.label5.Margin = new System.Windows.Forms.Padding(4, 0, 4, 0);
-            this.label5.Name = "label5";
-            this.label5.Size = new System.Drawing.Size(79, 15);
-            this.label5.TabIndex = 24;
-            this.label5.Text = "Text Size";
-            // 
-            // textBoxX2
-            // 
-            this.textBoxX2.Location = new System.Drawing.Point(39, 22);
-            this.textBoxX2.Margin = new System.Windows.Forms.Padding(4, 3, 4, 3);
-            this.textBoxX2.Name = "textBoxX2";
-            this.textBoxX2.Size = new System.Drawing.Size(182, 25);
-            this.textBoxX2.TabIndex = 0;
-            // 
-            // label7
-            // 
-            this.label7.AutoSize = true;
-            this.label7.Location = new System.Drawing.Point(17, 27);
-            this.label7.Margin = new System.Windows.Forms.Padding(4, 0, 4, 0);
-            this.label7.Name = "label7";
-            this.label7.Size = new System.Drawing.Size(15, 15);
-            this.label7.TabIndex = 1;
-            this.label7.Text = "X";
-            // 
-            // label8
-            // 
-            this.label8.AutoSize = true;
-            this.label8.Location = new System.Drawing.Point(17, 87);
-            this.label8.Margin = new System.Windows.Forms.Padding(4, 0, 4, 0);
-            this.label8.Name = "label8";
-            this.label8.Size = new System.Drawing.Size(15, 15);
-            this.label8.TabIndex = 9;
-            this.label8.Text = "Z";
-            // 
-            // TextSizeBox2
-            // 
-            this.TextSizeBox2.Location = new System.Drawing.Point(98, 113);
-            this.TextSizeBox2.Margin = new System.Windows.Forms.Padding(4, 3, 4, 3);
-            this.TextSizeBox2.Name = "TextSizeBox2";
-            this.TextSizeBox2.Size = new System.Drawing.Size(123, 25);
-            this.TextSizeBox2.TabIndex = 23;
-            // 
-            // textBoxZ2
-            // 
-            this.textBoxZ2.Location = new System.Drawing.Point(39, 82);
-            this.textBoxZ2.Margin = new System.Windows.Forms.Padding(4, 3, 4, 3);
-            this.textBoxZ2.Name = "textBoxZ2";
-            this.textBoxZ2.Size = new System.Drawing.Size(182, 25);
-            this.textBoxZ2.TabIndex = 8;
-            // 
-            // textBoxY2
-            // 
-            this.textBoxY2.Location = new System.Drawing.Point(39, 52);
-            this.textBoxY2.Margin = new System.Windows.Forms.Padding(4, 3, 4, 3);
-            this.textBoxY2.Name = "textBoxY2";
-            this.textBoxY2.Size = new System.Drawing.Size(182, 25);
-            this.textBoxY2.TabIndex = 4;
-            // 
-            // label9
-            // 
-            this.label9.AutoSize = true;
-            this.label9.Location = new System.Drawing.Point(17, 57);
-            this.label9.Margin = new System.Windows.Forms.Padding(4, 0, 4, 0);
-            this.label9.Name = "label9";
-            this.label9.Size = new System.Drawing.Size(15, 15);
-            this.label9.TabIndex = 5;
-            this.label9.Text = "Y";
+            this.groupBox5.Text = "Geological Coordinates";
             // 
             // groupBox6
             // 
-            this.groupBox6.Controls.Add(this.label10);
-            this.groupBox6.Controls.Add(this.textBoxX3);
-            this.groupBox6.Controls.Add(this.label11);
-            this.groupBox6.Controls.Add(this.label12);
-            this.groupBox6.Controls.Add(this.TextSizeBox3);
-            this.groupBox6.Controls.Add(this.textBoxZ3);
-            this.groupBox6.Controls.Add(this.textBoxY3);
-            this.groupBox6.Controls.Add(this.label13);
+            this.groupBox6.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
+            | System.Windows.Forms.AnchorStyles.Left)));
+            this.groupBox6.Controls.Add(this.comboBox3);
+            this.groupBox6.Controls.Add(this.propertyGrid3);
             this.groupBox6.Location = new System.Drawing.Point(521, 220);
             this.groupBox6.Margin = new System.Windows.Forms.Padding(4, 3, 4, 3);
             this.groupBox6.Name = "groupBox6";
             this.groupBox6.Padding = new System.Windows.Forms.Padding(4, 3, 4, 3);
-            this.groupBox6.Size = new System.Drawing.Size(229, 148);
+            this.groupBox6.Size = new System.Drawing.Size(229, 320);
             this.groupBox6.TabIndex = 32;
             this.groupBox6.TabStop = false;
-            this.groupBox6.Text = "Axis Text";
+            this.groupBox6.Text = "Earth Coordinates";
             // 
-            // label10
+            // propertyGrid1
             // 
-            this.label10.AutoSize = true;
-            this.label10.Location = new System.Drawing.Point(17, 118);
-            this.label10.Margin = new System.Windows.Forms.Padding(4, 0, 4, 0);
-            this.label10.Name = "label10";
-            this.label10.Size = new System.Drawing.Size(79, 15);
-            this.label10.TabIndex = 24;
-            this.label10.Text = "Text Size";
+            this.propertyGrid1.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
+            | System.Windows.Forms.AnchorStyles.Left) 
+            | System.Windows.Forms.AnchorStyles.Right)));
+            this.propertyGrid1.HelpVisible = false;
+            this.propertyGrid1.LineColor = System.Drawing.SystemColors.ControlDark;
+            this.propertyGrid1.Location = new System.Drawing.Point(12, 55);
+            this.propertyGrid1.Margin = new System.Windows.Forms.Padding(4);
+            this.propertyGrid1.Name = "propertyGrid1";
+            this.propertyGrid1.Size = new System.Drawing.Size(209, 258);
+            this.propertyGrid1.TabIndex = 33;
             // 
-            // textBoxX3
+            // propertyGrid2
             // 
-            this.textBoxX3.Location = new System.Drawing.Point(39, 22);
-            this.textBoxX3.Margin = new System.Windows.Forms.Padding(4, 3, 4, 3);
-            this.textBoxX3.Name = "textBoxX3";
-            this.textBoxX3.Size = new System.Drawing.Size(182, 25);
-            this.textBoxX3.TabIndex = 0;
+            this.propertyGrid2.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
+            | System.Windows.Forms.AnchorStyles.Left) 
+            | System.Windows.Forms.AnchorStyles.Right)));
+            this.propertyGrid2.HelpVisible = false;
+            this.propertyGrid2.LineColor = System.Drawing.SystemColors.ControlDark;
+            this.propertyGrid2.Location = new System.Drawing.Point(8, 55);
+            this.propertyGrid2.Margin = new System.Windows.Forms.Padding(4);
+            this.propertyGrid2.Name = "propertyGrid2";
+            this.propertyGrid2.Size = new System.Drawing.Size(213, 258);
+            this.propertyGrid2.TabIndex = 34;
             // 
-            // label11
+            // propertyGrid3
             // 
-            this.label11.AutoSize = true;
-            this.label11.Location = new System.Drawing.Point(17, 27);
-            this.label11.Margin = new System.Windows.Forms.Padding(4, 0, 4, 0);
-            this.label11.Name = "label11";
-            this.label11.Size = new System.Drawing.Size(15, 15);
-            this.label11.TabIndex = 1;
-            this.label11.Text = "X";
+            this.propertyGrid3.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
+            | System.Windows.Forms.AnchorStyles.Left) 
+            | System.Windows.Forms.AnchorStyles.Right)));
+            this.propertyGrid3.HelpVisible = false;
+            this.propertyGrid3.LineColor = System.Drawing.SystemColors.ControlDark;
+            this.propertyGrid3.Location = new System.Drawing.Point(8, 50);
+            this.propertyGrid3.Margin = new System.Windows.Forms.Padding(4);
+            this.propertyGrid3.Name = "propertyGrid3";
+            this.propertyGrid3.Size = new System.Drawing.Size(213, 263);
+            this.propertyGrid3.TabIndex = 35;
             // 
-            // label12
+            // comboBox1
             // 
-            this.label12.AutoSize = true;
-            this.label12.Location = new System.Drawing.Point(17, 87);
-            this.label12.Margin = new System.Windows.Forms.Padding(4, 0, 4, 0);
-            this.label12.Name = "label12";
-            this.label12.Size = new System.Drawing.Size(15, 15);
-            this.label12.TabIndex = 9;
-            this.label12.Text = "Z";
+            this.comboBox1.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left) 
+            | System.Windows.Forms.AnchorStyles.Right)));
+            this.comboBox1.FormattingEnabled = true;
+            this.comboBox1.Location = new System.Drawing.Point(12, 25);
+            this.comboBox1.Name = "comboBox1";
+            this.comboBox1.Size = new System.Drawing.Size(209, 23);
+            this.comboBox1.TabIndex = 34;
+            this.comboBox1.SelectedIndexChanged += new System.EventHandler(this.comboBox1_SelectedIndexChanged);
             // 
-            // TextSizeBox3
+            // comboBox2
             // 
-            this.TextSizeBox3.Location = new System.Drawing.Point(98, 113);
-            this.TextSizeBox3.Margin = new System.Windows.Forms.Padding(4, 3, 4, 3);
-            this.TextSizeBox3.Name = "TextSizeBox3";
-            this.TextSizeBox3.Size = new System.Drawing.Size(123, 25);
-            this.TextSizeBox3.TabIndex = 23;
+            this.comboBox2.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left) 
+            | System.Windows.Forms.AnchorStyles.Right)));
+            this.comboBox2.FormattingEnabled = true;
+            this.comboBox2.Location = new System.Drawing.Point(8, 25);
+            this.comboBox2.Name = "comboBox2";
+            this.comboBox2.Size = new System.Drawing.Size(209, 23);
+            this.comboBox2.TabIndex = 35;
+            this.comboBox2.SelectedIndexChanged += new System.EventHandler(this.comboBox2_SelectedIndexChanged);
             // 
-            // textBoxZ3
+            // comboBox3
             // 
-            this.textBoxZ3.Location = new System.Drawing.Point(39, 82);
-            this.textBoxZ3.Margin = new System.Windows.Forms.Padding(4, 3, 4, 3);
-            this.textBoxZ3.Name = "textBoxZ3";
-            this.textBoxZ3.Size = new System.Drawing.Size(182, 25);
-            this.textBoxZ3.TabIndex = 8;
-            // 
-            // textBoxY3
-            // 
-            this.textBoxY3.Location = new System.Drawing.Point(39, 52);
-            this.textBoxY3.Margin = new System.Windows.Forms.Padding(4, 3, 4, 3);
-            this.textBoxY3.Name = "textBoxY3";
-            this.textBoxY3.Size = new System.Drawing.Size(182, 25);
-            this.textBoxY3.TabIndex = 4;
-            // 
-            // label13
-            // 
-            this.label13.AutoSize = true;
-            this.label13.Location = new System.Drawing.Point(17, 57);
-            this.label13.Margin = new System.Windows.Forms.Padding(4, 0, 4, 0);
-            this.label13.Name = "label13";
-            this.label13.Size = new System.Drawing.Size(15, 15);
-            this.label13.TabIndex = 5;
-            this.label13.Text = "Y";
+            this.comboBox3.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left) 
+            | System.Windows.Forms.AnchorStyles.Right)));
+            this.comboBox3.FormattingEnabled = true;
+            this.comboBox3.Location = new System.Drawing.Point(8, 25);
+            this.comboBox3.Name = "comboBox3";
+            this.comboBox3.Size = new System.Drawing.Size(212, 23);
+            this.comboBox3.TabIndex = 36;
+            this.comboBox3.SelectedIndexChanged += new System.EventHandler(this.comboBox3_SelectedIndexChanged);
             // 
             // AxisOptionForm
             // 
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.None;
-            this.ClientSize = new System.Drawing.Size(767, 511);
+            this.ClientSize = new System.Drawing.Size(767, 606);
             this.Controls.Add(this.groupBox6);
             this.Controls.Add(this.groupBox5);
             this.Controls.Add(this.groupBox4);
@@ -485,7 +313,6 @@ namespace DDDSharp
             this.Text = "Axis";
             this.Load += new System.EventHandler(this.AxisOptionForm_Load);
             this.groupBox1.ResumeLayout(false);
-            this.groupBox1.PerformLayout();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox1)).EndInit();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox2)).EndInit();
             this.groupBox2.ResumeLayout(false);
@@ -496,26 +323,16 @@ namespace DDDSharp
             this.groupBox4.ResumeLayout(false);
             this.groupBox4.PerformLayout();
             this.groupBox5.ResumeLayout(false);
-            this.groupBox5.PerformLayout();
             this.groupBox6.ResumeLayout(false);
-            this.groupBox6.PerformLayout();
             this.ResumeLayout(false);
 
         }
 
         #endregion
-        private System.Windows.Forms.TextBox textBoxX1;
-        private System.Windows.Forms.Label label1;
-        private System.Windows.Forms.Label label6;
-        private System.Windows.Forms.TextBox textBoxZ1;
-        private System.Windows.Forms.TextBox textBoxY1;
-        private System.Windows.Forms.Label label4;
         private System.Windows.Forms.Button Cancelbutton2;
         private System.Windows.Forms.Button Okbutton1;
         private System.Windows.Forms.GroupBox groupBox1;
         private System.Windows.Forms.PictureBox pictureBox1;
-        private System.Windows.Forms.Label label3;
-        private System.Windows.Forms.TextBox TextSizeBox1;
         private System.Windows.Forms.PictureBox pictureBox2;
         private System.Windows.Forms.RadioButton radioButton1;
         private System.Windows.Forms.RadioButton radioButton2;
@@ -525,22 +342,12 @@ namespace DDDSharp
         private System.Windows.Forms.GroupBox groupBox4;
         private System.Windows.Forms.RadioButton radioButton3;
         private System.Windows.Forms.GroupBox groupBox5;
-        private System.Windows.Forms.Label label5;
-        private System.Windows.Forms.TextBox textBoxX2;
-        private System.Windows.Forms.Label label7;
-        private System.Windows.Forms.Label label8;
-        private System.Windows.Forms.TextBox TextSizeBox2;
-        private System.Windows.Forms.TextBox textBoxZ2;
-        private System.Windows.Forms.TextBox textBoxY2;
-        private System.Windows.Forms.Label label9;
         private System.Windows.Forms.GroupBox groupBox6;
-        private System.Windows.Forms.Label label10;
-        private System.Windows.Forms.TextBox textBoxX3;
-        private System.Windows.Forms.Label label11;
-        private System.Windows.Forms.Label label12;
-        private System.Windows.Forms.TextBox TextSizeBox3;
-        private System.Windows.Forms.TextBox textBoxZ3;
-        private System.Windows.Forms.TextBox textBoxY3;
-        private System.Windows.Forms.Label label13;
+        private System.Windows.Forms.PropertyGrid propertyGrid1;
+        private System.Windows.Forms.PropertyGrid propertyGrid2;
+        private System.Windows.Forms.PropertyGrid propertyGrid3;
+        private System.Windows.Forms.ComboBox comboBox1;
+        private System.Windows.Forms.ComboBox comboBox2;
+        private System.Windows.Forms.ComboBox comboBox3;
     }
 }

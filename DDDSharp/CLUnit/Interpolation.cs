@@ -1,14 +1,20 @@
-﻿using KdTree;
+﻿using DataCollection;
+using Graphics3D;
+using KdTree;
 using KdTree.Math;
+using MathNet.Numerics;
 using MathNet.Numerics.LinearAlgebra;
 using MathNet.Numerics.LinearAlgebra.Double;
 using OpenCLNet;
 using System;
-using System.IO;
 using System.Collections.Generic;
+using System.ComponentModel;
+using System.Diagnostics.Eventing.Reader;
+using System.IO;
+using System.IO.Compression;
 using System.Linq;
 using System.Threading;
-using DataCollection;
+using System.Threading.Tasks;
 
 // ReSharper disable SuggestBaseTypeForParameter
 namespace CLInterpolation
@@ -118,6 +124,11 @@ namespace CLInterpolation
             return $"{string.Join(";", Coordinates)} -> {Value}";
         }
     }
+    public struct InterpolateUnit 
+    {
+        public double x,y,z;
+        public long id;
+    }
     public class InterpolationResult
     {
         public enum ResultOptions
@@ -137,7 +148,8 @@ namespace CLInterpolation
         InverseDistanceWeighted = 0,
         RadicalBasisFunction = 1,   //径向基函数，高斯法
         Linear = 2,
-        DirectGridding = 3,
+        GriddedInterpolation = 3,
+        BoreholesMineralInterpolation = 5,   //钻孔矿体插值
         GeoProfilesGridding = 10,
         BoreholesPropertiesGridding = 20,
         //IDWLocal = 0, //反距离加权        
@@ -215,9 +227,71 @@ namespace CLInterpolation
         }
 
     }
+    /// <summary>
+    /// 钻孔柱状图插值，距离&角度约束
+    /// </summary>
+    public class CylinderInterpolator
+    {
+        public Vector64 V1 = new Vector64(), V2= new Vector64();
+        CTriangle3f triangle3f = new CTriangle3f();
+        public double AnglePower = 2; //阶次
+        public double DistancePower = 1; //阶次
+        public double MinimumDistance = 0;//最小钻孔间距
+        public double MaximumDistance = 100;//最大钻孔间距
+        float AnglePercent = 0.5f;
+        float DistancePercent = 0.5f;
+        public CylinderInterpolator()
+        {
+            V1 = new Vector64();
+            V2 = new Vector64();
+            triangle3f = new CTriangle3f(V1, V2, new Vector64());
+        }
+        public CylinderInterpolator(Vector64 v1,Vector64 v2)
+        {
+            V1 = v1;
+            V2 = v2;
+            triangle3f = new CTriangle3f(v1,v2,new Vector64());
+        }
+
+        public double GetInterpolatedValue( Vector64 p )
+        {
+            triangle3f.p1 = V1;
+            triangle3f.p2 = V2;
+            triangle3f.p3 = p;
+            //三角形内角[0,180]
+            double angle = triangle3f.GetAngle(2);
+            if ( angle <= 1e-6 ) return 0;
+            if (Math.Abs(angle - Math.PI) <= 1e-6) return 180;
+            return Vector64.toAngle(angle);            
+        }
+        public double GetInterpolatedOnDist(Vector64 p)
+        {
+            triangle3f.p1 = V1;
+            triangle3f.p2 = V2;
+            triangle3f.p3 = p;
+            double err = 1e-6;
+            //三角形内角[0,180]
+            double angle = triangle3f.GetAngle(2);
+            if (angle <= 1e-6) return 0;
+            if (Math.Abs(angle - Math.PI) <= 1e-6) return 180;
+
+            double dist = p.Distance((V1 + V2) / 2);
+            dist = Math.Min(p.Distance(V1), dist);
+            dist = Math.Min(p.Distance(V2), dist);
+
+            double scale = (dist - MinimumDistance) / (MaximumDistance - MinimumDistance);
+
+            angle = (1 - scale) * angle;
+            return Vector64.toAngle(angle);
+            
+        }
+    }
     public class InterpolatorBase
     {
-        public InterpolationMethod method;
+        public bool NearestValueOnly = false;//是否启用插值还是最近点
+        public const double MINE = 5e-4;
+        [CategoryAttribute("插值算法"), DisplayNameAttribute("插值算法"),ReadOnly(true)]
+        public InterpolationMethod method { get; set; } = InterpolationMethod.InverseDistanceWeighted;
         public string progressTitle;
         public DateTime startTime;
         public double timeSlip = 0; //time have spent (sec)实际耗费时间
@@ -225,12 +299,21 @@ namespace CLInterpolation
         public double timeLeft = 0;//time left  (sec)剩余时间
         public double percentage = 0;
 
+        [CategoryAttribute("大数据网格"), DisplayNameAttribute("启用")]
+        public bool BigGridData { get; set; } = false; //是否大数据网格
+        [CategoryAttribute("大数据网格"), DisplayNameAttribute("内存分块数")]
+        public int DividedNum { get; set; } = 1; //内存分块数
+        [CategoryAttribute("数据保存"), DisplayNameAttribute("网格文件"), ReadOnly(true)]
+        public string gridDataFile { get; set; } = "";
+
         public double mindist = 0;
         public double maxdist = 0;
 
         public List<Vector32> points = new List<Vector32>();
         public int xGrid = 50, yGrid = 50, zGrid = 50;
-        public double minx, maxx, miny, maxy, minz, maxz, minv, maxv;
+
+        public double minx_org, maxx_org, miny_org, maxy_org, minz_org, maxz_org, minv_org, maxv_org;
+        public double minx, maxx, miny, maxy, minz, maxz, minv, maxv; //geometry
         public double xstep, ystep, zstep;
 
         protected Vector64 normalizedOrg = new Vector64();//坐标圆点
@@ -239,14 +322,14 @@ namespace CLInterpolation
         public string errMsg = "";
         public const double ZeroValue = 1.0E-18; //极小值        
         public bool Normalized = false;
-        public bool threadStoped = false;
+        public bool threadStoped = false;        
         //GPU devices
         public CLInterpolationUnit[] clDevices = null;
 
         public string progressFile = "";
         public int progressStep = 0;   //计算进程 0，未开始，1完成距离矩阵，2完成矩阵求逆，3完成伴随矩阵，4完成grid计算
         public int progressRow = 0;    //计算进程的当前行   
-        public double progressPercent = 0;  //当前进度
+       // public double progressPercent = 0;  //当前进度
 
         //进程共享锁
         protected Object lock1 = new Object();
@@ -266,19 +349,28 @@ namespace CLInterpolation
         public GridPointsExt[] gridPoints = null;
         public int gridNX, gridNY, gridNZ;
         public double gridXStep, gridYStep, gridZStep;
-        
+        public bool EnableFloatNum = false;
+        public int floatNum = 6;
 
         //任务池，用于指定当前任务
         public Queue<TaskPoolIndices> taskPools = new Queue<TaskPoolIndices>();
         public struct TaskPoolIndices
         {
-            public long start; //当前任务位置
-            public int num;    //任务长度
-            public TaskPoolIndices(long _start, int _num)
+            public long start;  //当前任务位置
+            public int num;     //任务长度            
+            public int memindex;//内存起始位置            
+            public TaskPoolIndices(long _start, int _num,int _memindex =0)
             {
                 start = _start;
                 num = _num;
+                memindex = _memindex;
             }
+        }
+        public virtual void Dispose()
+        {
+            points.Clear();
+            grid3d = null;
+            gridPoints = null;
         }
         //创建任务队列
         public virtual int CreateGriddingTaskPools(long total, int batch = 100)
@@ -458,14 +550,15 @@ namespace CLInterpolation
             double z = normalizedScale * p.Z + normalizedOrg.Z;            
             return new Vector32(x, y,z, p.V);
         }
-
-        public virtual void CopyFrom(InterpolatorBase ip)
+        public virtual void CopyFromWithOutPoints(InterpolatorBase ip)
         {
-            points = new List<Vector32>(ip.points);
-            
             xGrid = ip.xGrid;
             yGrid = ip.yGrid;
             zGrid = ip.zGrid;
+            BigGridData = ip.BigGridData;
+            DividedNum = ip.DividedNum;
+            gridDataFile = ip.gridDataFile;
+
             minx = ip.minx;
             maxx = ip.maxx;
             miny = ip.miny;
@@ -477,6 +570,11 @@ namespace CLInterpolation
             xstep = ip.xstep;
             ystep = ip.ystep;
             zstep = ip.zstep;
+        }
+        public virtual void CopyFrom(InterpolatorBase ip)
+        {
+            points = new List<Vector32>(ip.points);
+            CopyFromWithOutPoints(ip);
         }
         public int pointCount { get { return points.Count; } }
         public virtual void SetGrid(int xn, int yn, int zn)
@@ -538,8 +636,8 @@ namespace CLInterpolation
         }
         public string formatTime(double second)
         {
-            int hours = (int)(second / 3600);
-            double sec1 = second - hours * 3600;
+            int hours = (int)(second / 3600.0);
+            double sec1 = second - hours * 3600.0;
             int minutes = (int)(sec1 / 60);
             double sec2 = Math.Round(sec1 - 60 * minutes, 0);
             string tmstr = hours + ":" + minutes + ":" + sec2;
@@ -567,6 +665,9 @@ namespace CLInterpolation
                 if (z > maxz) maxz = z;
                 if (value > maxv) maxv = value;
             }
+            //x = Math.Round(x, 2);
+            //y = Math.Round(y, 2);
+            //z = Math.Round(z, 2);
             points.Add(new Vector32((float)x, (float)y, (float)z, (float)value));
         }
         public virtual void AddPoints( List< Vector32 > _points, bool clearOld = true)
@@ -792,7 +893,7 @@ namespace CLInterpolation
         }
 
         //数据过滤，过滤重复数据 
-        public virtual int RemoveDuplicated(double zerobase = 0.0001)
+        public virtual int RemoveDuplicated(double zerobase = 1E-6)
         {
             if (points.Count < 2) return 0;
             double dist;
@@ -823,7 +924,8 @@ namespace CLInterpolation
             if (y2 - y1 > maxlen) maxlen = y2 - y1;
             if (z2 - z1 > maxlen) maxlen = z2 - z1;
 
-            double zero = maxlen * zerobase;
+            //double zero = maxlen * zerobase;
+            double zero = zerobase;
 
             progressTitle = "重复点检查...";
 
@@ -890,6 +992,21 @@ namespace CLInterpolation
         {
             return null;
         }
+        public virtual float[] GetInterpolatedValueCPU(int xn, int yn, int zn)
+        {
+            return null;
+        }
+       
+        public Int32XYZ GetIndices(ulong id, int nx, int ny, int nz)
+        {
+            ulong xy = (ulong)nx * (ulong)ny;
+            Int32XYZ xyz = new Int32XYZ();
+            xyz.z = (int)(id / xy);
+            ulong left = id % xy;
+            xyz.y = (int)(left / (ulong)nx);
+            xyz.x = (int)(left % (ulong)nx);
+            return xyz;
+        }
         //直接网格化，不需插值
         public virtual float[] DirectGridding(int xn, int yn, int zn)
         {
@@ -911,11 +1028,11 @@ namespace CLInterpolation
                 DateTime t2 = t1;
                 for (int i = 0; i < points.Count; i++)
                 {
-                    ix =(int)( (points[i].x - minx) / xstep );
-                    iy = (int)((points[i].y - miny) / ystep);
-                    iz = (int)((points[i].z - minz) / zstep);
-
+                    ix = ConvertData.Double2Int((points[i].x - minx) / xstep);
+                    iy = ConvertData.Double2Int((points[i].y - miny) / ystep);
+                    iz = ConvertData.Double2Int((points[i].z - minz) / zstep);
                     grid3d[ ix + iy * xn + iz * xn * yn ] = points[i].v;    
+
                     if (i % nstep == 0 )
                     {
                         t2 = DateTime.Now;
@@ -957,7 +1074,9 @@ namespace CLInterpolation
             base.Clear();
             _tree.Clear();
         }
-        public IdwInterpolatorLocalKdTree(int dimensions = 2, double power = 2, int numberOfNeighbours = 5)
+        public IdwInterpolatorLocalKdTree(int dimensions, 
+                                          double power, 
+                                          int numberOfNeighbours)
         {
             if (dimensions < 1)
                 throw new ArgumentOutOfRangeException(nameof(dimensions), dimensions,
@@ -1044,11 +1163,44 @@ namespace CLInterpolation
             ulong umatrix = row * sizeof(double);
             return umatrix + GetGridMemorySize();
         }
+        public Vector64 FindNearestPoint(double x, double y, double z)
+        {
+            double[] coordinates = new double[] { x, y, z };
+            if (_tree.Count < NumberOfNeighbours)
+            {
+                throw new IndexOutOfRangeException(
+                    $"The number of found points ({_tree.Count}) is less than " +
+                    $"the number of required neighbours ({NumberOfNeighbours}). Consider reducing " +
+                    $"the required number of Neighbours with '{nameof(NumberOfNeighbours)}' property.");
+            }
+
+            DPoint point;
+            if (_tree.TryFindValueAt(coordinates, out point))
+            {
+                return new Vector64(point.Coordinates[0], 
+                                    point.Coordinates[1], 
+                                    point.Coordinates[2], 
+                                    point.Value);                
+            }
+
+            var neighbours = _tree.GetNearestNeighbours(coordinates, NumberOfNeighbours);
+            if (neighbours.Length == 1)
+            {
+                point = neighbours[0].Value;
+                return new Vector64(point.Coordinates[0],
+                                    point.Coordinates[1],
+                                    point.Coordinates[2],
+                                    point.Value);
+            }
+            return FindNearestPoint(neighbours.Select(n => n.Value), coordinates);
+        }
+
         public override double GetInterpolatedValue(double x, double y, double z)
         {
             InterpolationResult ret = Interpolate(new double[] { x, y, z });
             return ret.Value;
         }
+
         public override float[] GetInterpolatedValue(int xn, int yn, int zn, Device[] devices = null)
         {
             percentage = 0;
@@ -1154,7 +1306,28 @@ namespace CLInterpolation
 
             return result;
         }
-
+        private Vector64 FindNearestPoint(IEnumerable<DPoint> points, double[] target)
+        {
+            double dx, dy, dz;
+            double dist = 0, mindist = 1E10;
+            Vector64 p = new Vector64();
+            foreach (var point in points)
+            {
+                dx = point.Coordinates[0] - target[0];
+                dy = point.Coordinates[1] - target[1];
+                dz = point.Coordinates[2] - target[2];
+                dist = dx * dx + dy * dy + dz * dz;
+                if ( dist < maxdist ) 
+                {
+                    mindist = dist;
+                    p.X = point.Coordinates[0];
+                    p.Y = point.Coordinates[1];
+                    p.Z = point.Coordinates[2];
+                    p.V = point.Value;
+                }
+            }
+            return p;
+        }
         private double CalculateWeightedAverage(IEnumerable<DPoint> points, double[] target)
         {
             var nominator = 0.0;
@@ -1191,7 +1364,7 @@ namespace CLInterpolation
             return result;
         }
     }//class IdwInterpolatorLocal
-
+    
     //反距离加权插值-global
     public class IdwInterpolatorGlobal : InterpolatorBase
     {
@@ -1200,7 +1373,7 @@ namespace CLInterpolation
         //散点坐标数组points，需要插值前输入到points数组
         //返回值：插值点值value
         -------------------------------------------------*/
-        public double power = 2;
+        public float Power { get; set; } = 2;
         public double[] distances = null;
         public IdwInterpolatorGlobal()
         {
@@ -1212,11 +1385,10 @@ namespace CLInterpolation
             ulong umatrix = row * sizeof(double);
             return umatrix + GetGridMemorySize();
         }
-
-        public override double GetInterpolatedValue(double x, double y, double z)
+        double GetValueWithInterpolation(double x, double y, double z)
         {
             //距离数组
-            //if (distances == null) distances = new double[points.Count];
+            if (distances == null) distances = new double[points.Count];
             double dist = 0;
             double fenmu = 0;
             double weight = 0;
@@ -1225,15 +1397,15 @@ namespace CLInterpolation
             {
                 p = points[i];
                 //距离平方
-                dist =  (x - p.x) * (x - p.x) +
+                dist = (x - p.x) * (x - p.x) +
                         (y - p.y) * (y - p.y) +
                         (z - p.z) * (z - p.z);
 
-                if (dist==0) return points[i].v;
-                
-                if (power == 1) weight = 1.0 / Math.Sqrt(dist);
-                else if (power == 2) weight = 1.0 / dist;
-                else weight = 1.0 / Math.Pow(dist, power / 2);
+                if (dist == 0) return points[i].v;
+
+                if (Power == 1) weight = 1.0 / Math.Sqrt(dist);
+                else if (Power == 2) weight = 1.0 / dist;
+                else weight = 1.0 / Math.Pow(dist, Power / 2);
 
                 fenmu += weight;
                 distances[i] = weight;
@@ -1245,9 +1417,42 @@ namespace CLInterpolation
                 //计算权重系数,加权
                 value += (points[i].v * distances[i] / fenmu);
             }
-            //distances = null;
+            distances = null;
             return value;
         }
+        double GetValueWithoutInterpolation(double x, double y, double z)
+        {
+            double dist, mindist = 1E10;
+            int id = -1;
+            Vector32 p;
+            for (int i = 0; i < points.Count; i++)
+            {
+                p = points[i];
+                //距离平方
+                dist =  (x - p.x) * (x - p.x) +
+                        (y - p.y) * (y - p.y) +
+                        (z - p.z) * (z - p.z);
+                if (dist == 0) return points[i].v;
+                if (dist < mindist) { mindist = dist; id = i;}
+            }//for (int i = 0; i < points.Count; i++)
+            if (id >= 0) return points[id].V;
+            else return 0;            
+        }
+
+        public override double GetInterpolatedValue(double x, double y, double z)
+        {
+            if( NearestValueOnly )return GetValueWithInterpolation(x, y, z);
+            else return GetValueWithoutInterpolation(x, y, z);
+        }
+
+        /// <summary>
+        /// 反距离加权全局插值
+        /// </summary>
+        /// <param name="xn"></param>
+        /// <param name="yn"></param>
+        /// <param name="zn"></param>
+        /// <param name="devices"></param>
+        /// <returns></returns>
         public override float[] GetInterpolatedValue(int xn, int yn, int zn, Device[] devices = null)
         {
             percentage = 0;
@@ -1255,15 +1460,25 @@ namespace CLInterpolation
             double x, y, z,val;
             long xy = xn * yn;
             long id = 0;
-
+            int sectionNum = 0;
+            Queue<InterpolateUnit> tasks = new Queue<InterpolateUnit>();
+            C3DGridDataStream gridStream = null;
             try
             {
                 distances = new double[points.Count];
-                grid3d = new float[xy * zn];
+
+                if (!BigGridData) grid3d = new float[xy * zn];
+                else 
+                {
+                    sectionNum = (int)(xy * zn / (float)DividedNum) + 1;
+                    grid3d = new float[sectionNum];
+                    gridStream = new C3DGridDataStream();
+                    gridStream.Create(gridDataFile, xn, yn, zn,minx,miny,minz,minv,maxx,maxy,maxz,maxv);
+                }
 
                 double sec = 0;
                 DateTime t1 = DateTime.Now;
-
+                int index = 0, section = 0;
                 for (int iz = 0; iz < zn; iz++)
                 {
                     z = minz + zstep * iz;
@@ -1275,19 +1490,48 @@ namespace CLInterpolation
                             x = minx + xstep * ix;
                             id = iz * xy + iy * xn + ix;
                             val = GetInterpolatedValue(x, y, z);
-                            if (double.IsNaN(val)) grid3d[id] = CSurferGrid.blankValuefloat;
-                            else grid3d[id] = (float)val;
+
+                            if (BigGridData && index >= sectionNum)
+                            {
+                                gridStream.WriteData(grid3d, 0, index);
+                                if (double.IsNaN(val)) grid3d[0] = CSurferGrid.blankValuefloat;
+                                else grid3d[0] = (float)val;
+                                section++;
+                            }
+                            else
+                            {
+                                if (double.IsNaN(val)) grid3d[index] = CSurferGrid.blankValuefloat;
+                                else grid3d[index] = (float)val;
+                            }
+
+                            index++;
                         }
                     }
+
                     if (iz == 0)
                     {
                         sec = (DateTime.Now - t1).TotalSeconds;
                     }
+
                     //if (k % step == 0)
                     {
                         timeLeft = (zn - iz - 1) * sec;
                         timeSlip += (iz + 1) * sec;
                         percentage = (double)(iz + 1) * 100 / zn;
+                    }
+                }
+
+                if (BigGridData && index > 0)//最后一段数据
+                {
+                    gridStream.WriteData(grid3d, 0, index);                    
+                }
+
+                if (BigGridData) 
+                {
+                    if (!gridStream.Close())
+                    {
+                        grid3d = null;
+                        errMsg = gridStream.errMessage;
                     }
                 }
                 distances = null;
@@ -1306,20 +1550,286 @@ namespace CLInterpolation
             distances = null;
         }
     }//end class global
+    public class IdwStratumInterpolatorGlobal : InterpolatorBase
+    {
+        /*--------反距离加权插值 地层插值------------------------
+        //输入数据:插值点位置x,y,z
+        //散点坐标数组points，需要插值前输入到points数组
+        //返回值：插值点值value
+        -------------------------------------------------*/
+        public float Power { get; set; } = 2;
+        
+        public StratumDatas Stratums = new StratumDatas();
+        public double zero = 1.0E-6;
+        public IdwStratumInterpolatorGlobal(StratumDatas stratums)
+        {
+            method = InterpolationMethod.InverseDistanceWeighted;
+            Stratums = stratums.Copy();           
+        }
+        bool IsZero(double value) 
+        {
+            return Math.Abs(value) <= zero;
+        }
+        public override ulong GetRequiredMemorySizeOnCPU()
+        {
+            ulong row = (ulong)points.Count;
+            ulong umatrix = row * sizeof(double);
+            return umatrix + GetGridMemorySize();
+        }
+        int GetValueWithInterpolation(double x, double y, double z)
+        {            
+            if ( Stratums.Count < 1 ) return -1;
+            int id = -1;
+            Vector32 p;
+            double dist = 0;
+            //double fenmu = 0;
+            double weight = 0;
+            double []weights = new double[Stratums.Count + 1];            
+            for (int i = 0; i < weights.Length; i++) weights[i] = 0;
+            
+            for (int i = 0; i < points.Count; i++)
+            {
+                p = points[i];
+                if (p.V < 0) id = -1;//地层编号
+                else id = (int)(p.V + 0.1);//地层编号
+                //距离平方
+                dist =  (x - p.x) * (x - p.x) +
+                        (y - p.y) * (y - p.y) +
+                        (z - p.z) * (z - p.z);
 
+                if (IsZero(dist)) { weights = null; return id; }
+                
+                if (Power == 2) weight = 1.0 / Math.Sqrt(dist);
+                else if (Power == 1) weight = 1.0 / dist;
+                else weight = 1.0 / Math.Pow(dist, Power / 2);
+                //fenmu += weight;
+                weights[id + 1 ] += weight;
+            }//for (int i = 0; i < points.Count; i++)
+
+            id = -1; weight = 0;
+            for (int i = 0; i < weights.Length; i++)
+            {
+                if( weights[i] > weight) {  weight = weights[i]; id = i - 1; }
+            }
+            weights = null;
+            return id;
+        }
+
+        int GetValueWithoutInterpolation(double x, double y, double z)
+        {
+            double dist, mindist = 1E10;
+            int curid = -1,id = -1;
+            Vector32 p;
+            for (int i = 0; i < points.Count; i++)
+            {
+                p = points[i];
+                if (p.V < 0) id = -1;
+                else id = (int)(p.V+0.1);
+                //距离平方
+                dist = (x - p.x) * (x - p.x) +
+                        (y - p.y) * (y - p.y) +
+                        (z - p.z) * (z - p.z);
+                if (IsZero(dist)) return id;
+                if (dist < mindist) { mindist = dist; curid = id; }
+            }//for (int i = 0; i < points.Count; i++)
+            return curid;
+        }
+
+        public override double GetInterpolatedValue(double x, double y, double z)
+        {
+            if (NearestValueOnly) return GetValueWithoutInterpolation(x, y, z); 
+            else return  GetValueWithInterpolation(x, y, z);
+        }
+
+        /// <summary>
+        /// 反距离加权全局插值
+        /// </summary>
+        /// <param name="xn"></param>
+        /// <param name="yn"></param>
+        /// <param name="zn"></param>
+        /// <param name="devices"></param>
+        /// <returns></returns>
+        public override float[] GetInterpolatedValue(int xn, int yn, int zn, Device[] devices = null)
+        {
+            percentage = 0;
+            progressTitle = "正在插值计算...";
+            double x, y, z, val;
+            long xy = xn * yn;
+            long id = 0;
+            int sectionNum = 0;
+            Queue<InterpolateUnit> tasks = new Queue<InterpolateUnit>();
+            C3DGridDataStream gridStream = null;
+            try
+            {   
+                if (!BigGridData) grid3d = new float[xy * zn];
+                else
+                {
+                    sectionNum = (int)(xy * zn / (float)DividedNum) + 1;
+                    grid3d = new float[sectionNum];
+                    gridStream = new C3DGridDataStream();
+                    gridStream.Create(gridDataFile, xn, yn, zn, minx, miny, minz, minv, maxx, maxy, maxz, maxv);
+                }
+
+                double sec = 0;
+                DateTime t1 = DateTime.Now;
+                int index = 0, section = 0;
+                for (int iz = 0; iz < zn; iz++)
+                {
+                    z = minz + zstep * iz;
+                    for (int iy = 0; iy < yn; iy++)
+                    {
+                        y = miny + ystep * iy;
+                        for (int ix = 0; ix < xn; ix++)
+                        {
+                            x = minx + xstep * ix;
+                            id = iz * xy + iy * xn + ix;
+                            val = GetInterpolatedValue(x, y, z);
+
+                            if (BigGridData && index >= sectionNum)
+                            {
+                                gridStream.WriteData(grid3d, 0, index);
+                                if (double.IsNaN(val)) grid3d[0] = CSurferGrid.blankValuefloat;
+                                else grid3d[0] = (float)val;
+                                section++;
+                            }
+                            else
+                            {
+                                if (double.IsNaN(val)) grid3d[index] = CSurferGrid.blankValuefloat;
+                                else grid3d[index] = (float)val;
+                            }
+
+                            index++;
+                        }
+                    }
+
+                    if (iz == 0)
+                    {
+                        sec = (DateTime.Now - t1).TotalSeconds;
+                    }
+
+                    //if (k % step == 0)
+                    {
+                        timeLeft = (zn - iz - 1) * sec;
+                        timeSlip += (iz + 1) * sec;
+                        percentage = (double)(iz + 1) * 100 / zn;
+                    }
+                }
+
+                if (BigGridData && index > 0)//最后一段数据
+                {
+                    gridStream.WriteData(grid3d, 0, index);
+                }
+
+                if (BigGridData)
+                {
+                    if (!gridStream.Close())
+                    {
+                        grid3d = null;
+                        errMsg = gridStream.errMessage;
+                    }
+                }
+                percentage = 100;
+                return grid3d;
+            }
+            catch (Exception e)
+            {
+                errMsg = "计算失败！" + e.Message;
+                return null;
+            }
+        }
+        public override void Clear()
+        {
+            base.Clear();
+            points.Clear();
+        }
+    }//end class global
     //规则网格插值，直接网格化
     public class GriddedInterpolator : InterpolatorBase
     {
         //original data range
-        C3DGridData grid3d0;
+        public C3DGridData grid3d0 = null;
+        [CategoryAttribute("搜索"), DisplayNameAttribute("网格半径")]
+        public int SearchingGridLength { get; set; } = 0;
+
         public GriddedInterpolator()
         {
-            method = InterpolationMethod.DirectGridding;
-        }
+            method = InterpolationMethod.GriddedInterpolation;
+        }       
         public override ulong GetRequiredMemorySizeOnCPU()
         {
             return GetGridMemorySize();
         }
+       
+        /// <summary>
+        /// 从点中创建X方向的网格
+        /// </summary>
+        /// <param name="col"></param>
+        /// <param name="err"></param>
+        /// <returns></returns>
+        public float[] CreateGridsFromPoints(int col, double err = 1e-6 )
+        {
+            float v;            
+            List<float> xx = new List<float>();
+            foreach(Vector32 p in points )
+            {
+                if (col == 0) v = p.x; // - minx;
+                else if (col == 1) v = p.y; // - miny;
+                else v = p.z; // - minz;
+                xx.Add(v);
+            }
+            xx.Sort();
+            if ( xx.Count < 1 ) return null;
+
+            List<float> xgrids = new List<float>();
+            float x = xx[0];
+            xgrids.Add(x);
+            for(int i = 1; i < xx.Count; i++)
+            {
+                if ( xx[i] > x ) 
+                {
+                    x = xx[i];
+                    xgrids.Add(x);
+                }
+            }
+            xx.Clear();
+            return xgrids.ToArray();
+        }
+        Dictionary<double ,int>CreateDictionary(double []xx)
+        {
+            Dictionary<double, int> dicts = new Dictionary<double, int>();
+            for (int i = 0; i < xx.Length; i++)
+            {
+                dicts.Add(xx[i], i);
+            }            
+            return dicts;
+        }
+       
+        public void GetStepFromPoints(ref double stepx, ref double stepy, ref double stepz,int maxNum = 100000)
+        {
+            //不可能的步长 - 用于过滤计算误差           
+            double minstepx = (maxx - minx) / maxNum;
+            double minstepy = (maxy - miny) / maxNum;
+            double minstepz = (maxz - minz) / maxNum;
+            double xx = 0, yy = 0, zz = 0;
+            stepx = maxx - minx;
+            stepy = maxy - miny;
+            stepz = maxz - minz;
+            foreach (Vector32 p in points)
+            {
+                xx = p.x - minx;
+                yy = p.y - miny;
+                zz = p.z - minz;
+                if( xx > minstepx && xx < stepx )stepx = xx;
+                if( yy > minstepy && yy < stepy) stepy = yy;
+                if( zz > minstepz && zz < stepz) stepz = zz;
+            }
+        }
+
+        /// <summary>
+        /// 从X数组中获取步长
+        /// </summary>
+        /// <param name="xx"></param>
+        /// <returns></returns>
         double GetStepFromArray(double []xx)
         {
             double v1 = 0;
@@ -1343,78 +1853,49 @@ namespace CLInterpolation
                     k++;                
             }
             return k;
+        }       
+        void ValueLimited(ref int ix, int x1, int x2)
+        {
+            if (ix < x1 ) ix = x1;
+            if ( ix > x2) ix = x2;
         }
         /// <summary>
         /// 从网格点数据中构造网格数据
         /// </summary>
         /// <param name="n">网格剖分数</param>
         /// <returns></returns>
-        C3DGridData CreateGrid3DFromPoints(int n = 10001)
+        C3DGridData CreateGrid3DFromPoints(int n = 20001)
         {
-            try 
+            //获取网格框架--可能是非均匀网格
+            float[] xgrids = CreateGridsFromPoints(0);
+            float[] ygrids = CreateGridsFromPoints(1);
+            float[] zgrids = CreateGridsFromPoints(2);            
+            //根据步长计算网格数目            
+            int nx0 = xgrids.Length;
+            int ny0 = ygrids.Length;
+            int nz0 = zgrids.Length;
+            C3DGridData data = new C3DGridData(nx0, ny0, nz0);          
+            data.ResetDataRange(minx,maxx,miny,maxy,minz,maxz,minv,maxv);
+            data.pXGrids = xgrids;
+            data.pYGrids = ygrids;
+            data.pZGrids = zgrids;
+            Int32XYZ xyz;
+            foreach (Vector32 p in points)
             {
-                double[] xx = new double[n];
-                double[] yy = new double[n];
-                double[] zz = new double[n];
-                for (int i = 0; i < n; i++)
-                {
-                    xx[i] = double.NaN;
-                    yy[i] = double.NaN;
-                    zz[i] = double.NaN;
-                }
-                double xs = (maxx - minx) / (n - 1);
-                double ys = (maxy - miny) / (n - 1);
-                double zs = (maxz - minz) / (n - 1);
-                int ix, iy, iz;
-                foreach (Vector32 p in points)
-                {
-                    ix = (int)((p.x - minx) / xs);
-                    xx[ix] = p.x;
-                    iy = (int)((p.y - miny) / ys);
-                    yy[iy] = p.y;
-                    iz = (int)((p.z - minz) / zs);
-                    zz[iz] = p.z;
-                }
-                int nx0 = GetGridFromArray(xx);
-                int ny0 = GetGridFromArray(yy);
-                int nz0 = GetGridFromArray(zz);
-                C3DGridData data = new C3DGridData(nx0,ny0,nz0);
-                data.xStep = GetStepFromArray(xx);
-                data.yStep = GetStepFromArray(yy);
-                data.zStep = GetStepFromArray(zz);
-                foreach (Vector32 p in points)
-                {
-                    ix = (int)((p.x - minx) / data.xStep);
-                    iy = (int)((p.y - miny) / data.yStep);
-                    iz = (int)((p.z - minz) / data.zStep);
-                    data.SetGridValue(ix,iy,iz,p.v);
-                }
-                data.minx = minx;
-                data.miny = miny;
-                data.minz = minz;
-                data.minv = minv;
-                data.maxx = maxx;
-                data.maxy = maxy;
-                data.maxz = maxz;
-                data.maxv = maxv;
-                xx = null;
-                yy = null;
-                zz = null;
-                return data;
-            }
-            catch(Exception e)
-            {
-                errMsg = e.Message;
-                return null;
-            }
-        }
+                xyz = data.GetIndices(p.toVector64());
+                data.SetGridValue(xyz.x, xyz.y, xyz.z, p.v);
+            }                     
+            return data;
+        }     
+
         public override double GetInterpolatedValue(double x, double y, double z)
         {
             if (grid3d0 == null) return double.NaN;
-            else return grid3d0.GetGridValueWithInterpolation(x, y, z);
+            else return grid3d0.GetGridValueWithInterpolation(x, y, z, SearchingGridLength);            
         }
         public override float[] GetInterpolatedValue(int xn, int yn, int zn, Device[] devices = null)
         {
+            return GetInterpolatedValueCPUParallel(xn,yn,zn);
             percentage = 0;
             progressTitle = "正在插值计算...";
             double x, y, z,val;
@@ -1424,8 +1905,6 @@ namespace CLInterpolation
             try
             {
                 grid3d0 = CreateGrid3DFromPoints();
-                if ( grid3d0 == null ) return null;
-
                 grid3d = new float[xn * yn * zn];
 
                 double sec = 0;
@@ -1442,7 +1921,7 @@ namespace CLInterpolation
                             x = minx + xstep * ix;
                             id = iz * xy + iy * xn + ix;
                             val = GetInterpolatedValue(x, y, z);
-                            if (double.IsNaN(val)) grid3d[id] = CSurferGrid.blankValuefloat;
+                            if ( double.IsNaN(val) ) grid3d[id] = CSurferGrid.blankValuefloat;
                             else grid3d[id] = (float)val;
                         }
                     }
@@ -1466,7 +1945,167 @@ namespace CLInterpolation
                 return null;
             }
         }
+        /// <summary>
+        /// 插值线程
+        /// </summary>
+        /// <param name="para"></param>
+        void InterpolationThread(Object para)
+        {
+            TaskPoolIndices task = (TaskPoolIndices)para;
+            ulong start = (ulong)task.start;//任务开始编号
+            ulong num = (ulong)task.num;     //任务数
+            ulong memindex = (ulong)task.memindex;//内存块起始位置
 
+            double x, y, z, val;
+            Int32XYZ xyz;           
+            ulong all = (ulong)xGrid * (ulong)yGrid * (ulong)zGrid;//全部任务数
+
+            DateTime t1 = DateTime.Now;
+
+            for (ulong id = start; id < start + num; id++)
+            {
+                if ( id >= all ) break;
+                xyz = GetIndices(id, xGrid, yGrid, zGrid);
+                x = minx + xstep * xyz.x;
+                y = miny + ystep * xyz.y;
+                z = minz + zstep * xyz.z;
+
+                val = GetInterpolatedValue(x, y, z);
+                grid3d[id - start + memindex] = (float)val;
+
+                Interlocked.Decrement(ref taskNum);
+                ulong nfinished = all - (ulong)taskNum;//已完成任务数
+
+                if (id - start > 0 && (id - start) % 100 == 0)
+                {
+                    timeLeft = taskNum * timePerStep;//剩余时间
+                    percentage = 100 * (double)nfinished / all;
+                }
+            }
+
+            Interlocked.Decrement(ref threadNum);
+            if (threadNum == 0)
+            {
+                percentage = 100;
+                taskDone.Set();
+            }
+
+        }
+        /// <summary>
+        /// 距离加权插值，CPU并行版
+        /// </summary>
+        /// <param name="xn"></param>
+        /// <param name="yn"></param>
+        /// <param name="zn"></param>
+        /// <param name="devices"></param>
+        /// <returns></returns>
+        int taskNum = 0; //任务数
+        int threadNum = 0; //线程数
+        AutoResetEvent taskDone = new AutoResetEvent(false);
+        public float[] GetInterpolatedValueCPUParallel(int xn, int yn, int zn)
+        {
+            timeLeft = 0;
+            timeSlip = 0;
+            percentage = 0;
+            progressTitle = "正在插值计算...";
+            ulong all = (ulong)xn * (ulong)yn * (ulong)zn;
+            C3DGridDataStream gridStream = null;
+            try
+            {
+                if( grid3d0 == null ) grid3d0 = CreateGrid3DFromPoints();
+                SetGrid(xn, yn, zn);
+
+                //试运行1个任务，得出预估时间
+                progressTitle = "正在估算计算时间...";
+                taskNum = 1;
+                TaskPoolIndices task = new TaskPoolIndices((long)all/2, 100);
+                grid3d = new float[100];
+                DateTime t1 = DateTime.Now;
+                InterpolationThread(task);
+                timePerStep = (DateTime.Now - t1).TotalMilliseconds/1000/100;
+                timeLeft = all * timePerStep;
+                //试运行1个任务，得出预估时间
+
+                percentage = 0;
+
+                grid3d = null;
+                progressTitle = "正在插值计算...";
+
+                taskDone = new AutoResetEvent(false);
+                taskNum = (int)all; 
+                int batch = Environment.ProcessorCount * 2;//CPU核数-线程数
+                batch = 1;
+                if (!BigGridData) 
+                { 
+                    grid3d = new float[all]; 
+                    DividedNum = 1; 
+                }
+                else //分块插值
+                {
+                    gridStream = new C3DGridDataStream();
+                    gridStream.Create(gridDataFile, xn, yn, zn, minx, miny, minz, minv, maxx, maxy, maxz, maxv);
+                }
+
+                //估计时间加速比 
+                timePerStep = timePerStep / batch;
+                ulong start = 0;
+                ulong sectionNum = all / (ulong)DividedNum + 1;//分块网格数据大小
+                ulong num = sectionNum / (ulong)batch;//单次任务数
+                //if (sectionNum % batch != 0) num++;
+
+                ulong written = 0;
+                for (int k = 0; k < DividedNum; k++)//grid分块数
+                {
+                    taskDone.Reset();
+                    threadNum = batch;
+                    if (sectionNum % (ulong)batch != 0) threadNum++;
+                    grid3d = new float[sectionNum + 1];
+                    ThreadPool.SetMaxThreads(batch, batch);
+                    for (int i = 0; i < batch; i++)
+                    {
+                        task = new TaskPoolIndices((long)start, (int)num, i * (int)num);
+                        start += num;
+                        ThreadPool.QueueUserWorkItem(InterpolationThread, task);
+                    }
+
+                    if (sectionNum % (ulong)batch != 0)//最后一次任务 
+                    {
+                        task = new TaskPoolIndices((long)start, (int)sectionNum - batch * (int)num, batch * (int)num);
+                        start += (sectionNum - (ulong)batch * num);
+                        ThreadPool.QueueUserWorkItem(InterpolationThread, task);
+                    }
+
+                    taskDone.WaitOne();//等待所有线程结束
+
+                    if (BigGridData)
+                    {
+                        if (written + sectionNum < all)
+                        {
+                            gridStream.WriteData(grid3d, 0, (int)sectionNum);
+                            written += sectionNum;
+                        }
+                        else
+                        {
+                            gridStream.WriteData(grid3d, 0, (int)(all - written));
+                            written = all;
+                        }
+                        grid3d = null;
+                    }
+                }//for (int k = 0; k < DividedNum; k++)
+                Clear();
+                //实际计算时间
+                timeSlip = (DateTime.Now - t1).TotalSeconds;
+                if (BigGridData) return new float[10];
+                else return grid3d;
+            }
+            catch (Exception e)
+            {
+                errMsg = "计算失败！" + e.Message;
+                Clear();
+                return null;
+            }
+        }
+        
         public override float[] DirectGridding(int xn, int yn, int zn)
         {
             return GetInterpolatedValue(xn, yn, zn);
@@ -1647,6 +2286,8 @@ namespace CLInterpolation
 
     }//end class
 
+
+
     /// <summary>
     /// 距离加权插值
     /// </summary>
@@ -1654,16 +2295,22 @@ namespace CLInterpolation
     {
         public int dimension = 3;   //维度 2，3
         //按矩形区域最长边计算比例0-100
-        public double searchRadiu = 10;  //搜索半径百分比，100全搜索（全局插值）
-        public double searchXScale = 1; //三个方向搜索比例因子
-        public double searchYScale = 1;
-        public double searchZScale = 1;
+        [CategoryAttribute("搜索"), DisplayNameAttribute("搜索半径%")]
+        public double searchRadiu { get; set; } = 10;  //搜索半径百分比，100全搜索（全局插值）
+        [CategoryAttribute("搜索"), DisplayNameAttribute("X方向比例")]
+        public double searchXScale { get; set; } = 1; //三个方向搜索比例因子
+        [CategoryAttribute("搜索"), DisplayNameAttribute("Y方向比例")]
+        public double searchYScale { get; set; } = 1;
+        [CategoryAttribute("搜索"), DisplayNameAttribute("Z方向比例")]
+        public double searchZScale { get; set; } = 1;
         double searchRadiuX = 0;    //3个方向的搜索步长
         double searchRadiuY = 0;    //3个方向的搜索步长
         double searchRadiuZ = 0;    //3个方向的搜索步长
         public bool IsMultiThread = false;
-        bool IsGlobalSearching = false; // 是否全局搜索
-        bool IsGridSearching = false; // 是否按搜索
+        [CategoryAttribute("搜索"), DisplayNameAttribute("全局搜索")]
+        public bool IsGlobalSearching { get; set; } = false; // 是否全局搜索
+        [CategoryAttribute("搜索"), DisplayNameAttribute("网格搜索")]
+        public bool IsGridSearching { get; set; } = false; // 是否按网格搜索
         GridPoints estimated = new GridPoints();
         double estimatedFragment = 0;
         
@@ -1673,15 +2320,26 @@ namespace CLInterpolation
         {
             method = InterpolationMethod.InverseDistanceWeighted;
         }
+        public override void CopyFromWithOutPoints( InterpolatorBase ip)
+        {
+            base.CopyFromWithOutPoints(ip);
+            IDWInterpolator ip1 = ip as IDWInterpolator;
+            searchRadiu = ip1.searchRadiu;
+            dimension = ip1.dimension;
+            searchRadiuX = ip1.searchRadiuX;
+            searchRadiuY = ip1.searchRadiuY;
+            searchRadiuZ = ip1.searchRadiuZ;
+        }
+        
         bool IsGlobalSearch()
         {
-            IsGridSearching = false;
+           // IsGridSearching = false;
             IsGlobalSearching = false;
 
             if ( searchRadiu >= 100 )
             {
                 IsGlobalSearching = true;
-                IsGridSearching = false;
+          //      IsGridSearching = false;
                 return true;
             }
 
@@ -1694,7 +2352,7 @@ namespace CLInterpolation
                  searchRadiuX >= (maxz - minz) )
             {
                 IsGlobalSearching = true;
-                IsGridSearching = false;
+            //    IsGridSearching = false;
                 return true;
             }
             
@@ -1702,7 +2360,7 @@ namespace CLInterpolation
             int yy = (int)(searchRadiuY / ystep) + 1;
             int zz = (int)(searchRadiuZ / zstep) + 1;
 
-            if ( xx * yy * zz * 8 < points.Count) IsGridSearching = true;
+         //   if ( xx * yy * zz * 8 < points.Count) IsGridSearching = true;
 
             return IsGlobalSearching;
         }
@@ -1739,9 +2397,9 @@ namespace CLInterpolation
                 double yy = rad * searchYScale;//各向异性介质搜索半径
                 double zz = rad * searchZScale;//各向异性介质搜索半径
 
-                gridNX = (int)((maxx - minx) / xx) + 1;
-                gridNY = (int)((maxy - miny) / yy) + 1;
-                gridNZ = (int)((maxz - minz) / zz) + 1;
+                gridNX = (int)((maxx - minx) / xx + 0.1) + 1;
+                gridNY = (int)((maxy - miny) / yy + 0.1) + 1;
+                gridNZ = (int)((maxz - minz) / zz + 0.1) + 1;
                 
                 gridXStep = (maxx - minx) / (gridNX - 1);
                 gridYStep = (maxy - miny) / (gridNY - 1);
@@ -1757,9 +2415,9 @@ namespace CLInterpolation
                 for (int i = 0; i < points.Count; i++)
                 {
                     p = points[i];
-                    ix = (int)( (p.x - minx) / gridXStep );
-                    iy = (int)( (p.y - miny) / gridYStep );
-                    iz = (int)( (p.z - minz) / gridZStep );
+                    ix = (int)( (p.x - minx) / gridXStep + 0.1);
+                    iy = (int)( (p.y - miny) / gridYStep + 0.1);
+                    iz = (int)( (p.z - minz) / gridZStep + 0.1);
                     gridPoints[ix + iy * gridNX + iz * gridNX * gridNY].Add(i);
                 }
 
@@ -1785,7 +2443,7 @@ namespace CLInterpolation
                 {
                     p = points[i];
                     rr = (x - p.x) * (x - p.x) + (y - p.y) * (y - p.y) + (z - p.z) * (z - p.z);
-                    if ( rr <= searchRadiuX* searchRadiuX) indices.Add(i);
+                    if ( rr <= searchRadiuX * searchRadiuX) indices.Add(i);
                 }
             }
             else//各向异性搜索
@@ -1853,9 +2511,9 @@ namespace CLInterpolation
             if (gridPoints == null || points.Count < 1) return indices;
 
             //网格所在位置ix,iy,iz
-            int ix = (int)((x - minx) / gridXStep);
-            int iy = (int)((y - miny) / gridYStep);
-            int iz = (int)((z - minz) / gridZStep);
+            int ix = (int)((x - minx) / gridXStep + 0.1);
+            int iy = (int)((y - miny) / gridYStep + 0.1);
+            int iz = (int)((z - minz) / gridZStep + 0.1);
 
             long id;
             long xy = gridNX * gridNY; //待搜索网格            
@@ -1873,7 +2531,8 @@ namespace CLInterpolation
             if (iz2 >= gridNZ) iz2 = gridNZ - 1;
 
             Vector32 p;
-            double rr = 0;
+            double rr = 0; //搜索半径平方
+            double rr2 = searchRadiuX * searchRadiuX;//各向同性搜索半径平方
             for (iz = iz1; iz <= iz2; iz++)
             {
                 for (iy = iy1; iy <= iy2; iy++)
@@ -1889,7 +2548,7 @@ namespace CLInterpolation
                             if ( searchXScale == searchYScale && searchXScale == searchZScale)
                             {
                                 rr = (p.X - x) * (p.X - x) + (p.Y - y) * (p.Y - y) + (p.Z - z) * (p.Z - z);
-                                if ( rr <= searchRadiuX* searchRadiuX ) indices.Add(k);
+                                if ( rr <= rr2 ) indices.Add(k);
                             }
                             else //各向异性
                             {
@@ -1951,6 +2610,8 @@ namespace CLInterpolation
             double val = double.NaN;
 
             InversePower ip = new InversePower();
+            ip.NearestValueOnly = NearestValueOnly;
+
             if (IsMultiThread) ip.Distances = null;//多线程版本不能用固定变量
             else ip.Distances = distances;//多线程版本不能用固定变量            
             if (IsGlobalSearching) //全局搜索
@@ -2101,64 +2762,67 @@ namespace CLInterpolation
             }
         }
         */
-
+      
         /// <summary>
         /// 插值计算线程
         /// </summary>
         /// <param name="para"></param>
-        void GetInterpolatedThread( Object para )
+        void IDWInterpolationThread( Object para )
         {
-            TaskPoolIndices task = (TaskPoolIndices)para;           
-            long id = 0;
+            TaskPoolIndices task = (TaskPoolIndices)para;
+
+            long start = task.start;//任务开始编号
+            int num = task.num;     //任务数
+            int memindex = task.memindex;//内存块起始位置
+
             double x, y, z,val;
-            for( long iz = task.start; iz< task.start + task.num; iz++ )
+            Int32XYZ xyz;
+            List<int> indices = null;
+            int all = xGrid * yGrid * zGrid;//全部任务数
+
+            DateTime t1 = DateTime.Now;
+
+            for ( long id = start; id< start + num; id++ )
             {
-                z = minz + zstep * iz;
-                for (int iy = 0; iy < yGrid; iy++)
+                if (id >= all) break;
+                xyz = GetIndices((ulong)id,xGrid,yGrid,zGrid);
+                x = minx + xstep * xyz.x;
+                y = miny + ystep * xyz.y;
+                z = minz + zstep * xyz.z;
+                if (IsGlobalSearching)//全局搜索
                 {
-                    y = miny + ystep * iy;
-                    for (int ix = 0; ix < xGrid; ix++)
-                    {
-                        x = minx + xstep * ix;
-                        id = iz * yGrid* xGrid + iy * xGrid + ix;
-                        if ( IsGlobalSearching )
-                        {
-                            val = GetInterpolatedValue(x, y, z);
-                            if (double.IsNaN(val)) grid3d[id] = CSurferGrid.blankValuefloat;
-                            else grid3d[id] = (float)val;
-                        }
-                        else
-                        {
-                            List<int> indices = new List<int>();
-                            if (IsGridSearching)
-                            {
-                                indices = SearchFromGrids(x, y, z);
-                            }
-                            else
-                            { 
-                                indices = SearchFromGlobal(x, y, z ); 
-                            }
-                            
-                            val = GetInterpolatedValueByIndices(x, y, z, indices, points);
-                            if (double.IsNaN(val)) grid3d[id] = CSurferGrid.blankValuefloat;
-                            else grid3d[id] = (float)val;
-                            
-                            indices.Clear();
-                        }
-                    }
+                    val = GetInterpolatedValue(x, y, z);
+                    if (double.IsNaN(val)) grid3d[id-start + memindex] = CSurferGrid.blankValuefloat;
+                    else grid3d[id - start + memindex] = (float)val;
                 }
-                                
+                else//按半径搜索
+                {                   
+                    if (IsGridSearching) indices = SearchFromGrids(x, y, z);                    
+                    else indices = SearchFromGlobal(x, y, z);
+                    val = GetInterpolatedValueByIndices(x, y, z, indices, points);
+                    if (double.IsNaN(val)) grid3d[id - start + memindex] = CSurferGrid.blankValuefloat;
+                    else grid3d[id - start + memindex] = (float)val;
+                    indices.Clear();
+                }
+                
                 Interlocked.Decrement(ref taskNum);
-                //已完成任务数
-                int nfinished = zGrid - taskNum;
-                timeLeft = taskNum * timePerStep;//剩余时间
-                percentage = 100 * (double)nfinished / zGrid;
-            }//     
-            if( taskNum == 0) 
+                int nfinished = all - taskNum;//已完成任务数
+
+                if ( id - start > 0 && (id-start)%100 == 0 )
+                {
+                   // timePerStep = (DateTime.Now - t1).TotalSeconds / (id-start);
+                    timeLeft = taskNum * timePerStep;//剩余时间
+                    percentage = 100 * (double)nfinished / all;
+                }
+            }
+
+            Interlocked.Decrement(ref threadNum);
+            if (threadNum == 0) 
             {
                 percentage = 100;
                 taskDone.Set();
             }
+
         }
         /// <summary>
         /// 距离加权插值，CPU并行版
@@ -2169,6 +2833,7 @@ namespace CLInterpolation
         /// <param name="devices"></param>
         /// <returns></returns>
         int taskNum = 0;
+        int threadNum = 0;
         AutoResetEvent taskDone = new AutoResetEvent(false);
         public float[] GetInterpolatedValueCPUParallel(int xn, int yn, int zn)
         {
@@ -2176,7 +2841,8 @@ namespace CLInterpolation
             timeSlip = 0;
             percentage = 0;
             progressTitle = "正在插值计算...";
-            long xy = xn * yn;            
+            int all = xn * yn * zn;
+            C3DGridDataStream gridStream = null;
             try
             {
                 UpdatePointsRange();
@@ -2191,56 +2857,95 @@ namespace CLInterpolation
                     {
                         if ( !CreateSearchGrids() ) return null;
                     }
-                }
-
-                grid3d = new float[xy * zn];
-                       
-                DateTime t1 = DateTime.Now;
+                }               
 
                 //试运行1个任务，得出预估时间
                 progressTitle = "正在估算计算时间...";
-                TaskPoolIndices task = new TaskPoolIndices(0,1);
-                GetInterpolatedThread(task);
+                taskNum = 1;
+                TaskPoolIndices task = new TaskPoolIndices(all/2,10);
+                grid3d = new float[10];
 
-                timePerStep = (DateTime.Now - t1).TotalSeconds;
+                //试运行1个任务，得出预估时间
+                DateTime t1 = DateTime.Now;
+                IDWInterpolationThread(task);
                 
-                timeLeft = (zn - 1) * timePerStep;   
-                percentage = 100.0 / zn;
+                timePerStep = (DateTime.Now - t1).TotalMilliseconds/10000.0;                
+                
+                timeLeft = all * timePerStep;
+                percentage = 0;
 
+                grid3d = null;
                 progressTitle = "正在插值计算...";
 
                 taskDone = new AutoResetEvent(false);
-                taskNum = zn-1;
-                
-                int batch = Environment.ProcessorCount;//CPU核数-线程数
-                int num = taskNum / batch;//单次任务数
+                taskNum = all;
+                int sectionNum = taskNum;
 
+                int batch = Environment.ProcessorCount;//CPU核数-线程数
+
+                if (!BigGridData) grid3d = new float[all];
+                else //分块插值
+                {   
+                    gridStream = new C3DGridDataStream();
+                    gridStream.Create(gridDataFile, xn, yn, zn, minx, miny, minz, minv, maxx, maxy, maxz, maxv);
+                }
+                
                 //估计时间加速比 
                 timePerStep = timePerStep / batch;
+                
+                int start = 0;
+                
+                sectionNum = all / DividedNum + 1;//分块网格数据大小
+                int num = sectionNum / batch;//单次任务数
+                //if (sectionNum % batch != 0) num++;
 
-                if ( taskNum % batch != 0 )ThreadPool.SetMaxThreads(batch + 1, batch + 1);
-                else ThreadPool.SetMaxThreads(batch, batch);
-
-                int start = 1;
-                for( int i = 0; i < batch; i++ )
+                int written = 0;
+                for (int k = 0; k < DividedNum; k++)//grid分块数
                 {
-                    task = new TaskPoolIndices(start, num);
-                    start += num;                    
-                    ThreadPool.QueueUserWorkItem(GetInterpolatedThread, task);
-                }
-                if( taskNum % batch != 0 )
-                {
-                    task = new TaskPoolIndices(start, taskNum % batch);
-                    ThreadPool.QueueUserWorkItem(GetInterpolatedThread, task);
-                }
+                    taskDone.Reset();
+                    
+                    threadNum = batch;
+                    if (sectionNum % batch != 0) threadNum++;
 
-                //等待所有线程结束
-                taskDone.WaitOne();
+                    grid3d = new float[sectionNum+1];
+                    ThreadPool.SetMaxThreads(batch, batch);
+                    
+                    for (int i = 0; i < batch; i++)
+                    {
+                        task = new TaskPoolIndices(start, num, i*num);
+                        start += num;
+                        ThreadPool.QueueUserWorkItem(IDWInterpolationThread, task);
+                    }
+
+                    if ( sectionNum % batch != 0 )//最后一次任务 
+                    {
+                        task = new TaskPoolIndices(start, sectionNum-batch*num, batch * num);
+                        start += (sectionNum - batch * num);
+                        ThreadPool.QueueUserWorkItem(IDWInterpolationThread, task);
+                    }
+
+                    taskDone.WaitOne();//等待所有线程结束
+
+                    if ( BigGridData )
+                    {
+                        if (written + sectionNum < all)
+                        {
+                            gridStream.WriteData(grid3d, 0, sectionNum);
+                            written += sectionNum;
+                        }
+                        else 
+                        { 
+                            gridStream.WriteData(grid3d, 0, all - written);
+                            written = all;
+                        }
+                        grid3d = null;
+                    }
+                }//for (int k = 0; k < DividedNum; k++)
 
                 //实际计算时间
                 timeSlip = (DateTime.Now - t1).TotalSeconds;
-                
-                return grid3d;
+                if (BigGridData) return new float[10];
+                else return grid3d;
             }
             catch (Exception e)
             {
@@ -2445,6 +3150,7 @@ namespace CLInterpolation
             timeSlip = (endTime - startTime).TotalSeconds;
             return grid3d;
         }
+
         public bool StartMultiGridInterpolation()
         {
             progressTitle = "正在进行网格插值计算...";
@@ -2545,7 +3251,9 @@ namespace CLInterpolation
 
                 var grid1 = clUnit.oclContext.CreateBuffer(MemFlags.READ_WRITE | MemFlags.COPY_HOST_PTR, clUnit.grid.Length * sizeof(float), clUnit.grid.ToFloatPtr());
                 
-                int k = 0;                
+                int k = 0;
+                int nearest_value = 0;
+                if (NearestValueOnly) nearest_value = 1;
                 clUnit.Kernels["gridInterpolate"].SetArg(k++, px1);
                 clUnit.Kernels["gridInterpolate"].SetArg(k++, py1);
                 clUnit.Kernels["gridInterpolate"].SetArg(k++, pz1);
@@ -2553,8 +3261,9 @@ namespace CLInterpolation
                 clUnit.Kernels["gridInterpolate"].SetArg(k++, grid1);
                 clUnit.Kernels["gridInterpolate"].SetArg(k++, startid);
                 clUnit.Kernels["gridInterpolate"].SetArg(k++, num);
+                clUnit.Kernels["gridInterpolate"].SetArg(k++, nearest_value);
                 clUnit.Kernels["gridInterpolate"].SetArg(k++, rad);
-                clUnit.Kernels["gridInterpolate"].SetArg(k++, power);
+                clUnit.Kernels["gridInterpolate"].SetArg(k++, Power);
                 clUnit.Kernels["gridInterpolate"].SetArg(k++, minx);
                 clUnit.Kernels["gridInterpolate"].SetArg(k++, miny);
                 clUnit.Kernels["gridInterpolate"].SetArg(k++, minz);
@@ -2636,6 +3345,7 @@ namespace CLInterpolation
                                         __global float * grid,
                                         int startid,
                                         int tasknum,
+                                        int nearest_value,
                                         double rad,double power,
                                         double minx,double miny,double minz,
                                         double xstep,double ystep,double zstep,
@@ -2664,6 +3374,7 @@ namespace CLInterpolation
             double dist = 0;
             double fenmu = 0;
             double sum = 0;
+            double mindist = 1E10;
             while( i < np )
             {
                 dist = CalculateDistance(x,y,z,px[i],py[i],pz[i],power);
@@ -2673,12 +3384,28 @@ namespace CLInterpolation
                     {
                        grid[ id - startid] = pv[i];
                        return;         
-                    }
-                    fenmu += (1.0 / dist);
+                    }                    
+                    else fenmu += (1.0 / dist);
                 }
+                if( nearest_value > 0 )
+                {
+                    if(dist < mindist)
+                    {
+                         mindist = dist;
+                         sum = pv[i];
+                     }
+                 }
                 i++;
             }
+
+            if( nearest_value > 0 )
+            {
+                grid[ id - startid] = sum;
+                return;
+            }
+
             i = 0;
+            sum = 0;
             while( i < np )
             {
                 dist = CalculateDistance(x,y,z,px[i],py[i],pz[i],power);
@@ -2788,6 +3515,72 @@ namespace CLInterpolation
             }
         }
     }
+    public class RBFInterpolationGlobal : InterpolatorBase
+    {
+        #region 变量定义
+        public int pointNum { get { return points.Count; } }
+        public double[] A = null;//距离矩阵
+        public double[] E = null;//扩展矩阵
+        public double[] a = null;//系数矩阵
+        #endregion 变量定义
+
+        public RBFInterpolationGlobal()
+        {
+            method = InterpolationMethod.RadicalBasisFunction;
+        }
+        public override double GetInterpolatedValue(double x, double y, double z)
+        {
+            int n = points.Count;
+            int i, j;
+            double r, sum = 0, sum1 = 0;            
+            DenseMatrix QMatix = new DenseMatrix(n, n);
+            //计算|Pi-Pj|矩阵Q，这里可能需要检查重点
+            Vector32 p1, p2;
+            for (i = 0; i < n; i++)
+            {
+                p1 = points[i];
+                for (j = 0; j < n; j++)
+                {
+                    p2 = points[j];
+                    r = Math.Sqrt((p1.x - p2.x) * (p1.x - p2.x) +
+                                   (p1.y - p2.y) * (p1.y - p2.y) +
+                                   (p1.z - p2.z) * (p1.z - p2.z) +
+                                    MINE * MINE);
+                    QMatix[i, j] = r;
+                }
+            }
+
+            Matrix<double> qm = QMatix.Inverse();
+            a = new double[n];
+
+            //求伴随矩阵a[j]
+            for (i = 0; i < n; i++)
+            {
+                sum = 0.0;
+                for (j = 0; j < n; j++)
+                {
+                    sum += qm[i, j] * points[j].v;
+                }
+                a[i] = sum;
+            }
+            qm.Clear();
+            QMatix.Clear();
+
+            sum1 = 0.0;
+            //************************************************************************	
+            for (j = 0; j < n; j++)
+            {
+                r = Math.Sqrt((x - points[j].x) * (x - points[j].x) +
+                               (y - points[j].y) * (y - points[j].y) +
+                               (z - points[j].z) * (z - points[j].z) +
+                               MINE * MINE);
+                sum1 = sum1 + r * a[j];
+            }
+            a = null;
+            return sum1;
+        }
+
+    }
     //径向基函数
     public class RBFInterpolation : InterpolatorBase
     {
@@ -2799,14 +3592,14 @@ namespace CLInterpolation
 
         public double[] A = null;//距离矩阵
         public double[] E = null;//扩展矩阵
-        public double[] a = null;//系数矩阵
+        public double[] aFactor = null;//系数矩阵
         public double[] lineA = null; //第K行A矩阵数据
         public double[] lineE = null;//第K行E矩阵数据
         
         //距离变换
         double minDist = 0;
         double maxDist = 0;
-        
+
         #endregion 变量定义
 
         public RBFInterpolation()
@@ -2892,21 +3685,21 @@ namespace CLInterpolation
                         for (long i = 0; i < E.Length; i++) br.Write(E[i]);
                     }                    
                     int alen = 0;
-                    if (a != null) alen = a.Length;
+                    if (aFactor != null) alen = aFactor.Length;
                     br.Write(alen);
                     if( alen > 0 )
                     {
-                        for (long i = 0; i < row; i++) br.Write(a[i]);
+                        for (long i = 0; i < row; i++) br.Write(aFactor[i]);
                     }                    
                 }
                 else if (progressStep == 3) //完成伴随矩阵3，未完成grid计算4
                 {
                     int alen = 0;
-                    if (a != null) alen = a.Length;
+                    if (aFactor != null) alen = aFactor.Length;
                     br.Write(alen);
                     if (alen > 0)
                     {
-                        for (long i = 0; i < row; i++) br.Write(a[i]);
+                        for (long i = 0; i < row; i++) br.Write(aFactor[i]);
                     }
                 }
                 br.Close();
@@ -2938,7 +3731,7 @@ namespace CLInterpolation
                 method = (InterpolationMethod)br.ReadInt32();
                 timeSlip = br.ReadDouble();
                 timeLeft = br.ReadDouble();
-                progressPercent = br.ReadDouble();
+                percentage = br.ReadDouble();
 
                 xGrid = br.ReadInt32();
                 yGrid = br.ReadInt32();
@@ -2994,8 +3787,8 @@ namespace CLInterpolation
                     int alen = br.ReadInt32();
                     if (elen > 0)
                     {
-                        a = new double[row];
-                        for (long i = 0; i < row; i++) a[i] = br.ReadDouble();
+                        aFactor = new double[row];
+                        for (long i = 0; i < row; i++) aFactor[i] = br.ReadDouble();
                     }
                 }
                 else if (progressStep == 3) //完成伴随矩阵3，未完成grid计算4
@@ -3003,8 +3796,8 @@ namespace CLInterpolation
                     int alen = br.ReadInt32();
                     if (alen > 0)
                     {
-                        a = new double[row];
-                        for (long i = 0; i < row; i++) a[i] = br.ReadDouble();
+                        aFactor = new double[row];
+                        for (long i = 0; i < row; i++) aFactor[i] = br.ReadDouble();
                     }
                 }
                 br.Close();
@@ -3020,7 +3813,7 @@ namespace CLInterpolation
         {
             A = null;
             E = null;
-            a = null;
+            aFactor = null;
             lineA = null;
             lineE = null;
             points.Clear();
@@ -3132,14 +3925,14 @@ namespace CLInterpolation
             {               
                 long id;
                 int row = points.Count;
-                a = new double[row];
+                aFactor = new double[row];
                 for (int i = 0; i < row; i++)
                 {
-                    a[i] = 0.0;
+                    aFactor[i] = 0.0;
                     for (int j = 0; j < row; j++)
                     {
                         id = i * row + j;
-                        a[i] += E[id] * pv[j];
+                        aFactor[i] += E[id] * pv[j];
                     }
                 }
                 return true;
@@ -3179,7 +3972,7 @@ namespace CLInterpolation
                             sum = 0;
                             for( int j = 0; j < points.Count; j++ )
                             {
-                                sum += a[j]* Math.Sqrt( (x - px[j]) * (x - px[j]) +
+                                sum += aFactor[j]* Math.Sqrt( (x - px[j]) * (x - px[j]) +
                                                         (y - py[j]) * (y - py[j]) +
                                                         (z - pz[j]) * (z - pz[j]));
                             }
@@ -3207,6 +4000,19 @@ namespace CLInterpolation
 
         }
 
+        double GetInterpolatedValueByThread(double x,double y,double z)
+        {
+            double r, sum1 = 0;
+            for (int j = 0; j < pointCount; j++)
+            {
+                r = Math.Sqrt((x - points[j].x) * (x - points[j].x) +
+                               (y - points[j].y) * (y - points[j].y) +
+                               (z - points[j].z) * (z - points[j].z) +
+                               MINE * MINE);
+                sum1 = sum1 + r * aFactor[j];
+            }
+            return sum1;
+        }
         /// <summary>
         /// 串行求单点值
         /// </summary>
@@ -3218,8 +4024,7 @@ namespace CLInterpolation
         {
             int n = points.Count;
             int i, j;
-            double r, sum = 0, sum1 = 0;
-            const double MINE = 5e-4;
+            double r, sum = 0, sum1 = 0;            
             DenseMatrix QMatix = new DenseMatrix(n, n);
             //计算|Pi-Pj|矩阵Q，这里可能需要检查重点
             Vector32 p1, p2;
@@ -3238,7 +4043,7 @@ namespace CLInterpolation
             }
 
             Matrix<double> qm = QMatix.Inverse();
-            a = new double[n];
+            aFactor = new double[n];
 
             //求伴随矩阵a[j]
             for (i = 0; i < n; i++)
@@ -3248,7 +4053,7 @@ namespace CLInterpolation
                 {
                     sum += qm[i, j] * points[j].v;
                 }
-                a[i] = sum;
+                aFactor[i] = sum;
             }
             qm.Clear();
             QMatix.Clear();
@@ -3261,9 +4066,9 @@ namespace CLInterpolation
                                (y - points[j].y) * (y - points[j].y) +
                                (z - points[j].z) * (z - points[j].z) +
                                MINE * MINE);
-                sum1 = sum1 + r * a[j];
+                sum1 = sum1 + r * aFactor[j];
             }
-            a = null;
+            aFactor = null;
             return sum1;
         }
 
@@ -3274,9 +4079,10 @@ namespace CLInterpolation
             if (devices == null)
             {
                 return GetInterpolatedValueCPU(nx, ny, nz);
+                //return GetInterpolatedValueCPUAnisotropy(nx, ny, nz,1);
             }
-            
-            if( progressStep < 1 ) percentage = 0;
+
+            if ( progressStep < 1 ) percentage = 0;
 
             startTime = DateTime.Now;
             progressTitle = "正在计算所需内存...";
@@ -3361,7 +4167,7 @@ namespace CLInterpolation
                // AllocateInverseTasks(row, size);
                 
                 progressTitle = "正在计算逆矩阵...";
-                if ( !StartMultiThreadMatrixInverse2(progressRow, progressPercent) )
+                if ( !StartMultiThreadMatrixInverse2(progressRow, percentage) )
                 {
                     progressTitle = "正在保存当前进度....";
                     SaveProgress(progressFile);
@@ -3417,7 +4223,7 @@ namespace CLInterpolation
             }
             
             progressStep = 4;
-            a = null;
+            aFactor = null;
             percentage = 100;
             
             Clear();
@@ -4647,11 +5453,11 @@ namespace CLInterpolation
             var px1 = clUnit.oclContext.CreateBuffer(MemFlags.READ_ONLY | MemFlags.USE_HOST_PTR, px.Length * sizeof(float), px.ToFloatPtr());
             var py1 = clUnit.oclContext.CreateBuffer(MemFlags.READ_ONLY | MemFlags.USE_HOST_PTR, py.Length * sizeof(float), py.ToFloatPtr());
             var pz1 = clUnit.oclContext.CreateBuffer(MemFlags.READ_ONLY | MemFlags.USE_HOST_PTR, pz.Length * sizeof(float), pz.ToFloatPtr());
-            var a1 = clUnit.oclContext.CreateBuffer( MemFlags.READ_ONLY | MemFlags.USE_HOST_PTR, a.Length * sizeof(double), a.ToDoublePtr());
+            var a1 = clUnit.oclContext.CreateBuffer( MemFlags.READ_ONLY | MemFlags.USE_HOST_PTR, aFactor.Length * sizeof(double), aFactor.ToDoublePtr());
             IntPtr ptPx1 = clUnit.oclCQ.EnqueueMapBuffer(px1, true, MapFlags.READ, 0, px.Length * sizeof(float), 0, null);
             IntPtr ptPy1 = clUnit.oclCQ.EnqueueMapBuffer(py1, true, MapFlags.READ, 0, py.Length * sizeof(float), 0, null);
             IntPtr ptPz1 = clUnit.oclCQ.EnqueueMapBuffer(pz1, true, MapFlags.READ, 0, pz.Length * sizeof(float), 0, null);
-            IntPtr ptA1 = clUnit.oclCQ.EnqueueMapBuffer(a1, true, MapFlags.READ, 0, a.Length * sizeof(double), 0, null);
+            IntPtr ptA1 = clUnit.oclCQ.EnqueueMapBuffer(a1, true, MapFlags.READ, 0, aFactor.Length * sizeof(double), 0, null);
 
             while (!clUnit.Stop && !threadStoped && task.num > 0 )
             {
@@ -4717,14 +5523,14 @@ namespace CLInterpolation
             clUnit.oclCQ.EnqueueUnmapMemObject(px1, px.ToFloatPtr());
             clUnit.oclCQ.EnqueueUnmapMemObject(py1, py.ToFloatPtr());
             clUnit.oclCQ.EnqueueUnmapMemObject(pz1, pz.ToFloatPtr());
-            clUnit.oclCQ.EnqueueUnmapMemObject(a1, a.ToDoublePtr());
+            clUnit.oclCQ.EnqueueUnmapMemObject(a1, aFactor.ToDoublePtr());
 
             a1.Dispose();
             px1.Dispose();
             py1.Dispose();
             pz1.Dispose();
 
-            a = null;
+            aFactor = null;
 
             clUnit.ReleaseSiginal();//线程结束信号
         }
@@ -5149,28 +5955,60 @@ namespace CLInterpolation
         //--------------串行算法-----------------------------------------------------------
         //--------------------------------------------------------------------------
         //--------矩阵求逆法插值--------------------
-        public float[] GetInterpolatedValueCPU(int xn, int yn, int zn)
+        int taskNum = 0;
+        int threadNum = 0;
+        AutoResetEvent taskDone = new AutoResetEvent(false);
+        protected void InterpolationThread(Object para)
+        {
+            TaskPoolIndices task = (TaskPoolIndices)para;
+            long start = task.start;//任务开始编号
+            int num = task.num;     //任务数
+            int memindex = task.memindex;//内存块起始位置
+            double x, y, z, val;
+            Int32XYZ xyz;            
+            int all = xGrid * yGrid * zGrid;//全部任务数
+
+            for (long id = start; id < start + num; id++)
+            {
+                if (id >= all) break;
+                xyz = GetIndices((ulong)id, xGrid, yGrid, zGrid);
+                x = minx + xstep * xyz.x;
+                y = miny + ystep * xyz.y;
+                z = minz + zstep * xyz.z;
+                val = GetInterpolatedValueByThread(x, y, z);
+                if (double.IsNaN(val)) grid3d[id - start + memindex] = CSurferGrid.blankValuefloat;
+                else grid3d[id - start + memindex] = (float)val;
+                Interlocked.Decrement(ref taskNum);
+                int nfinished = all - taskNum;//已完成任务数
+                if (id - start > 0 && (id - start) % 100 == 0)
+                {   
+                    timeLeft = taskNum * timePerStep;//剩余时间
+                    percentage = 100 * (double)nfinished / all;
+                }
+            }
+
+            Interlocked.Decrement(ref threadNum);
+            if (threadNum == 0)
+            {
+                percentage = 100;
+                taskDone.Set();
+            }
+
+        }
+        public override float[] GetInterpolatedValueCPU(int xn, int yn, int zn)
         {
             try
-            { 
+            {
+                grid3d = null;
+                int all = xn * yn * zn;
+                C3DGridDataStream gridStream = null;
                 SetGrid(xn, yn, zn);
-                grid3d = new float[xn * yn * zn]; //输出结果：插值结果数组，三维网格  
                 int n = points.Count;
-                int i, j, ix, iy, iz;
-                double m, r, sum = 0, sum1 = 0;
+                int ix, iy, iz;
+                double r, sum = 0, sum1 = 0;
                 double x, y, z, xstep, ystep, zstep;
-                const double MINE = 5e-4;
-
-                double[] a = new double[n];
-
-                /*------------------------------------------------
-                DenseMatrix QMatix = new DenseMatrix(n,n);            
-                if (QMatix == null)
-                {
-                    errMsg = "no enough memory to create matrix";
-                    return null;
-                }
-               ----------------------------------------------*/
+                
+                aFactor = new double[n];
                 double[,] QQ = new double[n, n];
                 progressTitle = "计算距离函数...";
                 startTime = DateTime.Now;
@@ -5190,19 +6028,16 @@ namespace CLInterpolation
                 // 5%
                 Vector32 p1, p2;
                 step = timeDistribute1 / n;
-                for (i = 0; i < n; i++)
+                for (int i = 0; i < n; i++)
                 {
                     p1 = points[i];
-                    for (j = 0; j < n; j++)
+                    for (int j = 0; j < n; j++)
                     {
                         p2 = points[j];
                         r = Math.Sqrt((p1.x - p2.x) * (p1.x - p2.x) +
                                        (p1.y - p2.y) * (p1.y - p2.y) +
                                        (p1.z - p2.z) * (p1.z - p2.z) +
-                                        MINE * MINE);
-                        //-------------------------------
-                        // QMatix[i, j] = r;
-                        //-------------------------------
+                                        MINE * MINE);                        
                         QQ[i, j] = r;
                     }
                     if (i == 0)
@@ -5215,29 +6050,23 @@ namespace CLInterpolation
                     percentage = (i + 1) * step;
                 }
 
-                progressTitle = "计算逆矩阵...";//20%
-
-                //------------------------------------
-                // Matrix<double> qm = QMatix.Inverse();
-
-                //  /*---------------------------------------                 
-                QQ = Inverse(QQ, timeDistribute2);               
-                //------------------------------------------*/
+                progressTitle = "计算逆矩阵...";//20%                              
+                QQ = Inverse(QQ, timeDistribute2); 
 
                 progressTitle = "计算伴随矩阵..."; //5%
                 t1 = DateTime.Now;
                 double curpos = percentage;
                 //求伴随矩阵a[j]
-                for (i = 0; i < n; i++)
+                for (int i = 0; i < n; i++)
                 {
                     sum = 0.0;
-                    for (j = 0; j < n; j++)
+                    for (int j = 0; j < n; j++)
                     {
                         //----------------------------------
                         // sum += qm[i, j] * points[j].v;
                         sum += QQ[i, j] * points[j].v;
                     }
-                    a[i] = sum;
+                    aFactor[i] = sum;
                     if (i == 0)
                     {
                         t2 = DateTime.Now;
@@ -5247,63 +6076,97 @@ namespace CLInterpolation
                     timeSlip += (i + 1) * sec;
                     percentage = curpos + (i + 1) * timeDistribute3 / n;
                 }
-
                 QQ = null;
 
-                ///*-----------------------
-                //qm.Clear();
-                //QMatix.Clear();       
-                //--------------------------*/
-
                 progressTitle = "网格插值..."; //70%
-                t1 = DateTime.Now;
-
                 xstep = (maxx - minx) / (xn - 1);
                 ystep = (maxy - miny) / (yn - 1);
                 zstep = (maxz - minz) / (zn - 1);
-                int id = 0;
-                curpos = percentage;
-                for (iz = 0; iz < zn; iz++)
+                //网格插值
+                taskDone = new AutoResetEvent(false);
+                taskNum = (int)all;
+                int batch = Environment.ProcessorCount * 2;//CPU核数-线程数
+                batch = 1;
+                if ( !BigGridData )
                 {
-                    z = minz + zstep * iz;
-                    for (iy = 0; iy < yn; iy++)
+                    grid3d = new float[all];
+                    DividedNum = 1;
+                }
+                else //分块插值
+                {
+                    gridStream = new C3DGridDataStream();
+                    gridStream.Create(gridDataFile, xn, yn, zn, minx, miny, minz, minv, maxx, maxy, maxz, maxv);
+                }
+                
+                //估计时间加速比                 
+                //试运行1个任务，得出预估时间
+                progressTitle = "正在估算计算时间...";
+                taskNum = 1;
+                TaskPoolIndices task = new TaskPoolIndices(0, 1000);
+                grid3d = new float[1000];
+
+                //试运行1个任务，得出预估时间
+                t1 = DateTime.Now;
+                InterpolationThread(task);
+                t2 = DateTime.Now;
+                timePerStep = (t2 - t1).TotalMilliseconds / 10000.0;
+                timeLeft = all * timePerStep;
+                timePerStep = timePerStep / batch;                
+                
+                int start = 0;                
+                int sectionNum = all / DividedNum + 1;//分块网格数据大小
+                int num = sectionNum / batch;//单次任务数
+                if (sectionNum % batch != 0) num++;
+                taskNum = all;
+
+                progressTitle = "正在进行网格插值...";
+                int written = 0;
+                for (int k = 0; k < DividedNum; k++)//grid分块数
+                {
+                    taskDone.Reset();
+
+                    threadNum = batch;
+                    if (sectionNum % batch != 0) threadNum++;
+
+                    grid3d = new float[sectionNum + 1];
+                    ThreadPool.SetMaxThreads(batch, batch);
+
+                    for (int i = 0; i < batch; i++)
                     {
-                        y = miny + ystep * iy;
-                        for (ix = 0; ix < xn; ix++)
-                        {
-                            x = minx + xstep * ix;
-                            sum1 = 0.0;
-                            //************************************************************************	
-                            for (j = 0; j < n; j++)
-                            {
-                                r = Math.Sqrt( (x - points[j].x) * (x - points[j].x) +
-                                               (y - points[j].y) * (y - points[j].y) +
-                                               (z - points[j].z) * (z - points[j].z) +
-                                               MINE * MINE);
-                                sum1 = sum1 + r * a[j];
-                            }
-                            //**********************************************************************	
-
-                            grid3d[id++] = (float)sum1;
-
-                        }//for (ix = 0; ix < xn; ix++)
-                    }//for (iy = 0; iy < yn; iy++)
-
-                    if (iz == 0)
-                    {
-                        t2 = DateTime.Now;
-                        sec = (t2 - t1).TotalSeconds;
+                        task = new TaskPoolIndices(start, num, i * num);
+                        start += num;
+                        ThreadPool.QueueUserWorkItem(InterpolationThread, task);
                     }
-                    timeLeft = (zn - iz) * sec;
-                    timeSlip += (iz + 1) * sec;
-                    percentage = curpos + (iz + 1) * timeDistribute4 / zn;
 
-                }//for (iz = 0; iz < zn; iz++)
+                    if (sectionNum % batch != 0)//最后一次任务 
+                    {
+                        task = new TaskPoolIndices(start, sectionNum - batch * num, batch * num);
+                        start += (sectionNum - batch * num);
+                        ThreadPool.QueueUserWorkItem(InterpolationThread, task);
+                    }
 
-                percentage = 100;
+                    taskDone.WaitOne();//等待所有线程结束
 
-                a = null;
-                return grid3d;
+                    if (BigGridData)
+                    {
+                        if (written + sectionNum < all)
+                        {
+                            gridStream.WriteData(grid3d, 0, sectionNum);
+                            written += sectionNum;
+                        }
+                        else
+                        {
+                            gridStream.WriteData(grid3d, 0, all - written);
+                            written = all;
+                        }
+                        grid3d = null;
+                    }
+                }//for (int k = 0; k < DividedNum; k++)
+
+                //实际计算时间
+                timeSlip = (DateTime.Now - t1).TotalSeconds;
+                if (BigGridData) return new float[10];
+                else return grid3d;
             }
             catch (Exception e)
             {
@@ -5311,7 +6174,195 @@ namespace CLInterpolation
                 return null;
             }
         }
-        
+        /// <summary>
+        /// 各向异性矿体查找
+        /// </summary>
+        /// <param name="xn"></param>
+        /// <param name="yn"></param>
+        /// <param name="zn"></param>
+        /// <param name="layerID">矿体编号</param>
+        /// <returns></returns>
+        public float[] GetInterpolatedValueCPUAnisotropy(int xn, int yn, int zn,int layerID)
+        {
+            try
+            {
+                grid3d = null;
+                int all = xn * yn * zn;
+                C3DGridDataStream gridStream = null;
+                SetGrid(xn, yn, zn);
+                int n = points.Count;
+                int ix, iy, iz;
+                double r, sum = 0, sum1 = 0;
+                double x, y, z, xstep, ystep, zstep;
+
+                aFactor = new double[n];
+                double[,] QQ = new double[n, n];
+                progressTitle = "计算距离函数...";
+                startTime = DateTime.Now;
+
+                double step = 0;
+                double timeDistribute1 = 5; //计算 | Pi - Pj | 矩阵Q
+                double timeDistribute2 = 20; //matrix
+                double timeDistribute3 = 5; //"计算伴随矩阵...";
+                double timeDistribute4 = 70; //网格插值
+                percentage = 0;
+
+                double sec = 0;
+                DateTime t1, t2;
+                t1 = t2 = startTime;
+
+                //各向异性距离计算
+
+                //计算|Pi-Pj|矩阵Q，这里可能需要检查重点
+                // 5%
+                Vector32 p1, p2;
+                step = timeDistribute1 / n;
+                for (int i = 0; i < n; i++)
+                {
+                    p1 = points[i];
+                    for (int j = 0; j < n; j++)
+                    {
+                        p2 = points[j];
+                        r = Math.Sqrt((p1.x - p2.x) * (p1.x - p2.x) +
+                                       (p1.y - p2.y) * (p1.y - p2.y) +
+                                       (p1.z - p2.z) * (p1.z - p2.z) +
+                                        MINE * MINE);
+                        QQ[i, j] = r;
+                    }
+                    if (i == 0)
+                    {
+                        t2 = DateTime.Now;
+                        sec = (t2 - t1).TotalSeconds;
+                        timeLeft = n * sec;
+                    }
+                    timeSlip += (i + 1) * sec;
+                    percentage = (i + 1) * step;
+                }
+
+                progressTitle = "计算逆矩阵...";//20%                              
+                QQ = Inverse(QQ, timeDistribute2);
+
+                progressTitle = "计算伴随矩阵..."; //5%
+                t1 = DateTime.Now;
+                double curpos = percentage;
+                //求伴随矩阵a[j]
+                for (int i = 0; i < n; i++)
+                {
+                    sum = 0.0;
+                    for (int j = 0; j < n; j++)
+                    {
+                        //----------------------------------
+                        // sum += qm[i, j] * points[j].v;
+                        sum += QQ[i, j] * points[j].v;
+                    }
+                    aFactor[i] = sum;
+                    if (i == 0)
+                    {
+                        t2 = DateTime.Now;
+                        sec = (t2 - t1).TotalSeconds;
+                        timeLeft = n * sec;
+                    }
+                    timeSlip += (i + 1) * sec;
+                    percentage = curpos + (i + 1) * timeDistribute3 / n;
+                }
+                QQ = null;
+
+                progressTitle = "网格插值..."; //70%
+                xstep = (maxx - minx) / (xn - 1);
+                ystep = (maxy - miny) / (yn - 1);
+                zstep = (maxz - minz) / (zn - 1);
+                //网格插值
+                taskDone = new AutoResetEvent(false);
+                taskNum = (int)all;
+                int batch = Environment.ProcessorCount * 2;//CPU核数-线程数
+                batch = 1;
+                if (!BigGridData)
+                {
+                    grid3d = new float[all];
+                    DividedNum = 1;
+                }
+                else //分块插值
+                {
+                    gridStream = new C3DGridDataStream();
+                    gridStream.Create(gridDataFile, xn, yn, zn, minx, miny, minz, minv, maxx, maxy, maxz, maxv);
+                }
+
+                //估计时间加速比                 
+                //试运行1个任务，得出预估时间
+                progressTitle = "正在估算计算时间...";
+                taskNum = 1;
+                TaskPoolIndices task = new TaskPoolIndices(0, 1000);
+                grid3d = new float[1000];
+
+                //试运行1个任务，得出预估时间
+                t1 = DateTime.Now;
+                InterpolationThread(task);
+                t2 = DateTime.Now;
+                timePerStep = (t2 - t1).TotalMilliseconds / 10000.0;
+                timeLeft = all * timePerStep;
+                timePerStep = timePerStep / batch;
+
+                int start = 0;
+                int sectionNum = all / DividedNum + 1;//分块网格数据大小
+                int num = sectionNum / batch;//单次任务数
+                if (sectionNum % batch != 0) num++;
+                taskNum = all;
+
+                progressTitle = "正在进行网格插值...";
+                int written = 0;
+                for (int k = 0; k < DividedNum; k++)//grid分块数
+                {
+                    taskDone.Reset();
+
+                    threadNum = batch;
+                    if (sectionNum % batch != 0) threadNum++;
+
+                    grid3d = new float[sectionNum + 1];
+                    ThreadPool.SetMaxThreads(batch, batch);
+
+                    for (int i = 0; i < batch; i++)
+                    {
+                        task = new TaskPoolIndices(start, num, i * num);
+                        start += num;
+                        ThreadPool.QueueUserWorkItem(InterpolationThread, task);
+                    }
+
+                    if (sectionNum % batch != 0)//最后一次任务 
+                    {
+                        task = new TaskPoolIndices(start, sectionNum - batch * num, batch * num);
+                        start += (sectionNum - batch * num);
+                        ThreadPool.QueueUserWorkItem(InterpolationThread, task);
+                    }
+
+                    taskDone.WaitOne();//等待所有线程结束
+
+                    if (BigGridData)
+                    {
+                        if (written + sectionNum < all)
+                        {
+                            gridStream.WriteData(grid3d, 0, sectionNum);
+                            written += sectionNum;
+                        }
+                        else
+                        {
+                            gridStream.WriteData(grid3d, 0, all - written);
+                            written = all;
+                        }
+                        grid3d = null;
+                    }
+                }//for (int k = 0; k < DividedNum; k++)
+
+                //实际计算时间
+                timeSlip = (DateTime.Now - t1).TotalSeconds;
+                if (BigGridData) return new float[10];
+                else return grid3d;
+            }
+            catch (Exception e)
+            {
+                errMsg = e.Message + "请尝试减少插值点数目.";
+                return null;
+            }
+        }
         /// <summary>
         /// CPU 版插值，采样数学库函数求逆矩阵
         /// </summary>
@@ -5336,7 +6387,6 @@ namespace CLInterpolation
                 int i, j, ix, iy, iz;
                 double m, r, sum = 0, sum1 = 0;
                 double x, y, z, xstep, ystep, zstep;
-                const double MINE = 5e-4;
 
                 double[] a = new double[n];
                 if (a == null) //内存不够
@@ -5635,7 +6685,7 @@ namespace CLInterpolation
             下面三个for做的就是这件事
             ***************************************************/
 
-            int i, j, k;
+            int i, j;
             double bs;
 
             progressTitle = "计算逆矩阵...";
@@ -5667,8 +6717,8 @@ namespace CLInterpolation
             t1 = DateTime.Now;
             curpos = percentage;
             //得到逆矩阵
-            //这样把A经过行变化变成I，那么右面的I就会变为A逆
-            for (k = 0; k < row; k++)
+            //这样把A经过行变化变成I，那么右面的I就会变为A逆            
+            for (int k = 0; k < row; k++)
             {
                 //1把对角元素变为1
                 if (matrix[k, k] >= 1 - minerr &&
@@ -5706,7 +6756,7 @@ namespace CLInterpolation
                     sec = (t2 - t1).TotalSeconds;
                 }
                 timeLeft = (row - k) * sec;
-                timeSlip += (k + 1) * sec;
+                timeSlip += (k + 1) * sec;             
                 percentage = curpos + avpercent * (k + 1);
             }
             //通过上面的变化
@@ -5820,5 +6870,416 @@ namespace CLInterpolation
             return NI;
         }
 
+    }
+    public class RBFBoreholesInterpolation : RBFInterpolation
+    {
+        int taskNum = 0;
+        int threadNum = 0;
+        AutoResetEvent taskDone = new AutoResetEvent(false);
+
+        [CategoryAttribute("矿层插值"), DisplayNameAttribute("钻孔列编号")]
+        public int boreholeColumn { get; set; } = -1; //设置钻孔列编号
+        [CategoryAttribute("矿层插值"), DisplayNameAttribute("矿体属性值")]
+        public string mineralproperties //矿体属性值
+        {
+            get 
+            {
+                string text = "";
+                for(int i=0;i<MineralValues.Count;i++)
+                {
+                    text += MineralValues[i].ToString();
+                    if( i < MineralValues.Count - 1 )text += ",";                    
+                }
+                return text;
+            }
+            set 
+            {
+                string text = value;
+                if( text.Length > 0 )
+                {
+                    MineralValues.Clear();
+                    string[]ss = text.Split(new char[] { ',', ' ', '\t' }, StringSplitOptions.RemoveEmptyEntries);
+                    for(int i=0;i<ss.Length;i++)
+                    {
+                        MineralValues.Add(int.Parse(ss[i]));
+                    }
+                }
+            }
+        }
+        [CategoryAttribute("矿层插值"), DisplayNameAttribute("变程倍数")]
+        public double DistantScale { get; set; } = 10; 
+        public List<short>boreholeIndices = new List<short>(); //每个点对应的钻孔编号
+        public List<int> MineralValues = new List<int>();//可能的矿层的值
+        int[] nearestMineralPoints = null;  //矿点最近点对
+        public override void Clear()
+        {
+            base.Clear();
+            boreholeIndices.Clear();
+            nearestMineralPoints = null;
+        }
+        public RBFBoreholesInterpolation()
+        {
+            method = InterpolationMethod.BoreholesMineralInterpolation;
+        }
+        public override void CopyFromWithOutPoints(InterpolatorBase ip)
+        {
+            base.CopyFromWithOutPoints(ip);
+            if (ip.method == InterpolationMethod.BoreholesMineralInterpolation) 
+            {
+                RBFBoreholesInterpolation ip1 = (RBFBoreholesInterpolation)ip;
+                boreholeColumn = ip1.boreholeColumn;
+                MineralValues.AddRange(ip1.MineralValues);
+                DistantScale = ip1.DistantScale;
+            }
+        }
+
+        bool IsMineralPoint(Vector32 p) //是否含矿点
+        {
+            int val = (int)(p.V + 0.1);
+            if (MineralValues.IndexOf(val) >= 0) return true;
+            return false;
+        }
+        /// <summary>
+        /// 计算矿点最近邻钻孔点对，-1无配对点
+        /// </summary>
+        void CalculateNearestMineralPoints()
+        {
+            nearestMineralPoints = null;
+            nearestMineralPoints = new int[points.Count];
+            
+            for (int i = 0; i < nearestMineralPoints.Length; i++)
+                nearestMineralPoints[i] = -1;
+
+            Vector32 p1, p2;
+            double dist, mindist;
+            int id = -1;
+            for(int i=0;i<points.Count;i++)
+            {
+                if ( nearestMineralPoints[i] >= 0 ) continue;
+                p1 = points[i];
+                if ( !IsMineralPoint(p1) ) continue;
+
+                mindist = 1E30;id = -1;                
+                for (int j = i+1; j < points.Count; j++)
+                {
+                    p2 = points[j];
+                    if (!IsMineralPoint(p2)) continue; //非矿点
+                    if (boreholeIndices[i] == boreholeIndices[j]) continue;//同钻孔
+                    dist = p1.Distance(p2);
+                    if (dist < mindist) { mindist = dist; id = j; }
+                }
+                if( id >=0 ) 
+                { 
+                    nearestMineralPoints[i] = id;
+                    nearestMineralPoints[id] = i;
+                }
+            }
+        }
+        /// <summary>
+        /// 串行求单点值
+        /// </summary>
+        /// <param name="x"></param>
+        /// <param name="y"></param>
+        /// <param name="z"></param>
+        /// <returns></returns>
+        public override double GetInterpolatedValue(double x, double y, double z)
+        {
+            int n = points.Count;
+            int i, j;
+            double r, sum = 0, sum1 = 0,factor = 10;           
+            DenseMatrix QMatix = new DenseMatrix(n, n);
+            //计算|Pi-Pj|矩阵Q，这里可能需要检查重点
+            Vector32 p1, p2;
+            for (i = 0; i < n; i++)
+            {
+                p1 = points[i];
+                for (j = 0; j < n; j++)
+                {
+                    p2 = points[j];
+                    r = Math.Sqrt((p1.x - p2.x) * (p1.x - p2.x) +
+                                   (p1.y - p2.y) * (p1.y - p2.y) +
+                                   (p1.z - p2.z) * (p1.z - p2.z) +
+                                    MINE * MINE);
+                    
+                    //近邻矿对
+                    if (nearestMineralPoints[i]>=0 &&
+                         (nearestMineralPoints[i] == j || 
+                          nearestMineralPoints[j] == i) )
+                    {
+                        r = r / DistantScale; //距离缩小
+                    }
+                    QMatix[i, j] = r;
+                }
+            }
+
+            Matrix<double> qm = QMatix.Inverse();
+            aFactor = new double[n];
+
+            //求伴随矩阵a[j]
+            for (i = 0; i < n; i++)
+            {
+                sum = 0.0;
+                for (j = 0; j < n; j++)
+                {
+                    sum += qm[i, j] * points[j].v;
+                }
+                aFactor[i] = sum;
+            }
+            qm.Clear();
+            QMatix.Clear();
+
+            sum1 = 0.0;
+            //************************************************************************	
+            for (j = 0; j < n; j++)
+            {
+                r = Math.Sqrt((x - points[j].x) * (x - points[j].x) +
+                               (y - points[j].y) * (y - points[j].y) +
+                               (z - points[j].z) * (z - points[j].z) +
+                               MINE * MINE);
+                sum1 = sum1 + r * aFactor[j];
+            }
+            aFactor = null;
+            return sum1;
+        }
+        public override float[] GetInterpolatedValue(int nx, int ny, int nz, Device[] devices)
+        {
+            SetGrid(nx, ny, nz);
+
+            if (devices == null)
+            {
+                return GetInterpolatedValueCPU(nx, ny, nz);
+                //return GetInterpolatedValueCPUAnisotropy(nx, ny, nz,1);
+            }
+            return null;
+        }
+
+        double [,] CreateDistanceMatrix()
+        {
+            progressTitle = "计算距离函数...";            
+            DateTime t1 = DateTime.Now, t2;
+            double r = 0,sec = 0;
+            percentage = 0;
+            Vector32 p1, p2;
+            int n = points.Count;
+            double step = 100.0 / n;
+            double[,] QQ = new double[n, n];
+            for (int i = 0; i < n; i++)
+            {
+                p1 = points[i];
+                QQ[i, i] = MINE;
+                for (int j = i + 1; j < n; j++)
+                {
+                    p2 = points[j];
+                    r = Math.Sqrt( (p1.x - p2.x) * (p1.x - p2.x) +
+                                   (p1.y - p2.y) * (p1.y - p2.y) +
+                                   (p1.z - p2.z) * (p1.z - p2.z) +
+                                    MINE * MINE);
+                    //近邻矿对
+                    if (nearestMineralPoints[i] >= 0 &&
+                         (nearestMineralPoints[i] == j ||
+                          nearestMineralPoints[j] == i))
+                    {
+                        r = r / DistantScale; //距离缩小
+                    }
+                    QQ[i, j] = QQ[j,i] = r;
+                }
+                if (i == 0)
+                {
+                    t2 = DateTime.Now;
+                    sec = (t2 - t1).TotalSeconds;
+                    timeLeft = n * sec;
+                }
+                timeSlip += (i + 1) * sec;
+                percentage = (i + 1) * step;
+            }
+            return QQ;
+        }
+        public double[,] Inverse1(double[,] matrix)
+        {
+            double minerr = 1.0E-30;//定义一个最小的数0
+            int row = matrix.GetLength(0); //获取矩阵的行数
+            int col = row;
+            double[,] exMatrix = new double[row, col];
+            if (exMatrix == null)
+            {
+                errMsg = "no enough memory.";
+                return null;
+            }
+            
+            int i, j;
+            double bs;
+            
+            percentage = 0;
+            progressTitle = "构建扩展矩阵...";
+            //构建扩展矩阵exMatrix
+            for (i = 0; i < row; i++)
+            {
+                for (j = 0; j < row; j++)
+                {
+                    if (j == i) exMatrix[i, j] = 1;
+                    else exMatrix[i, j] = 0;
+                }
+            }// for (i = 0; i < row; i++)
+
+            progressTitle = "计算逆矩阵...";
+            DateTime t1, t2;
+            t1 = t2 = DateTime.Now;
+            double sec = 0;                    
+            //得到逆矩阵
+            //这样把A经过行变化变成I，那么右面的I就会变为A逆            
+            for (int k = 0; k < row; k++)
+            {
+                //1把对角元素变为1
+                if (matrix[k, k] >= 1 - minerr &&
+                     matrix[k, k] <= 1 + minerr) matrix[k, k] = 1;
+                else
+                {
+                    bs = matrix[k, k];
+                    matrix[k, k] = 1;
+
+                    for (j = k + 1; j < row; j++)
+                        matrix[k, j] = matrix[k, j] / bs;
+                    for (j = 0; j < row; j++)
+                        exMatrix[k, j] = (exMatrix[k, j] / bs);
+                }
+
+                //2全部其他行减第k行，使第k列只有[k,k]元素是1，其余是0。   
+                //消去k列为0
+                for (i = 0; i < row; i++) //row
+                {
+                    if (i != k)
+                    {
+                        bs = matrix[i, k];
+                        //A矩阵
+                        for (j = k; j < row; j++)
+                            matrix[i, j] -= bs * matrix[k, j];
+                        //I矩阵
+                        for (j = 0; j < row; j++)
+                            exMatrix[i, j] -= bs * exMatrix[k, j];
+                    }
+                }
+                ///////////////////////////////////////////////////////
+                if (k == 0)
+                {
+                    t2 = DateTime.Now;
+                    sec = (t2 - t1).TotalSeconds;
+                }
+                timeLeft = (row - k-1) * sec;
+                timeSlip += (k + 1) * sec;
+                percentage = 100 * (k + 1) / (double)row;
+            }            
+            for (i = 0; i < row; i++)
+            {
+                for (j = 0; j < row; j++)
+                {
+                    matrix[i, j] = exMatrix[i, j];
+                }
+            }
+            exMatrix = null;
+            return matrix;
+        }
+        public override float[] GetInterpolatedValueCPU(int xn, int yn, int zn)
+        {
+            try
+            {
+                grid3d = null;
+                int all = xn * yn * zn;
+                C3DGridDataStream gridStream = null;
+                SetGrid(xn, yn, zn);
+                int n = points.Count;
+                double r, sum = 0, sum1 = 0;
+                double x, y, z, xstep, ystep, zstep;
+
+                percentage = 0;
+                progressTitle = "计算矿点空间函数...";
+                startTime = DateTime.Now;                
+                CalculateNearestMineralPoints();//计算最近孔矿对
+                aFactor = new double[n];
+
+                progressTitle = "计算距离函数...";
+                double[,] QQ = CreateDistanceMatrix();
+                
+                double sec = 0;
+                DateTime t1, t2;
+                t1 = t2 = startTime;
+
+                percentage = 0;
+                progressTitle = "计算逆矩阵...";//20%                              
+                QQ = Inverse1(QQ);
+                percentage = 0;
+                progressTitle = "计算伴随矩阵..."; //5%
+                t1 = DateTime.Now;                
+                //求伴随矩阵a[j]
+                for (int i = 0; i < n; i++)
+                {
+                    sum = 0.0;
+                    for (int j = 0; j < n; j++)
+                    {
+                        //----------------------------------
+                        // sum += qm[i, j] * points[j].v;
+                        sum += QQ[i, j] * points[j].v;
+                    }
+                    aFactor[i] = sum;
+                    if (i == 0)
+                    {
+                        t2 = DateTime.Now;
+                        sec = (t2 - t1).TotalSeconds;
+                        timeLeft = n * sec;
+                    }
+                    timeSlip += (i + 1) * sec;
+                    percentage = 100 * (double)(i + 1) / n;
+                }
+                QQ = null;
+
+                percentage = 0;
+                grid3d = new float[xn*yn*zn];
+                progressTitle = "网格插值..."; //70%
+                xstep = (maxx - minx) / (xn - 1);
+                ystep = (maxy - miny) / (yn - 1);
+                zstep = (maxz - minz) / (zn - 1);
+                int count = 0;
+                progressTitle = "正在进行网格插值...";
+                //Parallel.For(0, zn, iz =>
+                for (int iz = 0; iz < zn; iz++)
+                {
+                    for (int iy = 0; iy < yn; iy++)
+                    {
+                        for (int ix = 0; ix < xn; ix++)
+                        {
+                            sum1 = 0;
+                            x = minx + xstep * ix;
+                            y = miny + ystep * iy;
+                            z = minz + zstep * iz;
+                            for (int j = 0; j < pointCount; j++)
+                            {
+                                r = Math.Sqrt((x - points[j].x) * (x - points[j].x) +
+                                               (y - points[j].y) * (y - points[j].y) +
+                                               (z - points[j].z) * (z - points[j].z) +
+                                               MINE * MINE);
+                                sum1 = sum1 + r * aFactor[j];
+                            }
+                            grid3d[ix + iy * xn + iz * xn * yn] = (float)sum1;
+                        }
+                    }
+                    Interlocked.Increment(ref count);
+                    if (count == 1)
+                    {
+                        t2 = DateTime.Now;
+                        sec = (t2 - t1).TotalSeconds;                        
+                    }
+                    timeLeft = (zn - count) * sec;
+                    percentage = 100 * (double)count / zn;
+                }//);
+                //实际计算时间
+                timeSlip = (DateTime.Now - startTime).TotalSeconds;
+                return grid3d;
+            }
+            catch (Exception e)
+            {
+                errMsg = e.Message + "请尝试减少插值点数目.";
+                return null;
+            }
+        }
+        
     }
 }

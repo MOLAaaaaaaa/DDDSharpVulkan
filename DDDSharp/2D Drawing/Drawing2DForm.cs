@@ -137,13 +137,13 @@ namespace DDDSharp
 
         void LPtoDP(ref double x, ref double y)
         {
-            x = DrawRect.Left + DrawRect.Width * (x - DataRect.x1) / DataRect.Width;
-            y = DrawRect.Bottom - DrawRect.Height * (y - DataRect.y1) / DataRect.Height;
+            x = DrawRect.Left + DrawRect.Width * (x - DataRect.X1) / DataRect.Width;
+            y = DrawRect.Bottom - DrawRect.Height * (y - DataRect.Y1) / DataRect.Height;
         }
         void DPtoLP(ref double x, ref double y)
         {
-            x = DataRect.x1 + DataRect.Width * (x - DrawRect.Left) / DrawRect.Width;
-            y = DataRect.y1 + DataRect.Height * (DrawRect.Bottom - y) / DrawRect.Height;
+            x = DataRect.X1 + DataRect.Width * (x - DrawRect.Left) / DrawRect.Width;
+            y = DataRect.Y1 + DataRect.Height * (DrawRect.Bottom - y) / DrawRect.Height;
         }
         private void pictureBox1_MouseWheel(object sender, MouseEventArgs e)
         {
@@ -192,10 +192,10 @@ namespace DDDSharp
                 xx = yy / scale;
             }
 
-            DataRect.x1 = x0 - xx / 2.0;
-            DataRect.y1 = y0 - yy / 2.0;
-            DataRect.x2 = x0 + xx / 2.0;
-            DataRect.y2 = y0 + yy / 2.0; ;
+            DataRect.X1 = x0 - xx / 2.0;
+            DataRect.Y1 = y0 - yy / 2.0;
+            DataRect.X2 = x0 + xx / 2.0;
+            DataRect.Y2 = y0 + yy / 2.0; ;
         }
 
         //以p0点为中心缩放
@@ -219,10 +219,10 @@ namespace DDDSharp
             DPtoLP(ref x0, ref y0);
             double xx = DataRect.Width * scale;
             double yy = DataRect.Height * scale;
-            DataRect.x1 = x0 - xx / 2;
-            DataRect.x2 = x0 + xx / 2;
-            DataRect.y1 = y0 - yy / 2;
-            DataRect.y2 = y0 + yy / 2;
+            DataRect.X1 = x0 - xx / 2;
+            DataRect.X2 = x0 + xx / 2;
+            DataRect.Y1 = y0 - yy / 2;
+            DataRect.Y2 = y0 + yy / 2;
 
             //滚轮缩放时，重新计算点
             if (first.X != -1 && second.X != -1)

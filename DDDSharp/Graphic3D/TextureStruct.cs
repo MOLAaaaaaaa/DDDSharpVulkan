@@ -12,6 +12,7 @@ using System.Drawing.Imaging;
 using System.Drawing.Drawing2D;
 using GlmNet;
 using System.Globalization;
+using System.Runtime.InteropServices;
 
 namespace DataCollection
 {
@@ -191,8 +192,7 @@ namespace DataCollection
     public class TextureStruct
     {
         public string Name = "";
-        public Bitmap bmp = null;
-        
+        public Bitmap bmp = null;        
         public bool IsValidate()
         {
             return Enable && TextureFile.Length > 0;
@@ -214,6 +214,21 @@ namespace DataCollection
         public TextureWrapMode wrapMode { get; set; } = TextureWrapMode.CLAMP;//重复 or 拉伸
         [CategoryAttribute("Texture"), DisplayNameAttribute("Mag Filter")]
         public TextureMagFilter mode { get; set; } = TextureMagFilter.GL_LINEAR;
+
+        public DoubleRect textureRect = new DoubleRect(0,0,0,0);
+
+        [CategoryAttribute("Texture"), DisplayNameAttribute("Range")]
+        public string textureRectString
+        { 
+            get { return textureRect.toString(); }
+            set { textureRect.fromString(value); }
+        }
+        
+        [CategoryAttribute("Texture"), DisplayNameAttribute("Transparent Colors")]
+        public List<TransparentColorStruct> TransparentColors { get; set; } = new List<TransparentColorStruct>();
+        //颜色反转
+        [CategoryAttribute("Texture"), DisplayNameAttribute("Transparent Inverse")]
+        public bool TransparentInverse { get; set; } = false;
 
         //[CategoryAttribute("Texture"), DisplayNameAttribute("Blend")]
         //public bool Blend { get; set; } = false;
@@ -238,41 +253,102 @@ namespace DataCollection
         
         public TextureStruct Copy()
         {
-            TextureStruct t = new TextureStruct();
+            this.MemberwiseClone();
+            TextureStruct t = new TextureStruct();            
             t.Name = Name;
             t.Enable = Enable;
             t.bmp = bmp;
             t.mode = mode;
-            t.wrapMode = wrapMode;
+            t.wrapMode = wrapMode;            
+
             //t.Blend = Blend;
             //t.Alpha = Alpha;
             t.TextureFile = TextureFile;
             t.FlipHorizontal = FlipHorizontal;
             t.FlipVertical = FlipVertical;
+            t.textureRect = textureRect;
+            t.TransparentInverse = TransparentInverse;
+            t.TransparentColors = new List<TransparentColorStruct>(TransparentColors);
             return t;
         }
-        public bool Save122(BinaryWriter br)
+        bool IsInTransparentList(Color c)
+        {    
+            for(int i=0;i< TransparentColors.Count;i++)
+            {
+                TransparentColorStruct tc = TransparentColors[i];
+                if( C3DData.IsSimilarColor(tc.Color,c, tc.Deviation) ) return true;
+            }
+            return false;
+        }     
+
+        public void MakeTransparent(Bitmap bmp)
         {
-            C3DData.SaveString(br,Name);
-            br.Write(Enable);
-            br.Write((Int16)mode);
-            br.Write((Int16)wrapMode);
-            C3DData.SaveString(br, TextureFile);
-            br.Write(FlipHorizontal);
-            br.Write(FlipVertical);            
-            return true;
+            if (TransparentColors.Count < 1) return;
+
+            //1拷贝图像到数据bytes
+            BitmapData bd = bmp.LockBits(new Rectangle(0, 0, bmp.Width, bmp.Height), ImageLockMode.ReadWrite, PixelFormat.Format32bppArgb);
+            int stride = bd.Stride;
+            byte[] bytes = new byte[bmp.Height* stride];
+            Marshal.Copy(bd.Scan0, bytes, 0, bytes.Length);
+            
+            byte r, g, b, a;
+            for (int i = 0; i < bmp.Height; i++)
+            {
+                for (int j = 0; j < stride; j += 4)
+                {
+                    if (BitConverter.IsLittleEndian)
+                    {
+                        b = bytes[i * stride + j];
+                        g = bytes[i * stride + j + 1];
+                        r = bytes[i * stride + j + 2];
+                        a = bytes[i * stride + j + 3];
+                    }
+                    else 
+                    {
+                        a = bytes[i * stride + j];
+                        r = bytes[i * stride + j + 1];
+                        g = bytes[i * stride + j + 2];
+                        b = bytes[i * stride + j + 3];
+                    }
+
+                    if (IsInTransparentList(Color.FromArgb(r, g, b)))
+                    {
+                        if (!TransparentInverse) a = 0;
+                    }
+                    else if (TransparentInverse) a = 0;
+
+                    if (BitConverter.IsLittleEndian)
+                        bytes[i * stride + j + 3] = a;
+                    else bytes[i * stride + j] = a;                                     
+                }
+            }            
+            //拷贝数据bytes到图像
+            Marshal.Copy(bytes, 0, bd.Scan0, bytes.Length);
+            bmp.UnlockBits(bd);
+            bytes = null;
         }
-        public bool Load122(BinaryReader br)
+        /// <summary>
+        /// 将图片颜色置为透明,效率太低
+        /// </summary>
+        /// <param name="bmp"></param>
+        /// <param name="err">与指定颜色差值误差</param>
+        public void MakeTransparent_Old(Bitmap bmp)
         {
-            Name = C3DData.LoadString(br);
-            Enable = br.ReadBoolean();
-            mode = (TextureMagFilter)br.ReadInt16();
-            wrapMode = (TextureWrapMode)br.ReadInt16();
-            TextureFile = C3DData.LoadString(br);
-            FlipHorizontal = br.ReadBoolean();
-            FlipVertical = br.ReadBoolean();
-            return true;
+            if (TransparentColors.Count < 1) return;
+            for (int x = 0; x < bmp.Width; x++)
+            {
+                for (int y = 0; y < bmp.Height; y++)
+                {
+                    Color c = bmp.GetPixel(x,y);
+                    if (IsInTransparentList(c))
+                    {
+                        c = Color.FromArgb(0, c);
+                        bmp.SetPixel(x,y,c);
+                    }                    
+                }
+            }
         }
+
         public bool Save(BinaryWriter br)
         {
             C3DData.SaveString(br, Name);
@@ -284,6 +360,18 @@ namespace DataCollection
             br.Write(FlipVertical);
             //br.Write(Blend);
             //br.Write(Alpha);
+            br.Write(textureRect.X1);
+            br.Write(textureRect.Y1);
+            br.Write(textureRect.X2);
+            br.Write(textureRect.Y2);            
+            br.Write(TransparentColors.Count);
+
+            br.Write(TransparentInverse); //2025-8-28
+            for (int i=0;i< TransparentColors.Count;i++)
+            {
+                br.Write(TransparentColors[i].Color.ToArgb());
+                br.Write(TransparentColors[i].Deviation);
+            }
             return true;
         }
         public bool Load(BinaryReader br,float version = 1.2f)
@@ -300,6 +388,37 @@ namespace DataCollection
             //    Blend = br.ReadBoolean();
             //    Alpha = br.ReadSingle();
             //}
+            if( C3DData.DataVersion>=1.27f )
+            {
+                double x1,y1, x2, y2;
+                x1 = br.ReadDouble();
+                y1 = br.ReadDouble();
+                x2 = br.ReadDouble();
+                y2 = br.ReadDouble();
+                textureRect = new DoubleRect(x1,y1,x2,y2);
+            }
+            if (C3DData.DataVersion >= 1.28f)
+            {
+                TransparentColors.Clear();
+                int n = br.ReadInt32();
+                if (C3DData.DataVersion >= 1.31f)
+                {
+                    TransparentInverse = br.ReadBoolean();
+                    for (int i = 0; i < n; i++)
+                    {
+                        Color c = C3DData.LoadColor(br);
+                        float deviation = br.ReadSingle();
+                        TransparentColors.Add(new TransparentColorStruct(c, deviation));
+                    }
+                }
+                else 
+                {
+                    for (int i = 0; i < n; i++)
+                    {
+                        TransparentColors.Add(new TransparentColorStruct(C3DData.LoadColor(br)));
+                    }
+                }                
+            }
             return true;
         }
         public int GetWidth()

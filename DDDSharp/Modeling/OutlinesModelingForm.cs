@@ -1,14 +1,18 @@
-﻿using System;
+﻿using DataCollection;
+using DataCollection.DSI3DTriangulation;
+using OpenCLNet;
+using Poly2Tri;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data;
 using System.Drawing;
 using System.Linq;
+using System.Reflection.Emit;
+using System.Runtime;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
-using DataCollection;
-
 namespace DDDSharp.Modeling
 {
     public partial class OutlinesModelingForm : Form
@@ -23,38 +27,39 @@ namespace DDDSharp.Modeling
             InitializeComponent();
         }
 
+       
         /// <summary>
         /// 从空间轮廓线中构建三维地层模型
         /// </summary>
         /// <param name="polys"> 空间轮廓线对象数组-按顺序排列 </param>
         /// <returns>三维模型</returns>
-        TriangleObj CreateModelFromTracedPolygons( List<Polygon2D>polys )
-        {
-            string name = "Model-Of-" + polys[0].Name;
-            TriangleObj obj = new TriangleObj(name);
+        TriangleObj CreateModelFromTracedPolygons( List<ContourPolygon3D> contours)
+        {            
+            try
+            {
+                // 2. 初始化DSI三角化器
+                Dsi3DTriangulator triangulator = new Dsi3DTriangulator();
 
-            //----------------------------------------------
-            //在此处完成三维模型构建，写入TriangleObj对象 obj
-            //----------------------------------------------
-
-            //TriangleObj 对象
-            //obj.points - 三维点数组
-            //三维点数组结构 Vector32 p = obj.points[i];
-            //                      float x = p.X;
-            //                      float y = p.Y;
-            //                      float z = p.Z;
-            //                      float v = p.V; //点属性值
-
-            //obj.triangles - 三角形数组
-            //三角形结构：Int32XYZ tri = obj.triangles[i];
-            //                 顶点索引1 tri.Id1
-            //                 顶点索引2 tri.Id2
-            //                 顶点索引3 tri.Id3
-
-            return obj;
+                // 3. 构建三维三角网模型
+                var (vertices, triangles) = triangulator.BuildModel(contours);
+                triangulator.ExportToPlyAscii("dsi_3d_model_ascii.ply");
+                // 4. 输出结果               
+                TriangleObj obj = triangulator.toTriangleObj();
+                obj.Name = "Model-Of-" + contours[0].Name;
+                return obj;
+            }
+            catch (Exception ex)
+            {
+                errMessage = $"模型构建失败：{ex.Message}\n{ex.StackTrace}";                
+                return null;
+            }
         }
-
-        List<Polygon2D> GetTracedLayerPolygons( string layer )
+        /// <summary>
+        /// 创建投影后的多边形
+        /// </summary>
+        /// <param name="layer"></param>
+        /// <returns></returns>
+        List<Polygon2D> GetProjectedPolygons(string layer)
         {
             List<Polygon2D> polys = new List<Polygon2D>();
             foreach (PolygonSlicer slicer in slicers)
@@ -64,14 +69,83 @@ namespace DDDSharp.Modeling
                 foreach (Polygon2D poly in slicer.tracedGeoObjects.Polygons)
                 {
                     //过滤：无效，不可见，非多边形
-                    if (!poly.Visible || poly.IsValid || !poly.IsClosed) continue;
-                    if ( poly.Name.ToLower() == layer.ToLower() )
+                    if (!poly.Visible || !poly.IsValid || !poly.IsClosed) continue;
+                    if (poly.Name.ToLower() == layer.ToLower())
                     {
                         polys.Add(poly.toProjectedPolygon());
                     }
                 }
             }
             return polys;
+        }
+        ContourPolygon3D toContourPolygon3D(Polygon2D poly, PolygonSlicer slicer)
+        {
+            ContourPolygon3D contour = new ContourPolygon3D(poly.Name);
+            Polygon2D poly1 = poly.Smooth();
+            foreach (Vector64 p in poly1.points)
+            {
+                Vector64 p1 = slicer.toTracedPoint(p);
+                contour.AddVertex(p1.X, p1.Z, p1.Y);
+            }
+            return contour;
+        }
+        List<Polygon2D>CreateSmoothedPolygons(string layer)
+        {
+            List<Polygon2D> polys = new List<Polygon2D>();
+            foreach (PolygonSlicer slicer in slicers)
+            {
+                //pickup polygons named layer from slicers and store to polys
+                //此处：一个切片上可能存在多个同名的轮廓多边形，算法先考虑只有一个的情况
+                foreach (Polygon2D poly in slicer.tracedGeoObjects.Polygons)
+                {
+                    //过滤：无效，不可见，非多边形
+                    if (!poly.Visible || !poly.IsValid || !poly.IsClosed) continue;
+                    if (poly.Name.ToLower() == layer.ToLower())
+                    {
+                        polys.Add(poly.Smooth());
+                    }
+                }
+            }
+            return polys;
+        }
+
+        /// <summary>
+        /// 创建坐标映射后的多边形（3D）
+        /// </summary>
+        /// <param name="layer"></param>
+        /// <returns></returns>
+        List<ContourPolygon3D> GetTracedLayerPolygons( string layer )
+        {
+            List<Polygon2D> polys = CreateSmoothedPolygons(layer);
+            int max = 0;
+            for(int i=0;i<polys.Count; i++) 
+            {
+                if (polys[i].Count > max)max = polys[i].Count;
+            }
+            for (int i = 0; i < polys.Count; i++)
+            {
+                Polygon2D poly = polys[i];
+                List<Vector64> _points = Vector64.Resample(poly.points, max);
+                poly.points.Clear();
+                poly.points = _points;
+            }
+
+            List<ContourPolygon3D> contours = new List<ContourPolygon3D>();
+            for (int i = 0; i < polys.Count; i++)
+            {
+                Polygon2D poly = polys[i];
+                ContourPolygon3D contour = new ContourPolygon3D(layer);
+                foreach (Vector64 p in poly.points)
+                {
+                    Vector64 p1 = slicers[i].toTracedPoint(p);
+                    contour.AddVertex(p1.X,p1.Z,p1.Y);
+                }
+                contours.Add(contour);
+            }
+            
+            polys.Clear();
+
+            return contours;
         }
 
         TriangleObj CreateModelFromSlicers()
@@ -90,29 +164,30 @@ namespace DDDSharp.Modeling
                 return null;
             }
 
-            List<Polygon2D> polys = GetTracedLayerPolygons(Selectedlayers[0]);
-            if (polys.Count < 1) 
+            List<ContourPolygon3D> contours = GetTracedLayerPolygons(Selectedlayers[0]);
+            if (contours.Count < 1) 
             {
                 errMessage = "no enough polygons by selected layer.";
                 return null; 
             }
 
             //构建选中的地层模型
-            return CreateModelFromTracedPolygons(polys);
+            return CreateModelFromTracedPolygons(contours);
         }
 
         private void CreateButton_Click(object sender, EventArgs e)
         {
             //----此处产生三维模型 modelingResult ------------
             modelingResult = CreateModelFromSlicers();
+
             if( modelingResult == null )
             {
-                MessageBox.Show(errMessage, "创建模型失败！");
-                return;
+                MessageBox.Show(errMessage, "创建模型失败！");                
             }
-
-            DialogResult = DialogResult.OK;
-            this.Close();
+            else 
+            {
+                MessageBox.Show("创建模型成功！");
+            }
         }
         private void Cancel_Click(object sender, EventArgs e)
         {
@@ -287,6 +362,12 @@ namespace DDDSharp.Modeling
                 UpdateList1();
                 UpdateList2();
             }
-        }        
+        }
+
+        private void OK_Click(object sender, EventArgs e)
+        {
+            DialogResult = DialogResult.OK;
+            this.Close();
+        }
     }
 }

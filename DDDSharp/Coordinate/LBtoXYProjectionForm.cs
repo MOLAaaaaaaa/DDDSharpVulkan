@@ -18,10 +18,34 @@ namespace DDDSharp
         int curPage = 0;        
         int TotalPage = 0;
         bool Projected = false;
+        string datafile = "";        
+        EncodingInfo[] encodingInfos = null;
+        public Encoding encoding = Encoding.UTF8;
+        ProjectionConversion2 GSC = null;
+        bool IgnoreDeform = false;//忽略变形
+
+        List<Vector32>Points = new List<Vector32>();//经纬度原始点        
+        List<Vector32> ProjectedPoints = new List<Vector32>();//投影后的点XY
+        Dictionary<string, Vector32> LBDictionary = new Dictionary<string, Vector32>();
+        Dictionary<float, float> LDictionary = new Dictionary<float, float>();
+        Dictionary<float, float> BDictionary = new Dictionary<float, float>();
+
+        int LBfloatNum = 6;
+        int XYfloatNum = 6;
+        public int CodePage
+        {
+            get { return encoding.CodePage; }
+            set
+            {
+                encoding = Encoding.GetEncoding(value);
+            }
+        }
+
         public LBtoXYProjectionForm()
         {
             InitializeComponent();
-            FloatNumTextBox.Text = "10";
+            LBFloatNumTextBox.Text = LBfloatNum.ToString();
+            XYFloatNumTextBox.Text = XYfloatNum.ToString();
         }
 
         private void LBtoXYProjectionForm_Load(object sender, EventArgs e)
@@ -37,12 +61,35 @@ namespace DDDSharp
             names = Enum.GetNames(typeof(EnumUnit));
             UnitComboBox.Items.AddRange(names);
             UnitComboBox.SelectedIndex = 0;
+
+            BigNumerProject.Items.Add("False");
+            BigNumerProject.Items.Add("True");
+            BigNumerProject.SelectedIndex = 0;
+
+            DeformIgnoreComboBox.Items.Add("False");
+            DeformIgnoreComboBox.Items.Add("True");            
+            DeformIgnoreComboBox.SelectedIndex = 0;
+            if (IgnoreDeform == true) DeformIgnoreComboBox.SelectedIndex = 1;
+
+            InitEncodingCombox();
         }
        
+        void InitEncodingCombox()
+        {
+            EncodingComboBox.Items.Clear();
+            EncodingComboBox.SelectedIndex = -1;
+            encodingInfos = Encoding.GetEncodings();
+            for (int i = 0; i < encodingInfos.Length; i++)
+            {
+                EncodingComboBox.Items.Add(encodingInfos[i].DisplayName);
+                if (CodePage == encodingInfos[i].CodePage)
+                    EncodingComboBox.SelectedIndex = i;
+            }            
+        }
         void InitListViewHeader()
         {
             dataGridView1.Rows.Clear();
-            dataGridView1.Columns.Clear();
+            dataGridView1.Columns.Clear();          
 
             if (ascRows.Titles.Count < 1) return;
             
@@ -106,7 +153,9 @@ namespace DDDSharp
         bool LoadFrom(string filename)
         {
             ascRows.Clear();
-            return ascRows.Load(filename);
+            bool ret = ascRows.Load(filename, encoding);            
+            if(ascRows.errMessage.Length > 0 )MessageBox.Show(ascRows.errMessage);
+            return ret;
         }
         private void ImportFrom_Click(object sender, EventArgs e)
         {
@@ -116,18 +165,29 @@ namespace DDDSharp
 
                 if (dlg.ShowDialog() == DialogResult.OK)
                 {
-                    this.Cursor = Cursors.WaitCursor;
-                    if (LoadFrom(dlg.FileName))
-                    {
-                        PageNum = 500;
-                        TotalPage = (int)(ascRows.TotalRows / PageNum) + 1;                        
-                        InitListViewHeader();
-                        UpdateColumnComboxes();
-                        UpdateListView();
-                    }
-                    this.Cursor = Cursors.Default;
+                    datafile = dlg.FileName;
+                    ImportDataFrom(datafile);
                 }
             }
+        }
+
+        void ImportDataFrom(string filename)
+        {
+            this.Cursor = Cursors.WaitCursor;
+            
+            dataGridView1.Rows.Clear();
+            dataGridView1.Columns.Clear();
+            ascRows.Clear();            
+
+            if (LoadFrom(filename))
+            {
+                PageNum = 500;
+                TotalPage = (int)(ascRows.TotalRows / PageNum) + 1;
+                InitListViewHeader();
+                UpdateColumnComboxes();
+                UpdateListView();
+            }            
+            this.Cursor = Cursors.Default;
         }
 
         private void FirstButton_Click(object sender, EventArgs e)
@@ -229,90 +289,276 @@ namespace DDDSharp
             GetDefaultCentralLongitude();
         }
 
-        private void Convert_Click(object sender, EventArgs e)
+        bool GetCenterLB(ref float l0, ref float b0)
         {
-            if (ascRows.TotalRows < 1) return;
+            if (ascRows.TotalRows < 1) return false;
             int LSel = LongitudeComboBox.SelectedIndex;
             int BSel = LatitudeComboBox.SelectedIndex;
-            int cgcsSel = PlaneSystemcomboBox.SelectedIndex;
-            int stripSel = StripComboBox.SelectedIndex;
-            int unitSel = UnitComboBox.SelectedIndex;
-            if (LSel < 0 || BSel < 0 || stripSel < 0 || unitSel < 0) return;
-            stringRow  rows;
-            decimal B = 0, L = 0, x = 0, y = 0;
-            
-            GSCoordConvertionClass_2000 cc = new GSCoordConvertionClass_2000();
-            cc.L0 = decimal.Parse(CentralLongitudeTextBox.Text);
-            if(stripSel==0 )cc.Strip = EnumProjectionStrip.Strip3;
-            else cc.Strip = EnumProjectionStrip.Strip6;
+            if (LSel < 0 || BSel < 0) return false;
 
-            GSCoordConvertionClass_Xian80 cc80 = new GSCoordConvertionClass_Xian80();
-            cc80.L0 = decimal.Parse(CentralLongitudeTextBox.Text);
-            if (stripSel == 0) cc80.Strip = EnumProjectionStrip.Strip3;
-            else cc80.Strip = EnumProjectionStrip.Strip6;
-
-            int floatNum = int.Parse(FloatNumTextBox.Text);
-            List<string> BStrings = new List<string>();
-            List<string> LStrings = new List<string>();
-
-            Cursor = Cursors.WaitCursor;
-
-            for ( int i = 0; i < ascRows.TotalRows; i++ )
+            int k = 0;
+            l0 = b0 = 0;
+            stringRow rows;
+            float L1=0, L2=0, L=0,B1=0,B2=0, B=0;
+            for (int i = 0; i < ascRows.TotalRows; i++)
             {
                 rows = ascRows.GetRow(i);
-                if (!Decimal.TryParse(rows.GetColumn(BSel), out B)) return;
-                if (!Decimal.TryParse(rows.GetColumn(LSel), out L)) return;
-
-                //正算
-                //B = 36.155619734M;
-                //L = 105.254854607M;
-                //cc80.GetXYFromBL(B, L, ref x, ref y);
-                if ( cgcsSel == 1) cc80.GetXYFromBL(B, L, ref x, ref y);
-                else cc.GetXYFromBL(B, L, ref x, ref y);
-                if (unitSel == 1) { x = x / 1000; y = y / 1000; }
-                x = Math.Round(x,floatNum);
-                y = Math.Round(y, floatNum);
-                BStrings.Add(x.ToString());
-                LStrings.Add(y.ToString());
-            }
-
-            if (!Projected)
-            {
-                ascRows.Titles.Add("Projected_X");
-                ascRows.Titles.Add("Projected_Y");
-            }
-
-            for(int i = 0; i < ascRows.TotalRows; i++ )
-            {
-                rows = ascRows.GetRow(i);
-                if (!Projected) 
+                if ( !float.TryParse(rows.GetColumn(LSel), out L)) continue;
+                if ( !float.TryParse(rows.GetColumn(BSel), out B)) continue;
+                if (k == 0) 
                 { 
-                    rows.Add(BStrings[i]); 
-                    rows.Add(LStrings[i]); 
+                    L1 = L2 = L;
+                    B1 = B2 = B;
                 }
                 else
                 {
-                    int n = rows.Count;
-                    rows.pData[n - 2] = BStrings[i];
-                    rows.pData[n - 1] = LStrings[i];
+                    if (L1 > L) L1 = L;
+                    if (L2 < L) L2 = L;
+                    if (B1 > B) B1 = B;
+                    if (B2 < B) B2 = B;
+                }
+                k++;
+            }
+            l0 = (L1 + L2) / 2;
+            b0 = (B1 + B2) / 2;
+            return true;
+        }
+
+
+        /// <summary>
+        /// 投影为直角网格
+        /// </summary>
+        /// <returns></returns>
+        int ProjecteWithoutDeform()
+        {
+            if (ascRows.TotalRows < 1) return 0;
+            int LSel = LongitudeComboBox.SelectedIndex;
+            int BSel = LatitudeComboBox.SelectedIndex;
+            int unitSel = UnitComboBox.SelectedIndex;
+            if (LSel < 0 || BSel < 0 || unitSel < 0) return 0;
+
+            float l0 = 0, b0 = 0;
+            if (!GetCenterLB(ref l0, ref b0)) return 0;
+            if (!CreateGSC()) return 0;
+
+            if (!int.TryParse(LBFloatNumTextBox.Text, out LBfloatNum))
+            {
+                MessageBox.Show("Invalid Float Number.");
+            }
+            if (!int.TryParse(XYFloatNumTextBox.Text, out XYfloatNum))
+            {
+                MessageBox.Show("Invalid Float Number.");
+            }
+            stringRow rows;
+            float B1 = 0, L1 = 0;
+            LDictionary.Clear();
+            BDictionary.Clear();
+            for (int i = 0; i < ascRows.TotalRows; i++)
+            {
+                rows = ascRows.GetRow(i);
+                if (!float.TryParse(rows.GetColumn(LSel), out L1)) continue;
+                if (!float.TryParse(rows.GetColumn(BSel), out B1)) continue;
+                L1 = (float)Math.Round(L1, LBfloatNum);                
+                if ( !LDictionary.ContainsKey(L1))
+                {
+                    Vector32 p = GSC.GetXYFromBL(b0, L1);
+                    if (unitSel == 1) p.Y = p.Y / 1000;
+                    p.Y = (float)Math.Round(p.Y, XYfloatNum);
+                    LDictionary.Add(L1, p.Y);
+                }
+                B1 = (float)Math.Round(B1, LBfloatNum);
+                if ( !BDictionary.ContainsKey(B1) )
+                {
+                    Vector32 p = GSC.GetXYFromBL(B1, l0);
+                    if (unitSel == 1) p.X = p.X / 1000;
+                    p.X = (float)Math.Round(p.X, XYfloatNum);
+                    BDictionary.Add(B1, p.X);
+                }
+            }
+            return LDictionary.Count;
+        }
+
+        /// <summary>
+        /// 投影为直角网格
+        /// </summary>
+        /// <returns></returns>
+        int ProjecteToDictionary( bool ignoreDeform = false )
+        {
+            if (ascRows.TotalRows < 1) return 0;
+            int LSel = LongitudeComboBox.SelectedIndex;
+            int BSel = LatitudeComboBox.SelectedIndex;          
+            int unitSel = UnitComboBox.SelectedIndex;
+            if (LSel < 0 || BSel < 0 || unitSel < 0) return 0;
+            
+            float l0=0, b0=0;
+            if (!GetCenterLB(ref l0,ref b0)) return 0;
+            if (!CreateGSC()) return 0;
+
+            if ( !int.TryParse(LBFloatNumTextBox.Text, out LBfloatNum))
+            {
+                MessageBox.Show("Invalid Float Number.");
+            }
+            if ( !int.TryParse(XYFloatNumTextBox.Text, out XYfloatNum))
+            {
+                MessageBox.Show("Invalid Float Number.");
+            }   
+            stringRow rows;
+            float B1 = 0, L1 = 0;
+            LBDictionary.Clear();
+            for (int i = 0; i < ascRows.TotalRows; i++)
+            {
+                rows = ascRows.GetRow(i);
+                if (!float.TryParse(rows.GetColumn(LSel), out L1)) continue;
+                if (!float.TryParse(rows.GetColumn(BSel), out B1)) continue;
+                L1 = (float)Math.Round(L1, LBfloatNum);
+                B1 = (float)Math.Round(B1, LBfloatNum);
+                string ss = L1.ToString() + "," + B1.ToString();
+                if (!LBDictionary.ContainsKey(ss))
+                {
+                    Vector32 p = GSC.GetXYFromBL(B1, L1);
+                    if (unitSel == 1)
+                    {
+                        p.X = p.X / 1000;
+                        p.Y = p.Y / 1000;
+                    }
+                    p.X = (float)Math.Round(p.X, XYfloatNum);
+                    p.Y = (float)Math.Round(p.Y, XYfloatNum);
+                    LBDictionary.Add(ss, p);
+                }
+            }
+            return LBDictionary.Count;
+        }
+
+        void ProjectedToListView()
+        {
+            int LSel = LongitudeComboBox.SelectedIndex;
+            int BSel = LatitudeComboBox.SelectedIndex;
+            float B1 = 0, L1 = 0;
+
+            if ( !Projected )
+            {
+                ascRows.Titles.Add("Projected_North");
+                ascRows.Titles.Add("Projected_East");
+            }
+            Vector32 p = new Vector32();
+            string format = "f" + XYfloatNum;
+            for (int i = 0; i < ascRows.TotalRows; i++)
+            {
+                stringRow rows = ascRows.GetRow(i);
+                if (!float.TryParse(rows.GetColumn(LSel), out L1)) continue;
+                if (!float.TryParse(rows.GetColumn(BSel), out B1)) continue;
+                L1 = (float)Math.Round(L1, LBfloatNum);
+                B1 = (float)Math.Round(B1, LBfloatNum);
+                
+                if( IgnoreDeform )
+                {
+                    p.Y = LDictionary[L1];
+                    p.X = BDictionary[B1];
+                }
+                else
+                {
+                    string ss = L1.ToString() + "," + B1.ToString();
+                    p = LBDictionary[ss];
+                }
+
+                if ( !Projected )
+                {
+                    rows.Add(p.X.ToString());
+                    rows.Add(p.Y.ToString());
+                }
+                else
+                {
+                    int n = rows.Count;                    
+                    rows.pData[n - 2] = p.X.ToString(format);
+                    rows.pData[n - 1] = p.Y.ToString(format);
                 }
                 ascRows.pData[i] = rows;
             }
 
-            Projected = true;
-            BStrings.Clear();
-            LStrings.Clear();
-            
-            Cursor = Cursors.Default;
+        }
+        private void Convert_Click(object sender, EventArgs e)
+        {
+            Cursor = Cursors.WaitCursor;
 
-            InitListViewHeader();
-            UpdateListView();
+            int count = 0;
+            if ( IgnoreDeform )count = ProjecteWithoutDeform();
+            else count =  ProjecteToDictionary();
+            if ( count > 0)
+            {
+                ProjectedToListView();
+                Projected = true;
+                InitListViewHeader();
+                UpdateListView();
+            }
+
+            Cursor = Cursors.Default;            
         }
 
-        private void button1_Click(object sender, EventArgs e)
+        bool CreateGSC()
         {
-            InitListViewHeader();
-            UpdateListView();
+            int stripSel = StripComboBox.SelectedIndex;
+            int unitSel = UnitComboBox.SelectedIndex;
+            int cgcsSel = PlaneSystemcomboBox.SelectedIndex;
+            double L0;
+            if (cgcsSel < 0 || stripSel < 0 || unitSel < 0) return false;
+            if (!double.TryParse(CentralLongitudeTextBox.Text, out L0))
+            {
+                MessageBox.Show("Central Longitude Missing !");
+                return false;
+            }
+            EnumProjectionCoordinate coord = (EnumProjectionCoordinate)Enum.Parse(typeof(EnumProjectionCoordinate), PlaneSystemcomboBox.SelectedItem.ToString());
+            EnumProjectionStrip strip = (EnumProjectionStrip)Enum.Parse(typeof(EnumProjectionStrip), StripComboBox.SelectedItem.ToString());
+            EnumUnit unit = (EnumUnit)Enum.Parse(typeof(EnumUnit), UnitComboBox.SelectedItem.ToString());
+
+            EnumProjectionCoordinate gsceum = (EnumProjectionCoordinate)cgcsSel;
+            if (gsceum == EnumProjectionCoordinate.CGCS2000)
+            {
+                GSC = new GSCoordConvertionClass_2000();
+                GSC.L0 = System.Convert.ToDecimal(L0);
+                if (stripSel == 0) GSC.Strip = EnumProjectionStrip.Strip3;
+                else GSC.Strip = EnumProjectionStrip.Strip6;
+            }
+            if (gsceum == EnumProjectionCoordinate.Xian80)
+            {
+                GSC = new GSCoordConvertionClass_Xian80();
+                GSC.L0 = System.Convert.ToDecimal(L0);
+                if (stripSel == 0) GSC.Strip = EnumProjectionStrip.Strip3;
+                else GSC.Strip = EnumProjectionStrip.Strip6;
+            }
+            if (gsceum == EnumProjectionCoordinate.Beijing54)
+            {
+                //GSC = new GSCoordConvertionClass_2000();
+                //GSC.L0 = System.Convert.ToDecimal(L0);
+                //if (stripSel == 0) GSC.Strip = EnumProjectionStrip.Strip3;
+                //else GSC.Strip = EnumProjectionStrip.Strip6;
+            }
+
+            GSC.IsBigNumber = false;
+            if (BigNumerProject.SelectedIndex == 1) GSC.IsBigNumber = true;
+            return true;
+        }
+        private void SingleConvert_Click(object sender, EventArgs e)
+        {
+            if (!CreateGSC()) return;
+
+            double L0, B =0, L = 0;            
+            if (!double.TryParse(inBtextBox.Text, out B))
+            {
+                MessageBox.Show("Latitude value missing !");
+                return;
+            }
+            if (!double.TryParse(inLtextBox.Text, out L))
+            {
+                MessageBox.Show("Longitude value missing !");
+                return;
+            }           
+
+            Vector64  p = GSC.GetXYFromBL(B,L);
+            outXtextBox.Text = Math.Round(p.X, XYfloatNum ).ToString();
+            outYtextBox.Text = Math.Round(p.Y, XYfloatNum).ToString();            
+            
+            //InitListViewHeader();
+            //UpdateListView();
         }
 
         private void Export_Click(object sender, EventArgs e)
@@ -335,6 +581,33 @@ namespace DDDSharp
                     this.Cursor = DefaultCursor;
                 }
             }
+        }
+
+        private void EncodingComboBox_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            if (EncodingComboBox.SelectedIndex > 0)
+            {
+                int code = encodingInfos[EncodingComboBox.SelectedIndex].CodePage;
+                if (code != CodePage)
+                {
+                    CodePage = code;                   
+                }
+            }            
+        }
+
+        private void EncodingUpdateButton_Click(object sender, EventArgs e)
+        {
+            if (datafile.Length > 0) 
+            { 
+                ImportDataFrom(datafile); 
+            }
+        }  
+
+        private void DeformIgnoreComboBox_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            IgnoreDeform = false;
+            if (DeformIgnoreComboBox.SelectedIndex == 1) 
+                IgnoreDeform = true;
         }
     }
 }

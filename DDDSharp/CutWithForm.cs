@@ -60,6 +60,10 @@ namespace DDDSharp
                 //models
                 if (obj.type == ShapeEnum.Mesh ||
                     obj.type == ShapeEnum.Polygon ||
+                    obj.type == ShapeEnum.Polygon2D ||
+                    obj.type == ShapeEnum.Polygon2Ds ||
+                    obj.type == ShapeEnum.Line ||                    
+                    obj.type == ShapeEnum.Shape ||
                     obj.type == ShapeEnum.Triangles ||
                     obj.type == ShapeEnum.Slicer )
                 {
@@ -121,16 +125,73 @@ namespace DDDSharp
 
             LableProgressTitle.Text = clTrim.progressTitle + str;
             LabelTimeLeft.Text = clTrim.strTimeLeft;
-
-            
             UpdateButtonState();
+        }
+        private void Polygon2DTrimMeshThread()
+        {
+            progressState = 1;// 0没开始，1已开始，2已暂停
+            Polygon2D poly = null;
+            if (selectedModel.type == ShapeEnum.Polygon2Ds)
+            {
+                C2DPolygons polys = selectedModel as C2DPolygons;
+                if( polys.Count > 0 )poly = polys[0];
+            }
+            else if (selectedModel.type == ShapeEnum.Polygon2D)
+            {
+                poly = selectedModel as Polygon2D;
+            }
 
+            bool keepoutside = true;
+            if (Para == 1) keepoutside = false;
+            
+            if (selectedTarget.type == ShapeEnum.Mesh)
+            {
+                CMesh mesh = selectedTarget as CMesh;
+                if (mesh.TrimWith(poly, keepoutside))
+                {
+                    cutIndex = selectedTargetIndex;
+                    MessageBox.Show("Successed.");
+                }
+            }
+            else if (selectedTarget.type == ShapeEnum.GeoMesh)
+            {
+                GeoMesh mesh = selectedTarget as GeoMesh;
+                if (mesh.TrimWith(poly, keepoutside))
+                {
+                    cutIndex = selectedTargetIndex;
+                    MessageBox.Show("Successed.");
+                }
+            }
+            else if (selectedTarget.type == ShapeEnum.GeoLayerMeshes)
+            {
+                GeoLayerMeshes mesh = selectedTarget as GeoLayerMeshes;
+                if (mesh.TrimWith(poly, keepoutside))
+                {
+                    cutIndex = selectedTargetIndex;
+                    
+                    //Polygon2D poly2d = new Polygon2D(mesh[0].Boundaries);
+                    //poly2d.Name = "Created";
+                    //poly2d.UpdateRange();
+                    //C3DData.AddObject(poly2d);
+                    //C3DData.objSelected = poly2d;
+
+                    MessageBox.Show("Successed.");
+                }
+            }
+            progressState = 0;
+
+            // checkProgress = false;
         }
         private void PolygonTrimThread()
         {
             progressState = 1;// 0没开始，1已开始，2已暂停
+            TriangleObj obj = null;
+            if (selectedModel.type == ShapeEnum.Shape )
+            {
+                obj = ((Symbol3D)selectedModel).toTriangleObject();
+            }
+            else obj = ((TriangleObj)selectedModel).Copy();
 
-            TriangleObj obj = ((TriangleObj)selectedModel).Copy();
             obj.Normalize();
             
             bool keepoutside = true;
@@ -206,7 +267,7 @@ namespace DDDSharp
                 selectedModel.type == ShapeEnum.Triangles ||
                 selectedModel.type == ShapeEnum.Shphere ||
                 selectedModel.type == ShapeEnum.Polygon ||
-                selectedModel.type == ShapeEnum.Box ||
+                selectedModel.type == ShapeEnum.Shape ||
                 selectedModel.type == ShapeEnum.Cylinder) Method = 0;                
             else if (selectedModel.type == ShapeEnum.Mesh) Method = 1;                
             else if (selectedModel.type == ShapeEnum.Slicer) Method = 2;
@@ -238,7 +299,16 @@ namespace DDDSharp
                     cutThread.Start();
                 }
             }
-            
+            else if (selectedTarget.type == ShapeEnum.Mesh ||
+                     selectedTarget.type == ShapeEnum.GeoMesh ||
+                     selectedTarget.type == ShapeEnum.GeoLayerMeshes )
+            {
+                if (selectedModel.type == ShapeEnum.Polygon2D || 
+                    selectedModel.type == ShapeEnum.Polygon2Ds) 
+                {
+                    Polygon2DTrimMeshThread();
+                }
+            }            
             return ;
         }
         void UpdateButtonState()
@@ -279,7 +349,7 @@ namespace DDDSharp
             {
                 Percentage = clTrim.Percentage;
                 progressTitle = clTrim.progressTitle;
-                timeLeft = CLUnit.formatTime(clTrim.TimeLeft);
+                timeLeft =  CLUnit.formatTime(clTrim.TimeLeft);                
                 UpdateProgress();
                 Thread.Sleep(1000);
             }
@@ -303,8 +373,11 @@ namespace DDDSharp
             //obj.type == ShapeEnum.Triangles ||
             //obj.type == ShapeEnum.Slicer )
 
-            if (obj1.type == ShapeEnum.Triangles ||
-                 obj1.type == ShapeEnum.Polygon)//polygon 0
+            if ( obj1.type == ShapeEnum.Triangles ||
+                 obj1.type == ShapeEnum.Polygon ||
+                 obj1.type == ShapeEnum.Polygon2D ||
+                 obj1.type == ShapeEnum.Polygon2Ds ||
+                 obj1.type == ShapeEnum.Shape )//polygon 0
             {
                 comboBox3.Items.Add("keep outside"); //0 
                 comboBox3.Items.Add("keep inside");  //1
@@ -330,7 +403,21 @@ namespace DDDSharp
                     comboBox3.Items.Add("keep right");//1
                     comboBox3.Items.Add("keep on line");//2
                 }
-            }           
+            }
+            else if (obj1.type == ShapeEnum.Line)
+            {
+                if (((C3DLine)obj1).Closed)
+                {
+                    comboBox3.Items.Add("keep inside"); //0 
+                    comboBox3.Items.Add("keep outside");//1                                                        
+                }
+                else
+                {
+                    comboBox3.Items.Add("keep left"); //0 
+                    comboBox3.Items.Add("keep right");//1
+                    comboBox3.Items.Add("keep on line");//2
+                }
+            }
             comboBox3.SelectedIndex = 0;
         }  
 
@@ -346,7 +433,7 @@ namespace DDDSharp
 
         private void OK_Click(object sender, EventArgs e)
         {
-            checkProgress = false;
+            checkProgress = false;            
             Thread.Sleep(1000);
             DialogResult = DialogResult.OK;
             this.Close();
@@ -462,14 +549,19 @@ namespace DDDSharp
                 MessageBox.Show("Invalid parameters.");
                 return;
             }
-            if (selectedTarget.type != ShapeEnum.Grid3D)
+            if (selectedTarget.type == ShapeEnum.Grid3D || 
+                selectedTarget.type != ShapeEnum.GeoLayerMeshes ||
+                selectedTarget.type != ShapeEnum.Mesh ||
+                selectedTarget.type != ShapeEnum.GeoMesh  )
+            {                
+            }
+            else 
             {
                 MessageBox.Show("selected target not a supported type.");
                 return;
             }
-
-            #region 获取选定GPU设备 
-            selectedDevices.Clear();
+                #region 获取选定GPU设备 
+                selectedDevices.Clear();
             for (int i = 0; i < checkedListBox1.Items.Count; i++)
             {
                 if (checkedListBox1.GetItemChecked(i))

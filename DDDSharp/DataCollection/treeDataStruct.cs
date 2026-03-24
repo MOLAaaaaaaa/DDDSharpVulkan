@@ -56,14 +56,14 @@ namespace DataCollection
                 return false;
             }
         }
-        static public TreeStructData Load(BinaryReader br)
+        static public TreeStructData Load(BinaryReader br,int key0 = 0)
         {
             try
             {
                 TreeStructData data = new TreeStructData("");
                 data.Name = C3DData.LoadString(br);
                 data.Type = (TreeNodeType)br.ReadInt32();
-                data.ItemKey = br.ReadInt32();
+                data.ItemKey = br.ReadInt32() + key0;
                 data.Checked = br.ReadBoolean();
                 if (data.ItemKey >= 0) data.Item = C3DData.GetObjectByKey(data.ItemKey);
                 int n = br.ReadInt32();
@@ -71,7 +71,7 @@ namespace DataCollection
                 {
                     for (int i = 0; i < n; i++)
                     {
-                        data.AddItem(Load(br));
+                        data.AddItem(Load(br,key0));
                     }
                 }
                 return data;

@@ -107,14 +107,14 @@ namespace DDDSharp
                 //the full path of las file
                 lasfile = curpath + "\\" + lasfile;
 
-                if( !ConvertData.StringToDouble(xstring, out x) )
+                if( !double.TryParse(xstring, out x) )
                 {
                     dataGridView1.Rows[i].DefaultCellStyle.BackColor = Color.Red;
                     ss = "row:" +(i+1)+ ", can't convert '" + xstring + "' to double X.";
                     bad_rows.Add(i);
                     listBox1.Items.Add(ss);
                 }
-                if (!ConvertData.StringToDouble(ystring, out y))
+                if (!double.TryParse(ystring, out y))
                 {
                     dataGridView1.Rows[i].DefaultCellStyle.BackColor = Color.Red;
                     ss = "row:" + (i + 1) + ", can't convert '" + ystring + "' to double Y.";
@@ -122,7 +122,7 @@ namespace DDDSharp
                     listBox1.Items.Add(ss);
                     continue;
                 }
-                if (!ConvertData.StringToDouble(zstring, out z))
+                if (!double.TryParse(zstring, out z))
                 {
                     dataGridView1.Rows[i].DefaultCellStyle.BackColor = Color.Red;
                     ss = "row:" + (i + 1) + ", can't convert '" + zstring + "' to double Elevation.";

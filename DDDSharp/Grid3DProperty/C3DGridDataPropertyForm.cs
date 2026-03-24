@@ -38,7 +38,7 @@ namespace DDDSharp
             //pTextureCombo.Items.Clear();
             pTextureModeCombo.ValueMember = "Index";
             pTextureModeCombo.DisplayMember = "Name";
-            pTextureModeCombo.DataSource = Enum.GetNames(typeof(DataCollection.TextureMagFilter)); 
+            pTextureModeCombo.DataSource = Enum.GetNames(typeof(TextureMagFilter)); 
             pTextureModeCombo.DropDownStyle = ComboBoxStyle.DropDownList;
         }
         private void BindTextureList()
@@ -95,7 +95,10 @@ namespace DDDSharp
                 dataGridView1.Rows.Add();
                 dataGridView1.Rows[i].Cells[0].Value = colorScale[i].Visible;
                 dataGridView1.Rows[i].Cells[1].Value = i + 1;
-                dataGridView1.Rows[i].Cells[2].Value = colorScale.GetScaledValue(i);
+
+                if( p3D.ShowAsStratum ) dataGridView1.Rows[i].Cells[2].Value = Math.Round(colorScale.GetScaledValue(i), 0);
+                else dataGridView1.Rows[i].Cells[2].Value = Math.Round(colorScale.GetScaledValue(i), 4);
+
                 dataGridView1.Rows[i].Cells[3].Style.ForeColor = colorScale.GetColor(i);
                 dataGridView1.Rows[i].Cells[3].Style.BackColor = colorScale.GetColor(i);
 
@@ -250,7 +253,28 @@ namespace DDDSharp
             {
                 dataGridView1.Rows[i].Cells[0].Value = false;                
             }
-        }      
+        }
+        
+        public void UpdateColorScaleCheck()
+        {
+            p3D = (C3DGridData)C3DData.GetSelectedObj(ShapeEnum.Grid3D);
+            if (p3D == null) return;
+            int n = dataGridView1.Rows.Count;
+            if (n < 1) return;            
+            DataGridViewCheckBoxCell cell;
+            for (int i = 0; i < n && i < p3D.ColorScale.Count; i++)
+            {
+                cell = (DataGridViewCheckBoxCell)dataGridView1.Rows[i].Cells[0];
+                try
+                {
+                    p3D.ColorScale.SetVisible(i, (bool)cell.FormattedValue);//bug 指定的转换无效
+                }
+                catch (Exception e)
+                {
+                }
+            }            
+        }
+
         public void UpdateColorScale()
         {
             p3D = (C3DGridData)C3DData.GetSelectedObj(ShapeEnum.Grid3D);
@@ -264,7 +288,7 @@ namespace DDDSharp
             int texIndex = -1;
             string texName = "";
             string texModeName = "";
-            DataCollection.TextureMagFilter mode = DataCollection.TextureMagFilter.GL_LINEAR;
+            TextureMagFilter mode = TextureMagFilter.GL_LINEAR;
             for (int i = 0; i < n && i < p3D.ColorScale.Count; i++)
             {
                 cell = (DataGridViewCheckBoxCell)dataGridView1.Rows[i].Cells[0];
@@ -554,10 +578,20 @@ namespace DDDSharp
                         gd.SetGrids(data2d,p3D);
                         if (gd.ShowDialog() == DialogResult.OK)
                         {
-                            if (p3D.CutWithZSurface(data2d, gd.keepUpper,gd.exchangeXY,gd.zoffset))
+                            if (gd.blankMethod == 0) //blank directly
                             {
-                                //C3DData.pObjects[sel] = p3D;
-                                UpdateShowButton_Click(sender, e);
+                                if (p3D.CutWithZSurface(data2d, gd.keepUpper, gd.exchangeXY, gd.zoffset))
+                                {
+                                    UpdateShowButton_Click(sender, e);
+                                }
+                            }
+                            else if (gd.blankMethod == 1)//overlap dem on grid
+                            {
+                                p3D.OverlapDem(data2d);
+                                if (p3D.CutWithZSurface(data2d, gd.keepUpper, gd.exchangeXY, gd.zoffset))
+                                {
+                                    UpdateShowButton_Click(sender, e);
+                                }
                             }
                         }
                     }
@@ -674,7 +708,19 @@ namespace DDDSharp
                     C3DData.lastLoadeds.Clear();
                     for (int i = 0; i < cs.pSlicers.Count; i++)
                     {
-                        C3DData.AddObject(cs.pSlicers[i],false);                        
+                        CSlicer slicer = cs.pSlicers[i];
+                        
+                        for(int row =0;row<slicer.nRow; row++)
+                        {
+                            for (int col = 0; col < slicer.nCol; col++)
+                            {
+                                Vector64 p = slicer.GetPoint(row,col);
+                                //p = p3D.toTracedPoint(p);
+                                slicer.SetPoint(row, col,p);
+                            }
+                        }
+                        slicer.UpdateRange();
+                        C3DData.AddObject(slicer,false);
                     }
                     Program.m_MainForm.m_ObjectForm.AddToTree(C3DData.lastLoadeds);
                     Program.m_MainForm.UpdateDraw(C3DData.lastLoadeds);
@@ -741,6 +787,7 @@ namespace DDDSharp
                 UpdateDataGridview();
                 UpdateColorScale();
             }
+            cm.Close();
         }
         private void ColorBarBox_DoubleClick(object sender, EventArgs e)
         {
@@ -752,10 +799,7 @@ namespace DDDSharp
             EditColorScale();
         }
 
-        private void ColorBarBox_Click(object sender, EventArgs e)
-        {
-
-        }
+        
 
         //颜色双击
         private void dataGridView1_CellDoubleClick(object sender, DataGridViewCellEventArgs e)
@@ -791,6 +835,18 @@ namespace DDDSharp
             else VolumeTextBox.Text = p3D.CalculateVolume(sel).ToString();
 
             Cursor = Cursors.Default;
+        }
+
+        private void ClosedValuesButton_Click(object sender, EventArgs e)
+        { 
+            if (p3D == null) return;
+            UpdateColorScaleCheck();
+            ClosedValuesForm dlg = new ClosedValuesForm();
+            dlg.colorScale = p3D.ColorScale;
+            if( dlg.ShowDialog() == DialogResult.OK)
+            {
+
+            }
         }
     }
 }

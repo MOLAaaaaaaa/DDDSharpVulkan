@@ -1,33 +1,40 @@
-﻿using System;
-using System.IO;
+﻿using DataCollection;
+using DDDSharp.Boreholes;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data;
 using System.Drawing;
+using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
-using DataCollection;
 namespace DDDSharp
 {
     public partial class SlicerModelingDlg : Form
     {
-        public int xGridOuter = 100;
-        public int yGridOuter = 100;
-        public int XResampleExt = 2;
-        public int YResampleExt = 2;
+        public double xSampleStep = 20; //采样网格x
+        public double ySampleStep = 20; //采样网格y
+
+        public double xBkSampleStep = 20; //采样网格x
+        public double yBkSampleStep = 20; //采样网格y
         public int extent = 1;
         public bool sampleBoundary = true;
         public bool sampleBoundaryInter = true;
         public bool sampleBoundaryOuter = true;
+        float BkValue = 0;    //背景值
+        float resetValue = 0; //重设值        
+        float redundantFilterRadiu = 1.0f; //(0 - 100)重复点滤波半径
+        double minx, maxx, miny, maxy;
+        
+        double minSlicerWidth = 1E30,  maxSlicerWidth=-1E30;  //剖面最小最大长度
+        double minSlicerHeight = 1E30, maxSlicerHeight = -1E30; //剖面最小最大高度
 
         public List<PolygonSlicer> slicers = new List<PolygonSlicer>();
         bool created = false;
-
-        List<LayerProperty> layers = new List<LayerProperty>();
-        List<string> Selectedlayers = new List<string>();
         
+        StratumDatas stratums = new StratumDatas();       
         public SlicerModelingDlg()
         {
             InitializeComponent();            
@@ -35,60 +42,66 @@ namespace DDDSharp
         public void AddSlicer(PolygonSlicer s)
         {
             slicers.Add(s);
+
+            if (s.slicerWidth > maxSlicerWidth) maxSlicerWidth = s.slicerWidth;
+            if (s.slicerWidth < minSlicerWidth) minSlicerWidth = s.slicerWidth;
+            if (s.slicerHeight > maxSlicerHeight) maxSlicerHeight = s.slicerHeight;
+            if (s.slicerHeight < minSlicerHeight) minSlicerHeight = s.slicerHeight;
+
+            xSampleStep = minSlicerWidth / 100;
+            ySampleStep = minSlicerHeight / 100;
+            xBkSampleStep = xSampleStep / 4;
+            yBkSampleStep = ySampleStep / 4;
+            UpdateDataRange();
+
+            double step = Math.Sqrt((maxx - minx) * (maxx - minx) + (maxy - miny) * (maxy - miny))/100;
+            BoundaryStepTextBox.Text = step.ToString();
         }
-        bool IsInList(string name)
+        void UpdateDataRange() 
         {
-            foreach(LayerProperty s in layers)
-            {   
-                if (s.LayerName.ToLower() == name.ToLower() ) return true;
-            }
-            return false;
-        }
-        void SearchLayerValues()
-        {
-            layers.Clear();
-            PolygonSlicer s;
-            Polygon2D p;
-            for(int i=0;i<slicers.Count;i++)
+            minx = maxx = 0;
+            miny = maxy = 0;
+            for(int i=0;i<slicers.Count;i++) 
             {
-                s = slicers[i];
-                for(int j=0; j <s.tracedGeoObjects.Count;j++)
+                PolygonSlicer s = slicers[i];                
+                if (i == 0) 
                 {
-                    p = s.tracedGeoObjects[j];
-                    if( !IsInList( p.Name ) )
+                    minx = s.minx;
+                    miny = s.miny;
+                    maxx = s.maxx;
+                    maxy = s.maxy;
+                }
+                else 
+                {
+                    if (s.minx < minx) minx = s.minx;
+                    if (s.miny < miny) miny = s.miny;
+                    if (s.maxx > maxx) maxx = s.maxx;
+                    if (s.maxy > maxy) maxy = s.maxy;
+                }
+            }
+        }        
+       
+        void CreateStratumsFromSlicers()
+        {
+            stratums.Clear();
+            foreach(PolygonSlicer s in slicers)
+            {
+                foreach(Polygon2D p in s.tracedGeoObjects.Polygons)                
+                {
+                    if( !stratums.IsExist( p.Name ) )
                     {
-                        LayerProperty layer = new LayerProperty(p.Name, p.PropertyValue);
-                        layer.LayerColor = p.fillColor;
-                        layers.Add(layer);
+                        StratumData layer = new StratumData(p.Name);
+                        layer.Color = p.fillColor;
+                        layer.Value = p.PropertyValue;
+                        stratums.AddLayer(layer);
                     }
                 }
-            }
-            //layers.Sort();
+            }            
         }
-        int GetSelectedLayers()
-        {
-            Selectedlayers.Clear();
-
-            if (dataGridView1.Rows.Count < 1) return 0;
-            bool[] marks = new bool[dataGridView1.Rows.Count];
-            for (int i = 0; i < dataGridView1.Rows.Count; i++)
-                marks[i] = false;
-
-            int id = 0;
-            for (int i = 0; i < dataGridView1.SelectedCells.Count; i++)
-            {
-                id = dataGridView1.SelectedCells[i].RowIndex;
-                if ( !marks[id] )
-                { 
-                    Selectedlayers.Add( dataGridView1.Rows[id].Cells[1].Value.ToString().ToLower().Trim() );
-                    marks[id] = true;
-                }
-            }
-            return Selectedlayers.Count;
-        }
+        
         private void UpdateDataGridview()
         {
-            SearchLayerValues();
+           
             dataGridView1.Rows.Clear();
             dataGridView1.Columns.Clear();
             /*
@@ -102,14 +115,14 @@ namespace DDDSharp
             dataGridView1.Columns.Add("Value", "Value");
             dataGridView1.Columns.Add("Color", "Color");
             
-            for (int i = 0; i < layers.Count; i++)
+            for (int i = 0; i < stratums.Count; i++)
             {
                 dataGridView1.Rows.Add();                
                 dataGridView1.Rows[i].Cells[0].Value = i + 1;
-                dataGridView1.Rows[i].Cells[1].Value = layers[i].LayerName;
-                dataGridView1.Rows[i].Cells[2].Value = layers[i].LayerValue;
-                dataGridView1.Rows[i].Cells[3].Style.ForeColor = layers[i].LayerColor;
-                dataGridView1.Rows[i].Cells[3].Style.BackColor = layers[i].LayerColor;                
+                dataGridView1.Rows[i].Cells[1].Value = stratums[i].Name;
+                dataGridView1.Rows[i].Cells[2].Value = stratums[i].Value;
+                dataGridView1.Rows[i].Cells[3].Style.ForeColor = stratums[i].Color;
+                dataGridView1.Rows[i].Cells[3].Style.BackColor = stratums[i].Color;                
             }
 
             dataGridView1.RowHeadersVisible = false;
@@ -117,31 +130,7 @@ namespace DDDSharp
             dataGridView1.AutoSizeRowsMode = DataGridViewAutoSizeRowsMode.AllCells;
             dataGridView1.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.AllCells;
         }
-        bool GetLayersFromGridView()
-        {
-            string name;
-            double value;
-            Color color;
-            layers.Clear();
-            try 
-            {
-                for (int i = 0; i < dataGridView1.Rows.Count; i++)
-                {
-                    name = dataGridView1.Rows[i].Cells[1].Value.ToString();
-                    double.TryParse(dataGridView1.Rows[i].Cells[2].Value.ToString(), out value);
-                    color = dataGridView1.Rows[i].Cells[3].Style.ForeColor;
-                    LayerProperty layer = new LayerProperty(name, value);
-                    layer.LayerColor = color;
-                    layers.Add(layer);
-                }
-                return true;
-            }
-            catch (Exception e)
-            {
-                MessageBox.Show(e.Message);
-                return false;
-            }
-        }
+      
         void UpdateList()
         {
             listBox1.Items.Clear();
@@ -151,162 +140,95 @@ namespace DDDSharp
             }
         }
         private void SlicerModelingDlg_Load(object sender, EventArgs e)
-        {            
+        {
+            CreateStratumsFromSlicers();
             UpdateDataGridview();
-            comboBox1.Items.Add("Selected Layers");
-            comboBox1.Items.Add("All Layers");
-            comboBox1.SelectedIndex = 0;
+            
+            comboBox1.Items.Add("Selected Stratum");
+            comboBox1.Items.Add("All Stratums");
 
-            textBox1.Text = xGridOuter.ToString();
-            textBox2.Text = yGridOuter.ToString();
-            
-            textBox3.Text = XResampleExt.ToString();
-            textBox4.Text = YResampleExt.ToString();
-            
+            BkStepXTextBox.Text = xSampleStep.ToString();
+            BkStepYTextBox.Text = xSampleStep.ToString();  
+            RedundantFilterRadiuTextBox.Text = redundantFilterRadiu.ToString();
+
             BkValueTextBox.Text = "0";
-            LayerValueTextBox.Text = "10";
-        }        
-
-        //sampling all layers
-        bool CreateSampling1()
+            LayerValueTextBox.Text = "1";
+            UpdateList();
+        } 
+        List<string>GetSelectedLayers()
         {
-            if (!int.TryParse(textBox1.Text, out xGridOuter))
+            List<string>selectedLayers = new List<string>();
+            for (int i = 0; i < dataGridView1.Rows.Count; i++) 
             {
-                MessageBox.Show("parameter not correct.");
-                return false;
+                if( dataGridView1.Rows[i].Selected )
+                {
+                    selectedLayers.Add(dataGridView1.Rows[i].Cells[1].Value.ToString());
+                }
             }
-            if (!int.TryParse(textBox2.Text, out yGridOuter))
-            {
-                MessageBox.Show("parameter not correct.");
-                return false;
-            }
-            
-            if (!int.TryParse(textBox3.Text, out XResampleExt))
-            {
-                MessageBox.Show("parameter not correct.");
-                return false;
-            }
-            if (!int.TryParse(textBox4.Text, out YResampleExt))
-            {
-                MessageBox.Show("parameter not correct.");
-                return false;
-            }
-
-            //获取地层参数，名称，属性值，颜色
-            if (!GetLayersFromGridView()) return false;
-
-            xGridOuter++;
-            yGridOuter++;
-            
-            progressBar1.Visible = true;
-            progressBar1.Minimum = 0;
-            progressBar1.Maximum = slicers.Count;
-            progressBar1.Step = 1;
-
-            for (int i = 0; i < slicers.Count; i++)
-            {
-                slicers[i].SetLayersPropertyByName(layers);//重设地层属性值和颜色
-                slicers[i].SampleLayerCoords(xGridOuter, yGridOuter, XResampleExt, YResampleExt);
-                progressBar1.Value = i;
-            }
-
-            progressBar1.Visible = false;
-            MessageBox.Show("data sampled.");
-
-            created = true;
-            return true;
+            return selectedLayers;
         }
-
-        //单个地层采样
-        bool CreateSampling2()
-        {
-            if( dataGridView1.SelectedCells.Count < 1 )
-            {
-                MessageBox.Show("please select a layer value.");
-                return false;
-            }
-            if (!int.TryParse(textBox1.Text, out xGridOuter))
-            {
-                MessageBox.Show("parameter not correct.");
-                return false;
-            }
-            if (!int.TryParse(textBox2.Text, out yGridOuter))
-            {
-                MessageBox.Show("parameter not correct.");
-                return false;
-            }
-
-            if (!int.TryParse(textBox3.Text, out XResampleExt))
-            {
-                MessageBox.Show("parameter not correct.");
-                return false;
-            }
-            if (!int.TryParse(textBox4.Text, out YResampleExt))
-            {
-                MessageBox.Show("parameter not correct.");
-                return false;
-            }
-            float BkValue = 0;
-            if (!float.TryParse(BkValueTextBox.Text, out BkValue))
-            {
-                MessageBox.Show("Background value not correct.");
-                return false;
-            }
-
-            float resetValue = 0;
-            if( ResetLayerCheckBox.Checked )
-            {                
-                if (!float.TryParse(LayerValueTextBox.Text, out resetValue))
-                {
-                    MessageBox.Show("Reset layer value not correct.");
-                    return false;
-                }
-            }
-
-            //获取地层参数，名称，属性值，颜色
-            if (!GetLayersFromGridView()) return false;
-           
-            xGridOuter++;
-            yGridOuter++;          
-
+        /// <summary>
+        /// 地层采样
+        /// </summary>
+        /// <param name="sample_all">是否全部地层采样</param>
+        /// <param name="sampleborder">是否采样地层边界点</param>
+        /// <param name="border_sample_step">地层边界点采样步长</param>
+        /// <returns>成功与否</returns>
+        bool CreateSamplingGrids(bool sample_all,bool sampleborder,float border_sample_step)
+        {  
             progressBar1.Visible = true;
             progressBar1.Minimum = 0;
             progressBar1.Maximum = slicers.Count;
             progressBar1.Step = 1;
 
+            List<string> selectedlayers = new List<string>();
             //获取已选择的地层
-            GetSelectedLayers();
-            
+            if (!sample_all) selectedlayers = GetSelectedLayers();
+            bool sampleBkgound = BackgroundSampleCheck.Checked;
+            int count = 0;
             for (int i = 0; i < slicers.Count; i++)
             {
-                slicers[i].SetLayersPropertyByName(layers);//重设地层属性值和颜色
-                slicers[i].SampleLayerCoords( Selectedlayers,xGridOuter, yGridOuter,
-                                              ResetLayerCheckBox.Checked, BkValue, resetValue );                
-                if (SampleBoudaryCheckBox.Checked)
+                PolygonSlicer slicer = slicers[i];
+                slicer.sampledGrids.Clear();
+
+                DoubleRect rect = slicer.GetTracedGeoObjectsRange(selectedlayers);
+                int xgid = (int)(rect.Width / xSampleStep + 0.1 );
+                int ygid = (int)(rect.Height / ySampleStep + 0.1);
+                int xbksample = (int)(xBkSampleStep / xSampleStep + 0.1);
+                int ybksample = (int)(yBkSampleStep / ySampleStep + 0.1);
+
+                slicer.SetLayersPropertyByName(stratums);//重设地层属性值和颜色
+                slicer.SampleLayerCoords(selectedlayers, xgid + 1, ygid + 1,
+                                         xbksample,
+                                         ybksample,
+                                              ResetLayerCheckBox.Checked, 
+                                              sampleBkgound,
+                                              BkValue, resetValue );
+                if (sampleborder)//边界采样
                 {
-                    double xx = slicers[i].XWidth / (xGridOuter - 1);
-                    double yy = slicers[i].YWidth / (yGridOuter - 1);
-                    double zz = slicers[i].ZWidth / (yGridOuter - 1);
-
-                    double step = Math.Sqrt(xx*xx+yy*yy) /40 ;
-
-                    slicers[i].SampleBoudary(Selectedlayers, step, ResetLayerCheckBox.Checked, resetValue); 
+                    slicers[i].SampleBoudary(selectedlayers, border_sample_step, 
+                                             ResetLayerCheckBox.Checked, 
+                                             resetValue );
                 }
-                slicers[i].ResampleGrids(xGridOuter, yGridOuter,XResampleExt,YResampleExt);
+                //if(FilterCheckBox1.Checked)//重采样过滤
+                //slicers[i].ResampleFilter(xSampleGrid, ySampleGrid, xResampleGrid, yResampleGrid);
+
+                if (FilterCheckBox1.Checked)//冗余点过滤
+                slicers[i].SampledDuplicatedFilter(redundantFilterRadiu);
 
                 progressBar1.Value = i;
-            }
+                count += slicer.sampledGrids.Count;
+            }// for (int i = 0; i < slicers.Count; i++)
 
             progressBar1.Visible = false;
-            MessageBox.Show("data sampled.");
+            MessageBox.Show("data sampled points : " + count);
 
             created = true;
             return true;
         }
 
         bool ExportSlicer(string filename)
-        {
-            if (!created) return false;
+        {           
             int err = 0;
             int exported = 0;
             for (int i=0;i<slicers.Count;i++)
@@ -351,13 +273,64 @@ namespace DDDSharp
 
         private void CreateButton_Click(object sender, EventArgs e)
         {
-            if (comboBox1.SelectedIndex < 0) 
+            if (!double.TryParse(StepXTextBox.Text, out xSampleStep) ||
+                !double.TryParse(StepYTextBox.Text, out xSampleStep) ||
+                !double.TryParse(BkStepXTextBox.Text, out xBkSampleStep) ||
+                !double.TryParse(BkStepYTextBox.Text, out yBkSampleStep) )
             {
-                MessageBox.Show("Please Choose Layers.");
-                return; 
+                MessageBox.Show("parameter not correct.");
+                return;
             }
-            if ( comboBox1.SelectedIndex == 0 ) CreateSampling2();//single layer
-            if ( comboBox1.SelectedIndex == 1 ) CreateSampling1();//all layer           
+            //背景值
+            if (!float.TryParse(BkValueTextBox.Text, out BkValue))
+            {
+                MessageBox.Show("Background value not correct.");
+                return;
+            }
+            //重设地层值
+            if (ResetLayerCheckBox.Checked)
+            {
+                if (!float.TryParse(LayerValueTextBox.Text, out resetValue))
+                {
+                    MessageBox.Show("Reset layer value not correct.");
+                    return;
+                }
+            }
+            float border_samp_step = 0;
+            if (SampleBoudaryCheckBox.Checked) 
+            {
+                if (!float.TryParse(BoundaryStepTextBox.Text, out border_samp_step))
+                {
+                    MessageBox.Show("Boundary sampling step value not correct.");
+                    return;
+                }
+            }
+            if (FilterCheckBox1.Checked)
+            {
+                if (!float.TryParse(RedundantFilterRadiuTextBox.Text, out redundantFilterRadiu))
+                {
+                    MessageBox.Show("Redundant filter radiu value not correct.");
+                    return;
+                }
+            }
+            
+
+            //获取地层参数，名称，属性值，颜色 --> layes
+            if (stratums.Count<1 ) return;         
+            if ( comboBox1.SelectedIndex == 0 )//single layer
+            {
+                //参数获取
+                if (dataGridView1.SelectedCells.Count < 1)
+                {
+                    MessageBox.Show("please select a layer value.");
+                    return;
+                }
+                CreateSamplingGrids(false,SampleBoudaryCheckBox.Checked, border_samp_step);
+            }
+            else //all layer
+            {
+                CreateSamplingGrids(true, SampleBoudaryCheckBox.Checked, border_samp_step);
+            }
         }
 
         private void OK_Click(object sender, EventArgs e)
@@ -368,115 +341,51 @@ namespace DDDSharp
 
         private void SaveButton_Click(object sender, EventArgs e)
         {
-            if (!GetLayersFromGridView()) return;
-            
             using (var dlg = new SaveFileDialog())
             {
-                dlg.Filter = "Layer Property File (*.LPF)|*.LPF|all files(*.*)|*.*";
-                dlg.OverwritePrompt = true;
-                if (dlg.ShowDialog() == DialogResult.OK)
-                {
-                    if( !LayerProperty.Export(dlg.FileName,layers) )
-                    {
-                        MessageBox.Show("Failed to save Layer Property Values.");
-                    }
-                    else
-                    {
-                        ExportColorScale(dlg.FileName+".clr");
-                        MessageBox.Show("Saved to File Successfully\n." + dlg.FileName);
-                    }
+                dlg.Filter = Resource1.StratumColorSchemeFilter;
+                dlg.Filter += "|" + "All Files(*.*)|*.*";
+                if (dlg.ShowDialog() != DialogResult.OK) return;
+                if (StratumDatas.ExportStratumScheme(stratums, dlg.FileName))
+                {                  
+                    MessageBox.Show("Stratum Color Scheme Save to \n" + dlg.FileName);
                 }
             }
         }
-        bool ExportColorScale(string filename)
-        {
-            try
-            {
-                FileStream fs = new FileStream(filename, FileMode.Create);
-                StreamWriter wr = new StreamWriter(fs);
-
-                string header = "ColorMap 1 1";
-                wr.WriteLine(header);
-                string line = "";
-
-                double minvalue = 0, maxvalue = 0;
-                // 找出值范围		
-                for (int i = 0; i < layers.Count; i++)
-                {
-                    if (i == 0) minvalue = maxvalue = layers[i].LayerValue;
-                    else
-                    {
-                        if (minvalue > layers[i].LayerValue) minvalue = layers[i].LayerValue;
-                        if (maxvalue < layers[i].LayerValue) maxvalue = layers[i].LayerValue;
-                    }
-                }
-                //写入clr色标文件
-                double percent = 0;
-                foreach (LayerProperty layer in layers)
-                {
-                    if (maxvalue > minvalue)
-                        percent = 100 * (layer.LayerValue - minvalue) / (maxvalue - minvalue);
-                    else percent = 0;
-
-                    line = "	" + percent + " ";
-	                line += layer.LayerColor.R + " ";
-                    line += layer.LayerColor.G + " ";
-                    line += layer.LayerColor.B;
-                    wr.WriteLine(line);
-                }
-
-                wr.Close();
-                fs.Close();
-                return true;
-            }
-#pragma warning disable CS0168 // 声明了变量“e”，但从未使用过
-            catch (Exception e)
-#pragma warning restore CS0168 // 声明了变量“e”，但从未使用过
-            {
-                return false;
-            }
-        }
-
+      
         private void ExportColorScaleButton_Click(object sender, EventArgs e)
         {
-            if (!GetLayersFromGridView()) return;
-            using ( var dlg = new SaveFileDialog() )
+            var dlg = new SaveFileDialog();
+            dlg.Filter = "color level (*.clr)|*.clr|all files(*.*)|*.*";
+            if (dlg.ShowDialog() == DialogResult.OK)
             {
-                dlg.Filter = "Color Scale (*.clr)|*.clr|all files(*.*)|*.*";
-                dlg.OverwritePrompt = true;
-                if (dlg.ShowDialog() == DialogResult.OK)
+                CColorScale scale = stratums.CreateColorScale();
+                if (scale.SaveClr(dlg.FileName))
                 {
-                    if ( !ExportColorScale( dlg.FileName ) )
-                    {
-                        MessageBox.Show("Failed to export color scales.");
-                    }
-                    else
-                    {
-                        MessageBox.Show("Exported color scale successfully\n." + dlg.FileName);
-                    }
+                    MessageBox.Show("Color scale saved to " + dlg.FileName);
                 }
+                else MessageBox.Show("Faild to save color scale." + scale.errMessage);
             }
         }
         private void LoadButton_Click(object sender, EventArgs e)
         {
             using (var dlg = new OpenFileDialog())
             {
-                dlg.Filter = "Layer Property File (*.LPF)|*.LPF|all files(*.*)|*.*";
-
-                if (dlg.ShowDialog() == DialogResult.OK)
+                dlg.Filter = Resource1.StratumColorSchemeFilter;
+                dlg.Filter += "|" + "All Files(*.*)|*.*";
+                if (dlg.ShowDialog() != DialogResult.OK) return;
+                stratums.LoadFromStratumScheme(dlg.FileName);
+                if (stratums.Count < 1)
                 {
-                    this.Cursor = Cursors.WaitCursor;
-                    List<LayerProperty>lists = LayerProperty.Import(dlg.FileName);                    
-                    if(lists.Count < 1 )
-                    {
-                        MessageBox.Show("Load failed,nothing changed.");
-                        return;
-                    }
-                    layers = lists;
-                    UpdateDataGridview();
-                    this.Cursor = Cursors.Default;
+                    MessageBox.Show("Stratum Color Scheme Loaded Failed \n" + stratums.errMessage);
                 }
-            }
+                UpdateDataGridview();
+            }           
+        }
+
+        private void menuStrip1_ItemClicked(object sender, ToolStripItemClickedEventArgs e)
+        {
+
         }
 
         private void dataGridView1_CellDoubleClick(object sender, DataGridViewCellEventArgs e)
@@ -537,6 +446,39 @@ namespace DDDSharp
                 }//using (var dlg = new OpenFileDialog())
                 UpdateList();
                 UpdateDataGridview();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(ex.Message);
+            }
+        }
+
+        private void loadSlicersToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            try
+            {
+                using (var dlg = new OpenFileDialog())
+                {
+                    dlg.Filter = "Slicers(*.Slicer)|*.Slicer|all files(*.*)|*.*";
+                    dlg.Multiselect = true;
+                    if (dlg.ShowDialog() == DialogResult.OK)
+                    {
+                        slicers.Clear();
+                        for (int i = 0; i < dlg.FileNames.Length; i++)
+                        {
+                            PolygonSlicer slicer = new PolygonSlicer();
+                            if (slicer.LoadFrom(dlg.FileNames[i]))
+                            {
+                                slicers.Add(slicer);
+                            }
+                        }
+                    }//if (dlg.ShowDialog() == DialogResult.OK)
+                }//using (var dlg = new OpenFileDialog())
+                UpdateDataRange();
+                UpdateList();
+                UpdateDataGridview();
+                double step = Math.Sqrt((maxx - minx) * (maxx - minx) + (maxy - miny) * (maxy - miny)) / 100;
+                BoundaryStepTextBox.Text = step.ToString();
             }
             catch (Exception ex)
             {

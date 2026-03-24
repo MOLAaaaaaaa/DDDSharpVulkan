@@ -12,7 +12,9 @@ using System.Drawing.Design;
 using System.Windows.Forms;
 using System.Windows.Forms.Design;
 using System.Globalization;
+using GlmNet;
 using Graphics3D;
+using OpenCLNet;
 
 namespace DataCollection
 {
@@ -256,7 +258,8 @@ namespace DataCollection
             R = br.ReadSingle();
             G = br.ReadSingle();
             B = br.ReadSingle();            
-            Visible = br.ReadBoolean();            
+            Visible = br.ReadBoolean();
+            A = br.ReadSingle();
         }
         public void Write(BinaryWriter br)
         {
@@ -264,7 +267,8 @@ namespace DataCollection
             br.Write(R);
             br.Write(G);
             br.Write(B);
-            br.Write(Visible);            
+            br.Write(Visible);
+            br.Write(A);            
         }
         // list.Sort()时会根据该CompareTo()进行自定义比较
         public int CompareTo(ColorLevel other)
@@ -384,6 +388,58 @@ namespace DataCollection
         public bool IsSmooth { get; set; } = true;
         public string errMessage = "";
         public string Name { get; set; } = "";
+
+        //隐藏值ranges
+        public List<vec2> closedValues = new List<vec2>();
+        /// <summary>
+        /// 添加到数组，同时合并相连的值范围
+        /// </summary>
+        /// <param name="v1"></param>
+        /// <param name="v2"></param>
+        void AddtoClosedValues(float v1,float v2)
+        {
+            int n = closedValues.Count;
+            if ( n > 0 )
+            {
+                vec2 p1 = closedValues[n - 1];
+                if( p1.y == v1 ) 
+                {
+                    p1.y = v2;
+                    closedValues[n - 1] = p1;
+                    return;
+                }
+            }
+            closedValues.Add(new vec2(v1,v2));
+        }
+        public List<vec2> CreateClosedValues()
+        {
+            closedValues.Clear();
+            double v1, v2;
+            for (int i = 0; i < Count; i++)
+            {
+                if (!Levels[i].Visible)
+                {
+                    if (i == 0)
+                    {
+                        v1 = GetScaledValue(0);
+                        v2 = 0.5 * (GetScaledValue(i) + GetScaledValue(i + 1));
+                    }
+                    else if (i == Count - 1)
+                    {
+                        v1 = 0.5 * (GetScaledValue(i) + GetScaledValue(i - 1));
+                        v2 = GetScaledValue(i);
+                    }
+                    else
+                    {
+                        v1 = 0.5 * (GetScaledValue(i) + GetScaledValue(i - 1));
+                        v2 = 0.5 * (GetScaledValue(i) + GetScaledValue(i + 1));
+                    }
+                    AddtoClosedValues((float)v1, (float)v2);                    
+                }
+            }
+            return closedValues;
+        }
+
         static public Color ToColor(ColorRGBA color)
         {
             return Color.FromArgb(color.A, color.R, color.G, color.B);
@@ -518,6 +574,59 @@ namespace DataCollection
                 e.FillRectangle(br, x1, y1, ww, hh);
             }
         }
+        
+        public void DrawColorBarWithArrow(Graphics e, Rectangle rect)
+        {
+            if (Levels.Count < 2) return;
+            double v1 = Levels[0].LevelValue;
+            double v2 = Levels[Levels.Count-1].LevelValue;
+            double hs1 = 0.3, hs2 = 0.4, hs3 = 0.3; //比例箭头、颜色、刻度
+
+            double h1 = 0;
+            double h2 = h1 + rect.Height * hs1;
+            double h3 = h2 + rect.Height * hs2;
+            double h4 = rect.Bottom;
+            double margin = 6;
+            double width = rect.Width - margin*2;
+            
+            double x1, x2,y1;            
+            Color color;
+            ColorLevel c1,c2;
+            
+            for (int i = 0; i < Count; i++)
+            {
+                c1 = Levels[i];                
+                color = ToColor(c1);
+                x1 = rect.Left + margin + (c1.LevelValue - v1) / (v2 - v1) * width;
+                y1 = h2;
+                if ( i == Count-1 )
+                {
+                    x2 = rect.Right;
+                }
+                else
+                {
+                    c2 = Levels[i + 1];                    
+                    x2 = rect.Left + margin + (c2.LevelValue - v1) / (v2 - v1) * width;                    
+                }
+                SolidBrush br = new SolidBrush(color);
+                e.FillRectangle(br, (float)x1, (float)y1, (float)(x2 - x1), (float)(h3 - h2));
+            }
+
+            //draw arrow
+            double arrowWidth = 12;
+            double arrowHeight = 16;
+            for (int i = 0; i < Count; i++)
+            {
+                c1 = Levels[i];
+                color = ToColor(c1);
+                x1 = rect.Left + margin + (c1.LevelValue - v1) / (v2 - v1) * width - arrowWidth / 2f;
+                y1 = h2-arrowHeight;                
+                RectangleF rect1 = new RectangleF((float)x1, (float)y1, (float)arrowWidth, (float)arrowHeight);
+               GeometryDrawing.DrawArrow(e, rect1, Color.Blue, Color.Black, DirectionEnum.down);                
+            }
+
+        }
+
         void Init(double v1,double v2)
         {
             byte[] color_array =
@@ -1075,6 +1184,7 @@ namespace DataCollection
         public Color GetColor( double val )
         {
             if (Levels.Count < 1) return Color.Black;
+            if (double.IsNaN(val)) return Color.FromArgb(0,0,0,0);
 
             if (val <= minv) return Levels[0].Color;
             else if (val >= maxv) return Levels[Count - 1].Color;
@@ -1107,14 +1217,14 @@ namespace DataCollection
                 r = (r1 + (r2 - r1) * scale) * 255;
                 g = (g1 + (g2 - g1) * scale) * 255;
                 b = (b1 + (b2 - b1) * scale) * 255;
-                a = (a1 + (a2 - a1) * scale) * 255;
-                
+                a = (a1 + (a2 - a1) * scale) * 255;                
                 return Color.FromArgb((int)a, (int)r, (int)g, (int)b);
             }
             else
             {
-                if (val >= (v1 + v2) * 0.5) return Levels[n2].Color;
-                else return Levels[n1].Color;
+                //if (val >= (v1 + v2) * 0.5) return Levels[n2].Color;
+                //else 
+                    return Levels[n1].Color;
             }            
         }
         

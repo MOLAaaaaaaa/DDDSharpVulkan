@@ -32,14 +32,18 @@
             this.dockPanel1 = new WeifenLuo.WinFormsUI.Docking.DockPanel();
             this.menuStrip1 = new System.Windows.Forms.MenuStrip();
             this.文件FileToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.newProjectToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.OpenProjectToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.SaveProjectToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.saveAsToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.exportToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.imageToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.vRMLModelsToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.dOBJECTSToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.pLYFilesToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
-            this.importFromGeoToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.importToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.fromG3DToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.fromGeoToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.数据DataToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.LoadGridData = new System.Windows.Forms.ToolStripMenuItem();
             this.loadFormattedTriangleFile = new System.Windows.Forms.ToolStripMenuItem();
@@ -73,6 +77,9 @@
             this.loadBorholesToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.fromLASToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.fromWELLToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.钻孔分层文件ToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.editToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.terrianBlankToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.viewViewToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.polygonModeToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.fillToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
@@ -82,16 +89,27 @@
             this.directionArrowToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.lightsPositionToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.pLYPropertyToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
-            this.dGridPropertyToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.slicerPropertyToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.boreholesPropertyToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.linePropertyToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.scattedPointsPropertyToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.refreshToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
-            this.opitionToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.dGridPropertyToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.propertiesFormToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.toolStripMenuItem2 = new System.Windows.Forms.ToolStripMenuItem();
+            this.slicerPropertyToolStripMenuItem1 = new System.Windows.Forms.ToolStripMenuItem();
+            this.boreholesPropertyToolStripMenuItem1 = new System.Windows.Forms.ToolStripMenuItem();
+            this.pLYPropertyToolStripMenuItem1 = new System.Windows.Forms.ToolStripMenuItem();
+            this.scatteredPointsPropertyToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.NavigationToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.toThisObjectToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.resetViewToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.optionToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.lightsMaterialToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.dataRangeToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.graphicDeviceToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.mouseControlToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.stratumColorSchemeToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.testToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.objectsToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.createToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
@@ -104,13 +122,17 @@
             this.cylinderToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.coneToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.shape3DModelerToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.polygonToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.textToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.cutingToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.IntersectWithToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.withMeshesToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.analyzeToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.overlayAnalysisToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.coordinateToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.earthMappedSystemToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
-            this.axisOptionsToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.CoordinateOptionsMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.axisLabelsToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.toolsToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.coordsRotatingToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.crossValidationToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
@@ -118,10 +140,18 @@
             this.scatteredPointsToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.geophysicProfileToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.WellCurvesInterpolationMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.mineralBoreholesToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.modelingToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.slicersSamplingToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.toDiscretedPointsToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.to3DGridsToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.toImageRecognizingToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.mergeGridsToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.meshesCreatingToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.fromPolygonsToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.fromSlicersToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.meshesFrom3DGridsToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.layersFromMeshesToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.buffersOverlapToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.convertToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.toEarthTextureToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
@@ -134,6 +164,7 @@
             this.recordingToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.settingToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.startEndToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.stratumsEditorToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.helpToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.aboutToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.toolStrip1 = new System.Windows.Forms.ToolStrip();
@@ -141,7 +172,6 @@
             this.toolStripButton2 = new System.Windows.Forms.ToolStripButton();
             this.toolStripButton3 = new System.Windows.Forms.ToolStripButton();
             this.toolStripButton4 = new System.Windows.Forms.ToolStripButton();
-            this.fromPolygonsToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.menuStrip1.SuspendLayout();
             this.toolStrip1.SuspendLayout();
             this.SuspendLayout();
@@ -151,10 +181,10 @@
             this.dockPanel1.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
             | System.Windows.Forms.AnchorStyles.Left) 
             | System.Windows.Forms.AnchorStyles.Right)));
-            this.dockPanel1.Location = new System.Drawing.Point(0, 30);
+            this.dockPanel1.Location = new System.Drawing.Point(0, 34);
             this.dockPanel1.Margin = new System.Windows.Forms.Padding(4);
             this.dockPanel1.Name = "dockPanel1";
-            this.dockPanel1.Size = new System.Drawing.Size(644, 484);
+            this.dockPanel1.Size = new System.Drawing.Size(929, 478);
             this.dockPanel1.TabIndex = 3;
             // 
             // menuStrip1
@@ -163,43 +193,61 @@
             this.menuStrip1.Items.AddRange(new System.Windows.Forms.ToolStripItem[] {
             this.文件FileToolStripMenuItem,
             this.数据DataToolStripMenuItem,
+            this.editToolStripMenuItem,
             this.viewViewToolStripMenuItem,
-            this.opitionToolStripMenuItem,
+            this.optionToolStripMenuItem,
             this.objectsToolStripMenuItem,
+            this.analyzeToolStripMenuItem,
             this.coordinateToolStripMenuItem,
             this.toolsToolStripMenuItem,
             this.helpToolStripMenuItem});
             this.menuStrip1.Location = new System.Drawing.Point(0, 0);
             this.menuStrip1.Name = "menuStrip1";
             this.menuStrip1.Padding = new System.Windows.Forms.Padding(8, 3, 0, 3);
-            this.menuStrip1.Size = new System.Drawing.Size(644, 30);
+            this.menuStrip1.Size = new System.Drawing.Size(929, 30);
             this.menuStrip1.TabIndex = 5;
             this.menuStrip1.Text = "menuStrip1";
             // 
             // 文件FileToolStripMenuItem
             // 
             this.文件FileToolStripMenuItem.DropDownItems.AddRange(new System.Windows.Forms.ToolStripItem[] {
+            this.newProjectToolStripMenuItem,
             this.OpenProjectToolStripMenuItem,
             this.SaveProjectToolStripMenuItem,
+            this.saveAsToolStripMenuItem,
             this.exportToolStripMenuItem,
-            this.importFromGeoToolStripMenuItem});
+            this.importToolStripMenuItem});
             this.文件FileToolStripMenuItem.Name = "文件FileToolStripMenuItem";
             this.文件FileToolStripMenuItem.Size = new System.Drawing.Size(48, 24);
             this.文件FileToolStripMenuItem.Text = "&File";
             // 
+            // newProjectToolStripMenuItem
+            // 
+            this.newProjectToolStripMenuItem.Name = "newProjectToolStripMenuItem";
+            this.newProjectToolStripMenuItem.Size = new System.Drawing.Size(188, 26);
+            this.newProjectToolStripMenuItem.Text = "&New Project";
+            this.newProjectToolStripMenuItem.Click += new System.EventHandler(this.newProjectToolStripMenuItem_Click);
+            // 
             // OpenProjectToolStripMenuItem
             // 
             this.OpenProjectToolStripMenuItem.Name = "OpenProjectToolStripMenuItem";
-            this.OpenProjectToolStripMenuItem.Size = new System.Drawing.Size(218, 26);
+            this.OpenProjectToolStripMenuItem.Size = new System.Drawing.Size(188, 26);
             this.OpenProjectToolStripMenuItem.Text = "&Open Project";
             this.OpenProjectToolStripMenuItem.Click += new System.EventHandler(this.OpenProjectToolStripMenuItem_Click);
             // 
             // SaveProjectToolStripMenuItem
             // 
             this.SaveProjectToolStripMenuItem.Name = "SaveProjectToolStripMenuItem";
-            this.SaveProjectToolStripMenuItem.Size = new System.Drawing.Size(218, 26);
-            this.SaveProjectToolStripMenuItem.Text = "&Save Project";
+            this.SaveProjectToolStripMenuItem.Size = new System.Drawing.Size(188, 26);
+            this.SaveProjectToolStripMenuItem.Text = "&Save";
             this.SaveProjectToolStripMenuItem.Click += new System.EventHandler(this.SaveProjectToolStripMenuItem_Click);
+            // 
+            // saveAsToolStripMenuItem
+            // 
+            this.saveAsToolStripMenuItem.Name = "saveAsToolStripMenuItem";
+            this.saveAsToolStripMenuItem.Size = new System.Drawing.Size(188, 26);
+            this.saveAsToolStripMenuItem.Text = "Save &As";
+            this.saveAsToolStripMenuItem.Click += new System.EventHandler(this.saveAsToolStripMenuItem_Click);
             // 
             // exportToolStripMenuItem
             // 
@@ -208,7 +256,7 @@
             this.vRMLModelsToolStripMenuItem,
             this.dOBJECTSToolStripMenuItem});
             this.exportToolStripMenuItem.Name = "exportToolStripMenuItem";
-            this.exportToolStripMenuItem.Size = new System.Drawing.Size(218, 26);
+            this.exportToolStripMenuItem.Size = new System.Drawing.Size(188, 26);
             this.exportToolStripMenuItem.Text = "Export";
             // 
             // imageToolStripMenuItem
@@ -240,12 +288,28 @@
             this.pLYFilesToolStripMenuItem.Text = "PLY Files";
             this.pLYFilesToolStripMenuItem.Click += new System.EventHandler(this.pLYFilesToolStripMenuItem_Click);
             // 
-            // importFromGeoToolStripMenuItem
+            // importToolStripMenuItem
             // 
-            this.importFromGeoToolStripMenuItem.Name = "importFromGeoToolStripMenuItem";
-            this.importFromGeoToolStripMenuItem.Size = new System.Drawing.Size(218, 26);
-            this.importFromGeoToolStripMenuItem.Text = "Import From Geo";
-            this.importFromGeoToolStripMenuItem.Click += new System.EventHandler(this.importFromGeoToolStripMenuItem_Click);
+            this.importToolStripMenuItem.DropDownItems.AddRange(new System.Windows.Forms.ToolStripItem[] {
+            this.fromG3DToolStripMenuItem,
+            this.fromGeoToolStripMenuItem});
+            this.importToolStripMenuItem.Name = "importToolStripMenuItem";
+            this.importToolStripMenuItem.Size = new System.Drawing.Size(188, 26);
+            this.importToolStripMenuItem.Text = "Import";
+            // 
+            // fromG3DToolStripMenuItem
+            // 
+            this.fromG3DToolStripMenuItem.Name = "fromG3DToolStripMenuItem";
+            this.fromG3DToolStripMenuItem.Size = new System.Drawing.Size(165, 26);
+            this.fromG3DToolStripMenuItem.Text = "From G3D";
+            this.fromG3DToolStripMenuItem.Click += new System.EventHandler(this.fromG3DToolStripMenuItem_Click);
+            // 
+            // fromGeoToolStripMenuItem
+            // 
+            this.fromGeoToolStripMenuItem.Name = "fromGeoToolStripMenuItem";
+            this.fromGeoToolStripMenuItem.Size = new System.Drawing.Size(165, 26);
+            this.fromGeoToolStripMenuItem.Text = "From Geo";
+            this.fromGeoToolStripMenuItem.Click += new System.EventHandler(this.fromGeoToolStripMenuItem_Click);
             // 
             // 数据DataToolStripMenuItem
             // 
@@ -491,7 +555,8 @@
             // 
             this.loadBorholesToolStripMenuItem.DropDownItems.AddRange(new System.Windows.Forms.ToolStripItem[] {
             this.fromLASToolStripMenuItem,
-            this.fromWELLToolStripMenuItem});
+            this.fromWELLToolStripMenuItem,
+            this.钻孔分层文件ToolStripMenuItem});
             this.loadBorholesToolStripMenuItem.Name = "loadBorholesToolStripMenuItem";
             this.loadBorholesToolStripMenuItem.Size = new System.Drawing.Size(279, 26);
             this.loadBorholesToolStripMenuItem.Text = "Load Borholes";
@@ -499,16 +564,38 @@
             // fromLASToolStripMenuItem
             // 
             this.fromLASToolStripMenuItem.Name = "fromLASToolStripMenuItem";
-            this.fromLASToolStripMenuItem.Size = new System.Drawing.Size(170, 26);
+            this.fromLASToolStripMenuItem.Size = new System.Drawing.Size(182, 26);
             this.fromLASToolStripMenuItem.Text = "from LAS";
             this.fromLASToolStripMenuItem.Click += new System.EventHandler(this.loadLASToolStripMenuItem_Click);
             // 
             // fromWELLToolStripMenuItem
             // 
             this.fromWELLToolStripMenuItem.Name = "fromWELLToolStripMenuItem";
-            this.fromWELLToolStripMenuItem.Size = new System.Drawing.Size(170, 26);
+            this.fromWELLToolStripMenuItem.Size = new System.Drawing.Size(182, 26);
             this.fromWELLToolStripMenuItem.Text = "from WELL";
             this.fromWELLToolStripMenuItem.Click += new System.EventHandler(this.fromWELLToolStripMenuItem_Click);
+            // 
+            // 钻孔分层文件ToolStripMenuItem
+            // 
+            this.钻孔分层文件ToolStripMenuItem.Name = "钻孔分层文件ToolStripMenuItem";
+            this.钻孔分层文件ToolStripMenuItem.Size = new System.Drawing.Size(182, 26);
+            this.钻孔分层文件ToolStripMenuItem.Text = "钻孔分层文件";
+            this.钻孔分层文件ToolStripMenuItem.Click += new System.EventHandler(this.钻孔分层文件ToolStripMenuItem_Click);
+            // 
+            // editToolStripMenuItem
+            // 
+            this.editToolStripMenuItem.DropDownItems.AddRange(new System.Windows.Forms.ToolStripItem[] {
+            this.terrianBlankToolStripMenuItem});
+            this.editToolStripMenuItem.Name = "editToolStripMenuItem";
+            this.editToolStripMenuItem.Size = new System.Drawing.Size(51, 24);
+            this.editToolStripMenuItem.Text = "&Edit";
+            // 
+            // terrianBlankToolStripMenuItem
+            // 
+            this.terrianBlankToolStripMenuItem.Name = "terrianBlankToolStripMenuItem";
+            this.terrianBlankToolStripMenuItem.Size = new System.Drawing.Size(224, 26);
+            this.terrianBlankToolStripMenuItem.Text = "Topography Blank";
+            this.terrianBlankToolStripMenuItem.Click += new System.EventHandler(this.terrianBlankToolStripMenuItem_Click);
             // 
             // viewViewToolStripMenuItem
             // 
@@ -519,12 +606,14 @@
             this.directionArrowToolStripMenuItem,
             this.lightsPositionToolStripMenuItem,
             this.pLYPropertyToolStripMenuItem,
-            this.dGridPropertyToolStripMenuItem,
             this.slicerPropertyToolStripMenuItem,
             this.boreholesPropertyToolStripMenuItem,
             this.linePropertyToolStripMenuItem,
             this.scattedPointsPropertyToolStripMenuItem,
-            this.refreshToolStripMenuItem});
+            this.refreshToolStripMenuItem,
+            this.dGridPropertyToolStripMenuItem,
+            this.propertiesFormToolStripMenuItem,
+            this.NavigationToolStripMenuItem});
             this.viewViewToolStripMenuItem.Name = "viewViewToolStripMenuItem";
             this.viewViewToolStripMenuItem.Size = new System.Drawing.Size(103, 24);
             this.viewViewToolStripMenuItem.Text = "View(&View)";
@@ -591,14 +680,6 @@
             this.pLYPropertyToolStripMenuItem.DropDownOpened += new System.EventHandler(this.pLYPropertyToolStripMenuItem_DropDownOpened);
             this.pLYPropertyToolStripMenuItem.Click += new System.EventHandler(this.pLYPropertyToolStripMenuItem_Click);
             // 
-            // dGridPropertyToolStripMenuItem
-            // 
-            this.dGridPropertyToolStripMenuItem.Name = "dGridPropertyToolStripMenuItem";
-            this.dGridPropertyToolStripMenuItem.Size = new System.Drawing.Size(265, 26);
-            this.dGridPropertyToolStripMenuItem.Text = "3DGrid property";
-            this.dGridPropertyToolStripMenuItem.DropDownOpened += new System.EventHandler(this.dGridPropertyToolStripMenuItem_DropDownOpened);
-            this.dGridPropertyToolStripMenuItem.Click += new System.EventHandler(this.dGridPropertyToolStripMenuItem_Click);
-            // 
             // slicerPropertyToolStripMenuItem
             // 
             this.slicerPropertyToolStripMenuItem.Name = "slicerPropertyToolStripMenuItem";
@@ -638,42 +719,131 @@
             this.refreshToolStripMenuItem.Text = "Refresh";
             this.refreshToolStripMenuItem.Click += new System.EventHandler(this.refreshToolStripMenuItem_Click);
             // 
-            // opitionToolStripMenuItem
+            // dGridPropertyToolStripMenuItem
             // 
-            this.opitionToolStripMenuItem.DropDownItems.AddRange(new System.Windows.Forms.ToolStripItem[] {
+            this.dGridPropertyToolStripMenuItem.Name = "dGridPropertyToolStripMenuItem";
+            this.dGridPropertyToolStripMenuItem.Size = new System.Drawing.Size(265, 26);
+            this.dGridPropertyToolStripMenuItem.Text = "3DGrid property";
+            this.dGridPropertyToolStripMenuItem.DropDownOpened += new System.EventHandler(this.dGridPropertyToolStripMenuItem_DropDownOpened);
+            this.dGridPropertyToolStripMenuItem.Click += new System.EventHandler(this.dGridPropertyToolStripMenuItem_Click);
+            // 
+            // propertiesFormToolStripMenuItem
+            // 
+            this.propertiesFormToolStripMenuItem.DropDownItems.AddRange(new System.Windows.Forms.ToolStripItem[] {
+            this.toolStripMenuItem2,
+            this.slicerPropertyToolStripMenuItem1,
+            this.boreholesPropertyToolStripMenuItem1,
+            this.pLYPropertyToolStripMenuItem1,
+            this.scatteredPointsPropertyToolStripMenuItem});
+            this.propertiesFormToolStripMenuItem.Name = "propertiesFormToolStripMenuItem";
+            this.propertiesFormToolStripMenuItem.Size = new System.Drawing.Size(265, 26);
+            this.propertiesFormToolStripMenuItem.Text = "Properties";
+            // 
+            // toolStripMenuItem2
+            // 
+            this.toolStripMenuItem2.Name = "toolStripMenuItem2";
+            this.toolStripMenuItem2.Size = new System.Drawing.Size(280, 26);
+            this.toolStripMenuItem2.Text = "3DGrid Property";
+            // 
+            // slicerPropertyToolStripMenuItem1
+            // 
+            this.slicerPropertyToolStripMenuItem1.Name = "slicerPropertyToolStripMenuItem1";
+            this.slicerPropertyToolStripMenuItem1.Size = new System.Drawing.Size(280, 26);
+            this.slicerPropertyToolStripMenuItem1.Text = "Slicer Property";
+            // 
+            // boreholesPropertyToolStripMenuItem1
+            // 
+            this.boreholesPropertyToolStripMenuItem1.Name = "boreholesPropertyToolStripMenuItem1";
+            this.boreholesPropertyToolStripMenuItem1.Size = new System.Drawing.Size(280, 26);
+            this.boreholesPropertyToolStripMenuItem1.Text = "Boreholes Property";
+            // 
+            // pLYPropertyToolStripMenuItem1
+            // 
+            this.pLYPropertyToolStripMenuItem1.Name = "pLYPropertyToolStripMenuItem1";
+            this.pLYPropertyToolStripMenuItem1.Size = new System.Drawing.Size(280, 26);
+            this.pLYPropertyToolStripMenuItem1.Text = "PLY Property";
+            // 
+            // scatteredPointsPropertyToolStripMenuItem
+            // 
+            this.scatteredPointsPropertyToolStripMenuItem.Name = "scatteredPointsPropertyToolStripMenuItem";
+            this.scatteredPointsPropertyToolStripMenuItem.Size = new System.Drawing.Size(280, 26);
+            this.scatteredPointsPropertyToolStripMenuItem.Text = "Scattered Points Property";
+            // 
+            // NavigationToolStripMenuItem
+            // 
+            this.NavigationToolStripMenuItem.DropDownItems.AddRange(new System.Windows.Forms.ToolStripItem[] {
+            this.toThisObjectToolStripMenuItem,
+            this.resetViewToolStripMenuItem});
+            this.NavigationToolStripMenuItem.Name = "NavigationToolStripMenuItem";
+            this.NavigationToolStripMenuItem.Size = new System.Drawing.Size(265, 26);
+            this.NavigationToolStripMenuItem.Text = "Navigation";
+            // 
+            // toThisObjectToolStripMenuItem
+            // 
+            this.toThisObjectToolStripMenuItem.Name = "toThisObjectToolStripMenuItem";
+            this.toThisObjectToolStripMenuItem.Size = new System.Drawing.Size(197, 26);
+            this.toThisObjectToolStripMenuItem.Text = "To This Object";
+            this.toThisObjectToolStripMenuItem.Click += new System.EventHandler(this.toThisObjectToolStripMenuItem_Click);
+            // 
+            // resetViewToolStripMenuItem
+            // 
+            this.resetViewToolStripMenuItem.Name = "resetViewToolStripMenuItem";
+            this.resetViewToolStripMenuItem.Size = new System.Drawing.Size(197, 26);
+            this.resetViewToolStripMenuItem.Text = "Reset View";
+            this.resetViewToolStripMenuItem.Click += new System.EventHandler(this.resetViewToolStripMenuItem_Click);
+            // 
+            // optionToolStripMenuItem
+            // 
+            this.optionToolStripMenuItem.DropDownItems.AddRange(new System.Windows.Forms.ToolStripItem[] {
             this.lightsMaterialToolStripMenuItem,
             this.dataRangeToolStripMenuItem,
             this.graphicDeviceToolStripMenuItem,
+            this.mouseControlToolStripMenuItem,
+            this.stratumColorSchemeToolStripMenuItem,
             this.testToolStripMenuItem});
-            this.opitionToolStripMenuItem.Name = "opitionToolStripMenuItem";
-            this.opitionToolStripMenuItem.Size = new System.Drawing.Size(78, 24);
-            this.opitionToolStripMenuItem.Text = "Opition";
+            this.optionToolStripMenuItem.Name = "optionToolStripMenuItem";
+            this.optionToolStripMenuItem.Size = new System.Drawing.Size(74, 24);
+            this.optionToolStripMenuItem.Text = "Option";
             // 
             // lightsMaterialToolStripMenuItem
             // 
             this.lightsMaterialToolStripMenuItem.Name = "lightsMaterialToolStripMenuItem";
-            this.lightsMaterialToolStripMenuItem.Size = new System.Drawing.Size(209, 26);
-            this.lightsMaterialToolStripMenuItem.Text = "Lights&&Material";
+            this.lightsMaterialToolStripMenuItem.Size = new System.Drawing.Size(256, 26);
+            this.lightsMaterialToolStripMenuItem.Text = "&Lights&&Material";
             this.lightsMaterialToolStripMenuItem.Click += new System.EventHandler(this.lightsMaterialToolStripMenuItem_Click);
             // 
             // dataRangeToolStripMenuItem
             // 
             this.dataRangeToolStripMenuItem.Name = "dataRangeToolStripMenuItem";
-            this.dataRangeToolStripMenuItem.Size = new System.Drawing.Size(209, 26);
-            this.dataRangeToolStripMenuItem.Text = "Data Range";
+            this.dataRangeToolStripMenuItem.Size = new System.Drawing.Size(256, 26);
+            this.dataRangeToolStripMenuItem.Text = "&Data Range";
             this.dataRangeToolStripMenuItem.Click += new System.EventHandler(this.dataRangeToolStripMenuItem_Click);
             // 
             // graphicDeviceToolStripMenuItem
             // 
             this.graphicDeviceToolStripMenuItem.Name = "graphicDeviceToolStripMenuItem";
-            this.graphicDeviceToolStripMenuItem.Size = new System.Drawing.Size(209, 26);
-            this.graphicDeviceToolStripMenuItem.Text = "Graphic Device";
+            this.graphicDeviceToolStripMenuItem.Size = new System.Drawing.Size(256, 26);
+            this.graphicDeviceToolStripMenuItem.Text = "&Graphic Device";
             this.graphicDeviceToolStripMenuItem.Click += new System.EventHandler(this.graphicDeviceToolStripMenuItem_Click);
+            // 
+            // mouseControlToolStripMenuItem
+            // 
+            this.mouseControlToolStripMenuItem.Name = "mouseControlToolStripMenuItem";
+            this.mouseControlToolStripMenuItem.Size = new System.Drawing.Size(256, 26);
+            this.mouseControlToolStripMenuItem.Text = "&Mouse Control";
+            this.mouseControlToolStripMenuItem.Click += new System.EventHandler(this.mouseControlToolStripMenuItem_Click);
+            // 
+            // stratumColorSchemeToolStripMenuItem
+            // 
+            this.stratumColorSchemeToolStripMenuItem.Name = "stratumColorSchemeToolStripMenuItem";
+            this.stratumColorSchemeToolStripMenuItem.Size = new System.Drawing.Size(256, 26);
+            this.stratumColorSchemeToolStripMenuItem.Text = "Stratum Color Scheme";
+            this.stratumColorSchemeToolStripMenuItem.Click += new System.EventHandler(this.stratumColorSchemeToolStripMenuItem_Click);
             // 
             // testToolStripMenuItem
             // 
             this.testToolStripMenuItem.Name = "testToolStripMenuItem";
-            this.testToolStripMenuItem.Size = new System.Drawing.Size(209, 26);
+            this.testToolStripMenuItem.Size = new System.Drawing.Size(256, 26);
             this.testToolStripMenuItem.Text = "Test";
             this.testToolStripMenuItem.Visible = false;
             this.testToolStripMenuItem.Click += new System.EventHandler(this.testToolStripMenuItem_Click);
@@ -697,7 +867,7 @@
             this.shapeToolStripMenuItem,
             this.textToolStripMenuItem});
             this.createToolStripMenuItem.Name = "createToolStripMenuItem";
-            this.createToolStripMenuItem.Size = new System.Drawing.Size(194, 26);
+            this.createToolStripMenuItem.Size = new System.Drawing.Size(224, 26);
             this.createToolStripMenuItem.Text = "&Create";
             // 
             // meshesToolStripMenuItem
@@ -705,7 +875,7 @@
             this.meshesToolStripMenuItem.DropDownItems.AddRange(new System.Windows.Forms.ToolStripItem[] {
             this.fromLinesToolStripMenuItem});
             this.meshesToolStripMenuItem.Name = "meshesToolStripMenuItem";
-            this.meshesToolStripMenuItem.Size = new System.Drawing.Size(148, 26);
+            this.meshesToolStripMenuItem.Size = new System.Drawing.Size(224, 26);
             this.meshesToolStripMenuItem.Text = "Meshes";
             // 
             // fromLinesToolStripMenuItem
@@ -720,7 +890,7 @@
             this.slicerToolStripMenuItem.DropDownItems.AddRange(new System.Windows.Forms.ToolStripItem[] {
             this.dOutlineToolStripMenuItem});
             this.slicerToolStripMenuItem.Name = "slicerToolStripMenuItem";
-            this.slicerToolStripMenuItem.Size = new System.Drawing.Size(148, 26);
+            this.slicerToolStripMenuItem.Size = new System.Drawing.Size(224, 26);
             this.slicerToolStripMenuItem.Text = "Slicer";
             // 
             // dOutlineToolStripMenuItem
@@ -736,9 +906,10 @@
             this.boxToolStripMenuItem1,
             this.cylinderToolStripMenuItem,
             this.coneToolStripMenuItem,
-            this.shape3DModelerToolStripMenuItem});
+            this.shape3DModelerToolStripMenuItem,
+            this.polygonToolStripMenuItem});
             this.shapeToolStripMenuItem.Name = "shapeToolStripMenuItem";
-            this.shapeToolStripMenuItem.Size = new System.Drawing.Size(148, 26);
+            this.shapeToolStripMenuItem.Size = new System.Drawing.Size(224, 26);
             this.shapeToolStripMenuItem.Text = "Shape";
             // 
             // boxToolStripMenuItem1
@@ -769,17 +940,24 @@
             this.shape3DModelerToolStripMenuItem.Text = "Shape3D Modeler";
             this.shape3DModelerToolStripMenuItem.Click += new System.EventHandler(this.shape3DModelerToolStripMenuItem_Click);
             // 
+            // polygonToolStripMenuItem
+            // 
+            this.polygonToolStripMenuItem.Name = "polygonToolStripMenuItem";
+            this.polygonToolStripMenuItem.Size = new System.Drawing.Size(224, 26);
+            this.polygonToolStripMenuItem.Text = "Polygon";
+            this.polygonToolStripMenuItem.Click += new System.EventHandler(this.polygonToolStripMenuItem_Click_1);
+            // 
             // textToolStripMenuItem
             // 
             this.textToolStripMenuItem.Name = "textToolStripMenuItem";
-            this.textToolStripMenuItem.Size = new System.Drawing.Size(148, 26);
+            this.textToolStripMenuItem.Size = new System.Drawing.Size(224, 26);
             this.textToolStripMenuItem.Text = "Text";
             this.textToolStripMenuItem.Click += new System.EventHandler(this.textToolStripMenuItem_Click);
             // 
             // cutingToolStripMenuItem
             // 
             this.cutingToolStripMenuItem.Name = "cutingToolStripMenuItem";
-            this.cutingToolStripMenuItem.Size = new System.Drawing.Size(194, 26);
+            this.cutingToolStripMenuItem.Size = new System.Drawing.Size(224, 26);
             this.cutingToolStripMenuItem.Text = "&Cutting";
             this.cutingToolStripMenuItem.Click += new System.EventHandler(this.cutingToolStripMenuItem_Click);
             // 
@@ -788,7 +966,7 @@
             this.IntersectWithToolStripMenuItem.DropDownItems.AddRange(new System.Windows.Forms.ToolStripItem[] {
             this.withMeshesToolStripMenuItem});
             this.IntersectWithToolStripMenuItem.Name = "IntersectWithToolStripMenuItem";
-            this.IntersectWithToolStripMenuItem.Size = new System.Drawing.Size(194, 26);
+            this.IntersectWithToolStripMenuItem.Size = new System.Drawing.Size(224, 26);
             this.IntersectWithToolStripMenuItem.Text = "&Intersect With";
             // 
             // withMeshesToolStripMenuItem
@@ -798,11 +976,27 @@
             this.withMeshesToolStripMenuItem.Text = "With &Meshes";
             this.withMeshesToolStripMenuItem.Click += new System.EventHandler(this.withMeshesToolStripMenuItem_Click);
             // 
+            // analyzeToolStripMenuItem
+            // 
+            this.analyzeToolStripMenuItem.DropDownItems.AddRange(new System.Windows.Forms.ToolStripItem[] {
+            this.overlayAnalysisToolStripMenuItem});
+            this.analyzeToolStripMenuItem.Name = "analyzeToolStripMenuItem";
+            this.analyzeToolStripMenuItem.Size = new System.Drawing.Size(79, 24);
+            this.analyzeToolStripMenuItem.Text = "Analyze";
+            // 
+            // overlayAnalysisToolStripMenuItem
+            // 
+            this.overlayAnalysisToolStripMenuItem.Name = "overlayAnalysisToolStripMenuItem";
+            this.overlayAnalysisToolStripMenuItem.Size = new System.Drawing.Size(209, 26);
+            this.overlayAnalysisToolStripMenuItem.Text = "Overlay Analysis";
+            this.overlayAnalysisToolStripMenuItem.Click += new System.EventHandler(this.overlayAnalysisToolStripMenuItem_Click);
+            // 
             // coordinateToolStripMenuItem
             // 
             this.coordinateToolStripMenuItem.DropDownItems.AddRange(new System.Windows.Forms.ToolStripItem[] {
             this.earthMappedSystemToolStripMenuItem,
-            this.axisOptionsToolStripMenuItem});
+            this.CoordinateOptionsMenuItem,
+            this.axisLabelsToolStripMenuItem});
             this.coordinateToolStripMenuItem.Name = "coordinateToolStripMenuItem";
             this.coordinateToolStripMenuItem.Size = new System.Drawing.Size(105, 24);
             this.coordinateToolStripMenuItem.Text = "Coordinate";
@@ -815,12 +1009,19 @@
             this.earthMappedSystemToolStripMenuItem.Text = "Earth Mapped System";
             this.earthMappedSystemToolStripMenuItem.Click += new System.EventHandler(this.earthMappedSystemToolStripMenuItem_Click);
             // 
-            // axisOptionsToolStripMenuItem
+            // CoordinateOptionsMenuItem
             // 
-            this.axisOptionsToolStripMenuItem.Name = "axisOptionsToolStripMenuItem";
-            this.axisOptionsToolStripMenuItem.Size = new System.Drawing.Size(252, 26);
-            this.axisOptionsToolStripMenuItem.Text = "Axis Options";
-            this.axisOptionsToolStripMenuItem.Click += new System.EventHandler(this.axisOptionsToolStripMenuItem_Click);
+            this.CoordinateOptionsMenuItem.Name = "CoordinateOptionsMenuItem";
+            this.CoordinateOptionsMenuItem.Size = new System.Drawing.Size(252, 26);
+            this.CoordinateOptionsMenuItem.Text = "Coordinate Options";
+            this.CoordinateOptionsMenuItem.Click += new System.EventHandler(this.axisOptionsToolStripMenuItem_Click);
+            // 
+            // axisLabelsToolStripMenuItem
+            // 
+            this.axisLabelsToolStripMenuItem.Name = "axisLabelsToolStripMenuItem";
+            this.axisLabelsToolStripMenuItem.Size = new System.Drawing.Size(252, 26);
+            this.axisLabelsToolStripMenuItem.Text = "Axis Options";
+            this.axisLabelsToolStripMenuItem.Click += new System.EventHandler(this.axisLabelsToolStripMenuItem_Click);
             // 
             // toolsToolStripMenuItem
             // 
@@ -832,7 +1033,8 @@
             this.buffersOverlapToolStripMenuItem,
             this.convertToolStripMenuItem,
             this.scriptsToolStripMenuItem,
-            this.recordingToolStripMenuItem});
+            this.recordingToolStripMenuItem,
+            this.stratumsEditorToolStripMenuItem});
             this.toolsToolStripMenuItem.Name = "toolsToolStripMenuItem";
             this.toolsToolStripMenuItem.Size = new System.Drawing.Size(63, 24);
             this.toolsToolStripMenuItem.Text = "Tools";
@@ -841,14 +1043,14 @@
             // coordsRotatingToolStripMenuItem
             // 
             this.coordsRotatingToolStripMenuItem.Name = "coordsRotatingToolStripMenuItem";
-            this.coordsRotatingToolStripMenuItem.Size = new System.Drawing.Size(224, 26);
+            this.coordsRotatingToolStripMenuItem.Size = new System.Drawing.Size(222, 26);
             this.coordsRotatingToolStripMenuItem.Text = "Coords Rotating";
             this.coordsRotatingToolStripMenuItem.Click += new System.EventHandler(this.coordsRotatingToolStripMenuItem_Click);
             // 
             // crossValidationToolStripMenuItem
             // 
             this.crossValidationToolStripMenuItem.Name = "crossValidationToolStripMenuItem";
-            this.crossValidationToolStripMenuItem.Size = new System.Drawing.Size(224, 26);
+            this.crossValidationToolStripMenuItem.Size = new System.Drawing.Size(222, 26);
             this.crossValidationToolStripMenuItem.Text = "CrossValidation";
             this.crossValidationToolStripMenuItem.Click += new System.EventHandler(this.crossValidationToolStripMenuItem_Click);
             // 
@@ -857,9 +1059,10 @@
             this.interpolationToolStripMenuItem.DropDownItems.AddRange(new System.Windows.Forms.ToolStripItem[] {
             this.scatteredPointsToolStripMenuItem,
             this.geophysicProfileToolStripMenuItem,
-            this.WellCurvesInterpolationMenuItem});
+            this.WellCurvesInterpolationMenuItem,
+            this.mineralBoreholesToolStripMenuItem});
             this.interpolationToolStripMenuItem.Name = "interpolationToolStripMenuItem";
-            this.interpolationToolStripMenuItem.Size = new System.Drawing.Size(224, 26);
+            this.interpolationToolStripMenuItem.Size = new System.Drawing.Size(222, 26);
             this.interpolationToolStripMenuItem.Text = "Interpolation";
             // 
             // scatteredPointsToolStripMenuItem
@@ -883,42 +1086,105 @@
             this.WellCurvesInterpolationMenuItem.Text = "&Geophysical Welling";
             this.WellCurvesInterpolationMenuItem.Click += new System.EventHandler(this.BoreholesCurvesInterpolation_Click);
             // 
+            // mineralBoreholesToolStripMenuItem
+            // 
+            this.mineralBoreholesToolStripMenuItem.Name = "mineralBoreholesToolStripMenuItem";
+            this.mineralBoreholesToolStripMenuItem.Size = new System.Drawing.Size(239, 26);
+            this.mineralBoreholesToolStripMenuItem.Text = "MineralBoreholes";
+            this.mineralBoreholesToolStripMenuItem.Click += new System.EventHandler(this.mineralBoreholesToolStripMenuItem_Click);
+            // 
             // modelingToolStripMenuItem
             // 
             this.modelingToolStripMenuItem.DropDownItems.AddRange(new System.Windows.Forms.ToolStripItem[] {
             this.slicersSamplingToolStripMenuItem,
             this.mergeGridsToolStripMenuItem,
             this.meshesCreatingToolStripMenuItem,
-            this.fromPolygonsToolStripMenuItem});
+            this.fromPolygonsToolStripMenuItem,
+            this.fromSlicersToolStripMenuItem,
+            this.meshesFrom3DGridsToolStripMenuItem,
+            this.layersFromMeshesToolStripMenuItem});
             this.modelingToolStripMenuItem.Name = "modelingToolStripMenuItem";
-            this.modelingToolStripMenuItem.Size = new System.Drawing.Size(224, 26);
+            this.modelingToolStripMenuItem.Size = new System.Drawing.Size(222, 26);
             this.modelingToolStripMenuItem.Text = "Modeling";
             // 
             // slicersSamplingToolStripMenuItem
             // 
+            this.slicersSamplingToolStripMenuItem.DropDownItems.AddRange(new System.Windows.Forms.ToolStripItem[] {
+            this.toDiscretedPointsToolStripMenuItem,
+            this.to3DGridsToolStripMenuItem,
+            this.toImageRecognizingToolStripMenuItem});
             this.slicersSamplingToolStripMenuItem.Name = "slicersSamplingToolStripMenuItem";
-            this.slicersSamplingToolStripMenuItem.Size = new System.Drawing.Size(224, 26);
+            this.slicersSamplingToolStripMenuItem.Size = new System.Drawing.Size(252, 26);
             this.slicersSamplingToolStripMenuItem.Text = "Slicers Sampling";
             this.slicersSamplingToolStripMenuItem.Click += new System.EventHandler(this.slicersSamplingToolStripMenuItem_Click);
+            // 
+            // toDiscretedPointsToolStripMenuItem
+            // 
+            this.toDiscretedPointsToolStripMenuItem.Name = "toDiscretedPointsToolStripMenuItem";
+            this.toDiscretedPointsToolStripMenuItem.Size = new System.Drawing.Size(250, 26);
+            this.toDiscretedPointsToolStripMenuItem.Text = "to Discreted Points";
+            this.toDiscretedPointsToolStripMenuItem.Click += new System.EventHandler(this.toDiscretedPointsToolStripMenuItem_Click);
+            // 
+            // to3DGridsToolStripMenuItem
+            // 
+            this.to3DGridsToolStripMenuItem.Name = "to3DGridsToolStripMenuItem";
+            this.to3DGridsToolStripMenuItem.Size = new System.Drawing.Size(250, 26);
+            this.to3DGridsToolStripMenuItem.Text = "to 3DGrids";
+            this.to3DGridsToolStripMenuItem.Click += new System.EventHandler(this.to3DGridsToolStripMenuItem_Click);
+            // 
+            // toImageRecognizingToolStripMenuItem
+            // 
+            this.toImageRecognizingToolStripMenuItem.Name = "toImageRecognizingToolStripMenuItem";
+            this.toImageRecognizingToolStripMenuItem.Size = new System.Drawing.Size(250, 26);
+            this.toImageRecognizingToolStripMenuItem.Text = "to Image Recognition";
+            this.toImageRecognizingToolStripMenuItem.Click += new System.EventHandler(this.toImageRecognizingToolStripMenuItem_Click);
             // 
             // mergeGridsToolStripMenuItem
             // 
             this.mergeGridsToolStripMenuItem.Name = "mergeGridsToolStripMenuItem";
-            this.mergeGridsToolStripMenuItem.Size = new System.Drawing.Size(224, 26);
+            this.mergeGridsToolStripMenuItem.Size = new System.Drawing.Size(252, 26);
             this.mergeGridsToolStripMenuItem.Text = "Grids Merging";
             this.mergeGridsToolStripMenuItem.Click += new System.EventHandler(this.mergeGridsToolStripMenuItem_Click);
             // 
             // meshesCreatingToolStripMenuItem
             // 
             this.meshesCreatingToolStripMenuItem.Name = "meshesCreatingToolStripMenuItem";
-            this.meshesCreatingToolStripMenuItem.Size = new System.Drawing.Size(224, 26);
+            this.meshesCreatingToolStripMenuItem.Size = new System.Drawing.Size(252, 26);
             this.meshesCreatingToolStripMenuItem.Text = "Meshes Creating";
             this.meshesCreatingToolStripMenuItem.Click += new System.EventHandler(this.meshesCreatingToolStripMenuItem_Click);
+            // 
+            // fromPolygonsToolStripMenuItem
+            // 
+            this.fromPolygonsToolStripMenuItem.Name = "fromPolygonsToolStripMenuItem";
+            this.fromPolygonsToolStripMenuItem.Size = new System.Drawing.Size(252, 26);
+            this.fromPolygonsToolStripMenuItem.Text = "from Polygons";
+            this.fromPolygonsToolStripMenuItem.Click += new System.EventHandler(this.fromPolygonsToolStripMenuItem_Click);
+            // 
+            // fromSlicersToolStripMenuItem
+            // 
+            this.fromSlicersToolStripMenuItem.Name = "fromSlicersToolStripMenuItem";
+            this.fromSlicersToolStripMenuItem.Size = new System.Drawing.Size(252, 26);
+            this.fromSlicersToolStripMenuItem.Text = "from Slicers";
+            this.fromSlicersToolStripMenuItem.Click += new System.EventHandler(this.fromSlicersToolStripMenuItem_Click);
+            // 
+            // meshesFrom3DGridsToolStripMenuItem
+            // 
+            this.meshesFrom3DGridsToolStripMenuItem.Name = "meshesFrom3DGridsToolStripMenuItem";
+            this.meshesFrom3DGridsToolStripMenuItem.Size = new System.Drawing.Size(252, 26);
+            this.meshesFrom3DGridsToolStripMenuItem.Text = "Meshes From 3DGrids";
+            this.meshesFrom3DGridsToolStripMenuItem.Click += new System.EventHandler(this.meshesFrom3DGridsToolStripMenuItem_Click);
+            // 
+            // layersFromMeshesToolStripMenuItem
+            // 
+            this.layersFromMeshesToolStripMenuItem.Name = "layersFromMeshesToolStripMenuItem";
+            this.layersFromMeshesToolStripMenuItem.Size = new System.Drawing.Size(252, 26);
+            this.layersFromMeshesToolStripMenuItem.Text = "Layers from Meshes";
+            this.layersFromMeshesToolStripMenuItem.Click += new System.EventHandler(this.layersFromMeshesToolStripMenuItem_Click);
             // 
             // buffersOverlapToolStripMenuItem
             // 
             this.buffersOverlapToolStripMenuItem.Name = "buffersOverlapToolStripMenuItem";
-            this.buffersOverlapToolStripMenuItem.Size = new System.Drawing.Size(224, 26);
+            this.buffersOverlapToolStripMenuItem.Size = new System.Drawing.Size(222, 26);
             this.buffersOverlapToolStripMenuItem.Text = "Buffers Overlap";
             this.buffersOverlapToolStripMenuItem.Click += new System.EventHandler(this.buffersOverlapToolStripMenuItem_Click);
             // 
@@ -929,7 +1195,7 @@
             this.CoordinatesMatToolStripMenuItem,
             this.Projection});
             this.convertToolStripMenuItem.Name = "convertToolStripMenuItem";
-            this.convertToolStripMenuItem.Size = new System.Drawing.Size(224, 26);
+            this.convertToolStripMenuItem.Size = new System.Drawing.Size(222, 26);
             this.convertToolStripMenuItem.Text = "Convert";
             // 
             // toEarthTextureToolStripMenuItem
@@ -973,7 +1239,7 @@
             this.scriptsToolStripMenuItem.DropDownItems.AddRange(new System.Windows.Forms.ToolStripItem[] {
             this.loadScriptsToolStripMenuItem});
             this.scriptsToolStripMenuItem.Name = "scriptsToolStripMenuItem";
-            this.scriptsToolStripMenuItem.Size = new System.Drawing.Size(224, 26);
+            this.scriptsToolStripMenuItem.Size = new System.Drawing.Size(222, 26);
             this.scriptsToolStripMenuItem.Text = "Scripts";
             // 
             // loadScriptsToolStripMenuItem
@@ -989,7 +1255,7 @@
             this.settingToolStripMenuItem,
             this.startEndToolStripMenuItem});
             this.recordingToolStripMenuItem.Name = "recordingToolStripMenuItem";
-            this.recordingToolStripMenuItem.Size = new System.Drawing.Size(224, 26);
+            this.recordingToolStripMenuItem.Size = new System.Drawing.Size(222, 26);
             this.recordingToolStripMenuItem.Text = "Screen Recording";
             this.recordingToolStripMenuItem.DropDownOpened += new System.EventHandler(this.recordingToolStripMenuItem_DropDownOpened);
             // 
@@ -1005,6 +1271,13 @@
             this.startEndToolStripMenuItem.Size = new System.Drawing.Size(160, 26);
             this.startEndToolStripMenuItem.Text = "Start/End";
             this.startEndToolStripMenuItem.Click += new System.EventHandler(this.startEndToolStripMenuItem_Click);
+            // 
+            // stratumsEditorToolStripMenuItem
+            // 
+            this.stratumsEditorToolStripMenuItem.Name = "stratumsEditorToolStripMenuItem";
+            this.stratumsEditorToolStripMenuItem.Size = new System.Drawing.Size(222, 26);
+            this.stratumsEditorToolStripMenuItem.Text = "Stratums Editor";
+            this.stratumsEditorToolStripMenuItem.Click += new System.EventHandler(this.stratumsEditorToolStripMenuItem_Click);
             // 
             // helpToolStripMenuItem
             // 
@@ -1032,7 +1305,7 @@
             this.toolStrip1.Location = new System.Drawing.Point(0, 30);
             this.toolStrip1.Name = "toolStrip1";
             this.toolStrip1.Padding = new System.Windows.Forms.Padding(0, 0, 2, 0);
-            this.toolStrip1.Size = new System.Drawing.Size(644, 31);
+            this.toolStrip1.Size = new System.Drawing.Size(812, 31);
             this.toolStrip1.TabIndex = 6;
             this.toolStrip1.Text = "toolStrip1";
             this.toolStrip1.Visible = false;
@@ -1075,17 +1348,11 @@
             this.toolStripButton4.Size = new System.Drawing.Size(29, 28);
             this.toolStripButton4.Text = "toolStripButton4";
             // 
-            // fromPolygonsToolStripMenuItem
-            // 
-            this.fromPolygonsToolStripMenuItem.Name = "fromPolygonsToolStripMenuItem";
-            this.fromPolygonsToolStripMenuItem.Size = new System.Drawing.Size(224, 26);
-            this.fromPolygonsToolStripMenuItem.Text = "from Polygons";
-            this.fromPolygonsToolStripMenuItem.Click += new System.EventHandler(this.fromPolygonsToolStripMenuItem_Click);
-            // 
             // MainForm
             // 
-            this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.None;
-            this.ClientSize = new System.Drawing.Size(644, 513);
+            this.AutoScaleDimensions = new System.Drawing.SizeF(10F, 20F);
+            this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
+            this.ClientSize = new System.Drawing.Size(929, 513);
             this.Controls.Add(this.toolStrip1);
             this.Controls.Add(this.dockPanel1);
             this.Controls.Add(this.menuStrip1);
@@ -1126,7 +1393,7 @@
         private System.Windows.Forms.ToolStripMenuItem dGridPropertyToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem pLYPropertyToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem loadLineToolStripMenuItem;
-        private System.Windows.Forms.ToolStripMenuItem opitionToolStripMenuItem;
+        private System.Windows.Forms.ToolStripMenuItem optionToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem lightsMaterialToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem outerBoxToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem directionArrowToolStripMenuItem;
@@ -1143,7 +1410,6 @@
         private System.Windows.Forms.ToolStripMenuItem loadCylinderToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem objectsToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem createToolStripMenuItem;
-        private System.Windows.Forms.ToolStripMenuItem importFromGeoToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem toolsToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem coordsRotatingToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem crossValidationToolStripMenuItem;
@@ -1193,7 +1459,7 @@
         private System.Windows.Forms.ToolStripMenuItem coneToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem textToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem CoordinatesMatToolStripMenuItem;
-        private System.Windows.Forms.ToolStripMenuItem axisOptionsToolStripMenuItem;
+        private System.Windows.Forms.ToolStripMenuItem CoordinateOptionsMenuItem;
         private System.Windows.Forms.ToolStripMenuItem Projection;
         private System.Windows.Forms.ToolStripMenuItem recordingToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem settingToolStripMenuItem;
@@ -1224,6 +1490,37 @@
         private System.Windows.Forms.ToolStripMenuItem WellCurvesInterpolationMenuItem;
         private System.Windows.Forms.ToolStripMenuItem selectedOutlineToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem fromPolygonsToolStripMenuItem;
+        private System.Windows.Forms.ToolStripMenuItem axisLabelsToolStripMenuItem;
+        private System.Windows.Forms.ToolStripMenuItem saveAsToolStripMenuItem;
+        private System.Windows.Forms.ToolStripMenuItem mouseControlToolStripMenuItem;
+        private System.Windows.Forms.ToolStripMenuItem 钻孔分层文件ToolStripMenuItem;
+        private System.Windows.Forms.ToolStripMenuItem stratumsEditorToolStripMenuItem;
+        private System.Windows.Forms.ToolStripMenuItem analyzeToolStripMenuItem;
+        private System.Windows.Forms.ToolStripMenuItem overlayAnalysisToolStripMenuItem;
+        private System.Windows.Forms.ToolStripMenuItem propertiesFormToolStripMenuItem;
+        private System.Windows.Forms.ToolStripMenuItem toolStripMenuItem2;
+        private System.Windows.Forms.ToolStripMenuItem slicerPropertyToolStripMenuItem1;
+        private System.Windows.Forms.ToolStripMenuItem boreholesPropertyToolStripMenuItem1;
+        private System.Windows.Forms.ToolStripMenuItem pLYPropertyToolStripMenuItem1;
+        private System.Windows.Forms.ToolStripMenuItem scatteredPointsPropertyToolStripMenuItem;
+        private System.Windows.Forms.ToolStripMenuItem NavigationToolStripMenuItem;
+        private System.Windows.Forms.ToolStripMenuItem toThisObjectToolStripMenuItem;
+        private System.Windows.Forms.ToolStripMenuItem resetViewToolStripMenuItem;
+        private System.Windows.Forms.ToolStripMenuItem stratumColorSchemeToolStripMenuItem;
+        private System.Windows.Forms.ToolStripMenuItem newProjectToolStripMenuItem;
+        private System.Windows.Forms.ToolStripMenuItem fromSlicersToolStripMenuItem;
+        private System.Windows.Forms.ToolStripMenuItem importToolStripMenuItem;
+        private System.Windows.Forms.ToolStripMenuItem fromG3DToolStripMenuItem;
+        private System.Windows.Forms.ToolStripMenuItem fromGeoToolStripMenuItem;
+        private System.Windows.Forms.ToolStripMenuItem editToolStripMenuItem;
+        private System.Windows.Forms.ToolStripMenuItem terrianBlankToolStripMenuItem;
+        private System.Windows.Forms.ToolStripMenuItem toDiscretedPointsToolStripMenuItem;
+        private System.Windows.Forms.ToolStripMenuItem to3DGridsToolStripMenuItem;
+        private System.Windows.Forms.ToolStripMenuItem meshesFrom3DGridsToolStripMenuItem;
+        private System.Windows.Forms.ToolStripMenuItem layersFromMeshesToolStripMenuItem;
+        private System.Windows.Forms.ToolStripMenuItem toImageRecognizingToolStripMenuItem;
+        private System.Windows.Forms.ToolStripMenuItem mineralBoreholesToolStripMenuItem;
+        private System.Windows.Forms.ToolStripMenuItem polygonToolStripMenuItem;
     }
 }
 

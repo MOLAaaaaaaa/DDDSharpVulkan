@@ -1,24 +1,44 @@
-﻿using System;
-using System.IO;
-using System.Drawing;
-using System.ComponentModel;
-using System.Drawing.Design;
+﻿using GlmNet;
+using System;
 using System.Collections.Generic;
+using System.ComponentModel;
+using System.Drawing;
+using System.Drawing.Design;
+using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using TextReaderWriter;
 
 namespace DataCollection
-{
+{    
     /// <summary>
     /// 地质地层（不含断层）
     /// </summary>
     public class GeoLayerMeshes: C3DObjectBase
     {
+        public int[,] pBlankedPointIndexes = null;   //白化点坐标随意
+        public List<vec3> pBlankedPoints = new List<vec3>();
+        public List<Vector64>Boundaries = new List<Vector64>();
+
         //范围一致,网格一致
         public List<GeoMesh> Meshes = new List<GeoMesh>();
-
+        public int nRow 
+        {  
+            get
+            {
+                if (Meshes.Count < 1) return 0;
+                return Meshes[0].nRow;
+            }
+        }
+        public int nCol
+        {
+            get
+            {
+                if (Meshes.Count < 1) return 0;
+                return Meshes[0].nCol;
+            }
+        }
         bool _IsFlatBottom = false;
         [CategoryAttribute("Layer"), DisplayNameAttribute("Flat Bottom")]//底界面为平底        
         public bool IsFlatBottom 
@@ -79,18 +99,220 @@ namespace DataCollection
         {
             Meshes.Add(mesh);
         }
+        /// <summary>
+        /// 地层从上到下排列
+        /// </summary>
+        /// <param name="meshes"></param>
         public void AddRange(List<GeoMesh> meshes)
         {
             Meshes.AddRange(meshes);
         }
+
         public void AddRange(GeoMesh[]meshes)
         {
             Meshes.AddRange(meshes);
         }
+
         public override bool Remove(C3DObjectBase obj)
         {
             return Meshes.Remove((GeoMesh)obj);
         }
+
+        public bool TrimWith(Polygon2D poly, bool keepOuter)
+        {
+            for(int i=0;i<Meshes.Count;i++)
+            {
+                GeoMesh mesh = (GeoMesh)Meshes[i];
+                mesh.TrimWith(poly, keepOuter);
+                Meshes[i] = mesh;
+            }            
+            return true;
+        }
+        /// <summary>
+        /// 判断点是否在地层曲面之间
+        /// </summary>
+        /// <param name="p"></param>
+        /// <returns></returns>
+        public bool IsPointOnMeshes(Vector64 p)
+        {
+            GeoMesh top, bottom;
+            if (Meshes.Count < 1 ) return false;
+            else if(Meshes.Count ==1 )
+            {
+                top = Meshes[0];
+                top.GetVerticIndex(p.X, p.Y, out int ix, out int iy);
+                if (top.IsBlankedGrid(iy, iy)) return false;
+                else return true;
+            }
+            else if (Meshes.Count > 1)
+            {
+                for (int i = 0; i < Meshes.Count-1; i++)
+                {
+                    top = Meshes[i];
+                    bottom = Meshes[i+1];
+                    top.GetVerticIndex(p.X, p.Y, out int ix, out int iy);
+                    if (top.IsBlankedGrid(iy, ix)) return false;
+                    if (bottom.IsBlankedGrid(iy, ix)) return false;
+                    Vector64 p2 = top[iy, ix];
+                    Vector64 p1 = bottom[iy, ix];                    
+                    if (p.Z >= p1.Z && p.Z <= p2.Z) return true;                   
+                }
+                return false;
+            }
+            return false;
+        }
+        public void UpdateBlanked(GeoMesh top, GeoMesh bottom)
+        {
+            for(int i=0;i< top.nRow;i++)
+            {
+                for (int j = 0; j < top.nRow; j++)
+                {
+                    Vector64 p1 = top[i, j];
+                    Vector64 p2 = bottom[i, j];
+                    if (p1.Z < p2.Z) 
+                    { 
+                        p1.V = p2.V = double.NaN;
+                        top[i, j] = p1;
+                        bottom[i, j] = p2;
+                    }                    
+                }
+            }
+        }
+        public void UpdateBlanked()
+        {
+            GeoMesh top, bottom;            
+            for(int i=0;i<Meshes.Count-1; i++)//按z升序排列
+            {
+                top = (GeoMesh)Meshes[i];
+                bottom = (GeoMesh)Meshes[i+1];                
+                UpdateBlanked(top,bottom);
+            }
+        }
+        
+        int GetBlankedPointIndex(int irow, int icol)
+        {
+            if(pBlankedPointIndexes == null) return -1;
+            return pBlankedPointIndexes[irow, icol];
+        }
+
+        public double GetPolarAngle(Point p,Point center)
+        {
+            double dx = p.X - center.X;
+            double dy = p.Y - center.Y;
+            return Math.Atan2(dy, dx); // 范围：-π ~ π
+        }
+        /// <summary>
+        /// 提取网格中值为1的边界点，并按极角排序组成闭合多边形
+        /// 边界点定义：值为1，且至少一个四邻域（上下左右）节点值为0（或越界）
+        /// </summary>
+        /// <param name="points">网格节点坐标，[ix, iy] 对应x/y方向索引</param>
+        /// <param name="values">网格节点值，[ix, iy] 与points索引一一对应</param>
+        /// <returns>闭合多边形的边界点列表（首尾点重合，保证闭合）</returns>
+        /// <exception cref="ArgumentNullException">输入数组为空</exception>
+        /// <exception cref="ArgumentException">points与values维度不匹配/无有效边界点</exception>
+        public List<Vector64> ExtractBoundaryPolygon()
+        {   
+            // 2. 定义四邻域偏移（上、下、左、右）
+            (int dix, int diy)[] neighbors = new (int, int)[]
+            {
+                (-1, 0), // 上（x-1）
+                (1, 0),  // 下（x+1）
+                (0, -1), // 左（y-1）
+                (0, 1)   // 右（y+1）
+            };
+
+            // 3. 筛选边界点：值为1，且至少一个邻域值为0（或邻域越界）
+            List<Point> boundaryPoints = new List<Point>();
+            for (int ix = 0; ix < nCol; ix++)
+            {
+                for (int iy = 0; iy < nRow; iy++)
+                {
+                    // 当前节点值为1才可能是边界点
+                    if ( IsBlanked(iy,ix) )continue;
+
+                    // 检查四邻域是否有值为0的节点（或越界，越界视为值为0）
+                    bool isBoundary = false;
+                    foreach (var (dix, diy) in neighbors)
+                    {
+                        int nx = ix + dix;
+                        int ny = iy + diy;
+                        // 邻域越界 → 视为外部（值为0）
+                        if (nx < 0 || nx >= nCol || ny < 0 || ny >= nRow)
+                        {
+                            isBoundary = true;
+                            break;
+                        }
+                        // 邻域值为0 → 是边界点
+                        if (IsBlanked(iy, ix))
+                        {
+                            isBoundary = true;
+                            break;
+                        }
+                    }
+                    if (isBoundary)boundaryPoints.Add(new Point(ix, iy));
+                }
+            }
+
+            // 校验：是否找到边界点
+            if (boundaryPoints.Count == 0)
+                throw new ArgumentException("未找到值为1的边界点，请检查网格数据");
+
+            // 4. 对边界点排序：按极角排序（以1区域的中心为原点，逆时针排序）
+            // 第一步：计算1区域的中心（所有值为1的节点的坐标均值）
+            Point center = CalculateValue1Center(nCol, nRow);
+
+            // 第二步：按极角逆时针排序
+            boundaryPoints = boundaryPoints
+                .OrderBy(p => GetPolarAngle(p,center))
+                .ToList();
+
+            // 5. 保证多边形闭合：首尾点重合
+            if (boundaryPoints.Count > 0 && !IsPointEqual(boundaryPoints.First(), boundaryPoints.Last()))
+                boundaryPoints.Add(boundaryPoints.First());
+
+            List<Vector64> points = new List<Vector64>();
+            for(int i=0;i<boundaryPoints.Count;i++)
+            {
+                Point p = boundaryPoints[i];
+                CMesh mesh = Meshes[0];
+                points.Add(mesh.GetPoint(p.Y, p.X));
+            }
+            boundaryPoints.Clear();
+            return points;
+        }
+
+        /// <summary>
+        /// 计算所有值为1的网格节点的中心坐标（均值）
+        /// </summary>
+        private Point CalculateValue1Center(int ixCount, int iyCount)
+        {
+            int sumX = 0, sumY = 0;
+            int count = 0;
+
+            for (int ix = 0; ix < ixCount; ix++)
+            {
+                for (int iy = 0; iy < iyCount; iy++)
+                {
+                    if ( !IsBlanked(iy, ix) )
+                    {
+                        sumX += ix;
+                        sumY += iy;
+                        count++;
+                    }
+                }
+            }
+
+            return new Point(sumX / count, sumY / count);
+        }
+
+        /// <summary>
+        /// 比较两个点是否相等（浮点精度兼容）
+        /// </summary>
+        private static bool IsPointEqual(Point p1, Point p2)
+        {
+            return Math.Abs(p1.X - p2.X) < 1e-8 && Math.Abs(p1.Y - p2.Y) < 1e-8;
+        }
+        
         public override void UpdateRange()
         {
             CMesh mesh;
@@ -373,39 +595,15 @@ namespace DataCollection
         }
         public override bool SaveAs(BinaryWriter br)
         {
-            if (!SaveObjHeader(br)) return false;
+            if (!base.SaveAs(br)) return false;
             try
             {
-                br.Write(nRow);
-                br.Write(nCol);
-                if (nRow > 0 && nCol > 0)
-                {
-                    foreach (Vector64 p in pData)
-                    {
-                        br.Write(p.x);
-                        br.Write(p.y);
-                        br.Write(p.z);
-                        br.Write(p.v);
-                    }
-                }
-
                 br.Write(IsTop);
                 br.Write(Depth);
                 br.Write(ShowSurface);
                 br.Write(IsFilled);
-                //C3DData.SaveString(br, textureImgFile);
-                //C3DData.SaveString(br, SurroundingTexturFile);
                 SurfaceTexture.Save(br);
                 SurroundingTexture.Save(br);
-
-                br.Write(ShowMesh);
-                br.Write(ShowContour);
-                br.Write(LineWidth);
-                br.Write(LineColor.ToArgb());
-                br.Write(ObjColor.ToArgb());
-                br.Write(EnableColorLevel);
-                ColorScale.WriteBinary(br);
-                marchingCube.SaveBinary(br);
                 return true;
             }
             catch (Exception e)
@@ -416,44 +614,15 @@ namespace DataCollection
         }
         public override bool LoadFrom(BinaryReader br)
         {
-            if (!LoadObjHeader(br)) return false;
-            double x, y, z, v;
+            if (!base.LoadFrom(br)) return false;            
             try
             {
-                nRow = br.ReadInt32();
-                nCol = br.ReadInt32();
-                if (nRow > 0 && nCol > 0)
-                {
-                    pData = null;
-                    pData = new Vector64[nRow * nCol];
-                    for (int i = 0; i < pData.Length; i++)
-                    {
-                        x = br.ReadDouble();
-                        y = br.ReadDouble();
-                        z = br.ReadDouble();
-                        v = br.ReadDouble();
-                        pData[i] = new Vector64(x, y, z, v);
-                    }
-                }
-
                 IsTop = br.ReadBoolean();
                 Depth = br.ReadSingle();
                 ShowSurface = br.ReadBoolean();
-                IsFilled =br.ReadBoolean();
-                //textureImgFile = C3DData.LoadString(br);
-                //SurroundingTexturFile = C3DData.LoadString(br);
+                IsFilled = br.ReadBoolean();
                 SurfaceTexture.Load(br);
                 SurroundingTexture.Load(br);
-
-                ShowMesh = br.ReadBoolean();
-                ShowContour = br.ReadBoolean();
-                LineWidth = br.ReadSingle();
-                LineColor = Color.FromArgb(br.ReadInt32());
-                ObjColor = Color.FromArgb(br.ReadInt32());
-                EnableColorLevel = br.ReadBoolean();
-
-                ColorScale.LoadBinary(br);
-                marchingCube.LoadBinary(br);
                 UpdateRange();
                 return true;
             }

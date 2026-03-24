@@ -142,9 +142,9 @@ namespace DDDSharp
         //
         private void DoExport_Click(object sender, EventArgs e)
         {
-            nx = ConvertData.StringToInt(Export_X_textBox.Text);
-            ny = ConvertData.StringToInt(Export_Y_textBox.Text);
-            nz = ConvertData.StringToInt(Export_Z_textBox.Text);
+            nx = int.Parse(Export_X_textBox.Text);
+            ny = int.Parse(Export_Y_textBox.Text);
+            nz = int.Parse(Export_Z_textBox.Text);
             if(nx<2||ny<2||nz<2)
             {
                 MessageBox.Show("Export Geometry Grids not correct.");
@@ -196,7 +196,7 @@ namespace DDDSharp
                         }
                     }
                 }
-                data1.UpdateDataRange();
+                data1.UpdateRange();
                 if (data1.SaveAs(export_grid_textBox.Text))
                 {
                     MessageBox.Show("3DGrid data exported!\n" + export_grid_textBox.Text);
@@ -395,7 +395,7 @@ namespace DDDSharp
         }
         private void UpdateCoordButton_Click(object sender, EventArgs e)
         {
-            double angle  = ConvertData.StringToDouble(RotateAngle_textBox.Text);
+            double angle  = double.Parse(RotateAngle_textBox.Text);
 
             if(angle != rotateAngle)
             {

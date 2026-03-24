@@ -85,28 +85,28 @@ namespace DDDSharp.Gridding
             // 
             // textY2
             // 
-            this.textY2.Location = new System.Drawing.Point(138, 67);
-            this.textY2.Margin = new System.Windows.Forms.Padding(4, 3, 4, 3);
+            this.textY2.Location = new System.Drawing.Point(155, 80);
+            this.textY2.Margin = new System.Windows.Forms.Padding(4, 4, 4, 4);
             this.textY2.Name = "textY2";
-            this.textY2.Size = new System.Drawing.Size(97, 25);
+            this.textY2.Size = new System.Drawing.Size(109, 28);
             this.textY2.TabIndex = 16;
             this.textY2.TextChanged += new System.EventHandler(this.textY2_TextChanged);
             // 
             // textY1
             // 
-            this.textY1.Location = new System.Drawing.Point(26, 67);
-            this.textY1.Margin = new System.Windows.Forms.Padding(4, 3, 4, 3);
+            this.textY1.Location = new System.Drawing.Point(29, 80);
+            this.textY1.Margin = new System.Windows.Forms.Padding(4, 4, 4, 4);
             this.textY1.Name = "textY1";
-            this.textY1.Size = new System.Drawing.Size(100, 25);
+            this.textY1.Size = new System.Drawing.Size(112, 28);
             this.textY1.TabIndex = 15;
             this.textY1.TextChanged += new System.EventHandler(this.textY1_TextChanged);
             // 
             // textX2
             // 
-            this.textX2.Location = new System.Drawing.Point(138, 37);
-            this.textX2.Margin = new System.Windows.Forms.Padding(4, 3, 4, 3);
+            this.textX2.Location = new System.Drawing.Point(155, 44);
+            this.textX2.Margin = new System.Windows.Forms.Padding(4, 4, 4, 4);
             this.textX2.Name = "textX2";
-            this.textX2.Size = new System.Drawing.Size(97, 25);
+            this.textX2.Size = new System.Drawing.Size(109, 28);
             this.textX2.TabIndex = 8;
             this.textX2.TextChanged += new System.EventHandler(this.textX2_TextChanged);
             // 
@@ -116,11 +116,11 @@ namespace DDDSharp.Gridding
             | System.Windows.Forms.AnchorStyles.Right)));
             this.groupBox2.Controls.Add(this.checkedListBox1);
             this.groupBox2.ForeColor = System.Drawing.Color.Sienna;
-            this.groupBox2.Location = new System.Drawing.Point(503, 228);
-            this.groupBox2.Margin = new System.Windows.Forms.Padding(4, 3, 4, 3);
+            this.groupBox2.Location = new System.Drawing.Point(566, 274);
+            this.groupBox2.Margin = new System.Windows.Forms.Padding(4, 4, 4, 4);
             this.groupBox2.Name = "groupBox2";
-            this.groupBox2.Padding = new System.Windows.Forms.Padding(4, 3, 4, 3);
-            this.groupBox2.Size = new System.Drawing.Size(457, 147);
+            this.groupBox2.Padding = new System.Windows.Forms.Padding(4, 4, 4, 4);
+            this.groupBox2.Size = new System.Drawing.Size(514, 176);
             this.groupBox2.TabIndex = 69;
             this.groupBox2.TabStop = false;
             this.groupBox2.Text = "Compute Devices";
@@ -132,20 +132,21 @@ namespace DDDSharp.Gridding
             | System.Windows.Forms.AnchorStyles.Right)));
             this.checkedListBox1.HorizontalExtent = 500;
             this.checkedListBox1.HorizontalScrollbar = true;
-            this.checkedListBox1.Location = new System.Drawing.Point(2, 16);
+            this.checkedListBox1.Location = new System.Drawing.Point(2, 19);
+            this.checkedListBox1.Margin = new System.Windows.Forms.Padding(3, 4, 3, 4);
             this.checkedListBox1.Name = "checkedListBox1";
             this.checkedListBox1.ScrollAlwaysVisible = true;
-            this.checkedListBox1.Size = new System.Drawing.Size(450, 124);
+            this.checkedListBox1.Size = new System.Drawing.Size(506, 142);
             this.checkedListBox1.TabIndex = 18;
             // 
             // labelTitle
             // 
             this.labelTitle.AutoSize = true;
             this.labelTitle.ForeColor = System.Drawing.SystemColors.MenuHighlight;
-            this.labelTitle.Location = new System.Drawing.Point(206, 654);
+            this.labelTitle.Location = new System.Drawing.Point(232, 785);
             this.labelTitle.Margin = new System.Windows.Forms.Padding(4, 0, 4, 0);
             this.labelTitle.Name = "labelTitle";
-            this.labelTitle.Size = new System.Drawing.Size(95, 15);
+            this.labelTitle.Size = new System.Drawing.Size(119, 19);
             this.labelTitle.TabIndex = 68;
             this.labelTitle.Text = "percentages";
             // 
@@ -153,10 +154,10 @@ namespace DDDSharp.Gridding
             // 
             this.labelTimeLeft.AutoSize = true;
             this.labelTimeLeft.ForeColor = System.Drawing.Color.BlueViolet;
-            this.labelTimeLeft.Location = new System.Drawing.Point(502, 630);
+            this.labelTimeLeft.Location = new System.Drawing.Point(565, 756);
             this.labelTimeLeft.Margin = new System.Windows.Forms.Padding(4, 0, 4, 0);
             this.labelTimeLeft.Name = "labelTimeLeft";
-            this.labelTimeLeft.Size = new System.Drawing.Size(103, 15);
+            this.labelTimeLeft.Size = new System.Drawing.Size(129, 19);
             this.labelTimeLeft.TabIndex = 67;
             this.labelTimeLeft.Text = "time left(s)";
             // 
@@ -164,10 +165,10 @@ namespace DDDSharp.Gridding
             // 
             this.label11.AutoSize = true;
             this.label11.ForeColor = System.Drawing.Color.Black;
-            this.label11.Location = new System.Drawing.Point(2, 70);
+            this.label11.Location = new System.Drawing.Point(2, 84);
             this.label11.Margin = new System.Windows.Forms.Padding(4, 0, 4, 0);
             this.label11.Name = "label11";
-            this.label11.Size = new System.Drawing.Size(23, 15);
+            this.label11.Size = new System.Drawing.Size(29, 19);
             this.label11.TabIndex = 14;
             this.label11.Text = "Y:";
             // 
@@ -175,19 +176,19 @@ namespace DDDSharp.Gridding
             // 
             this.label10.AutoSize = true;
             this.label10.ForeColor = System.Drawing.Color.Black;
-            this.label10.Location = new System.Drawing.Point(384, 19);
+            this.label10.Location = new System.Drawing.Point(432, 23);
             this.label10.Margin = new System.Windows.Forms.Padding(4, 0, 4, 0);
             this.label10.Name = "label10";
-            this.label10.Size = new System.Drawing.Size(31, 15);
+            this.label10.Size = new System.Drawing.Size(39, 19);
             this.label10.TabIndex = 13;
             this.label10.Text = "Num";
             // 
             // textXNum
             // 
-            this.textXNum.Location = new System.Drawing.Point(376, 37);
-            this.textXNum.Margin = new System.Windows.Forms.Padding(4, 3, 4, 3);
+            this.textXNum.Location = new System.Drawing.Point(423, 44);
+            this.textXNum.Margin = new System.Windows.Forms.Padding(4, 4, 4, 4);
             this.textXNum.Name = "textXNum";
-            this.textXNum.Size = new System.Drawing.Size(68, 25);
+            this.textXNum.Size = new System.Drawing.Size(76, 28);
             this.textXNum.TabIndex = 12;
             this.textXNum.TextChanged += new System.EventHandler(this.textXNum_TextChanged);
             // 
@@ -195,19 +196,19 @@ namespace DDDSharp.Gridding
             // 
             this.label9.AutoSize = true;
             this.label9.ForeColor = System.Drawing.Color.Black;
-            this.label9.Location = new System.Drawing.Point(258, 19);
+            this.label9.Location = new System.Drawing.Point(290, 23);
             this.label9.Margin = new System.Windows.Forms.Padding(4, 0, 4, 0);
             this.label9.Name = "label9";
-            this.label9.Size = new System.Drawing.Size(63, 15);
+            this.label9.Size = new System.Drawing.Size(79, 19);
             this.label9.TabIndex = 11;
             this.label9.Text = "Spacing";
             // 
             // textStepX
             // 
-            this.textStepX.Location = new System.Drawing.Point(249, 37);
-            this.textStepX.Margin = new System.Windows.Forms.Padding(4, 3, 4, 3);
+            this.textStepX.Location = new System.Drawing.Point(280, 44);
+            this.textStepX.Margin = new System.Windows.Forms.Padding(4, 4, 4, 4);
             this.textStepX.Name = "textStepX";
-            this.textStepX.Size = new System.Drawing.Size(112, 25);
+            this.textStepX.Size = new System.Drawing.Size(126, 28);
             this.textStepX.TabIndex = 10;
             this.textStepX.TextChanged += new System.EventHandler(this.textStepX_TextChanged);
             // 
@@ -218,11 +219,11 @@ namespace DDDSharp.Gridding
             this.groupBox4.Controls.Add(this.textOutputFile);
             this.groupBox4.Controls.Add(this.outputButton);
             this.groupBox4.ForeColor = System.Drawing.Color.Sienna;
-            this.groupBox4.Location = new System.Drawing.Point(503, 383);
-            this.groupBox4.Margin = new System.Windows.Forms.Padding(4, 3, 4, 3);
+            this.groupBox4.Location = new System.Drawing.Point(566, 460);
+            this.groupBox4.Margin = new System.Windows.Forms.Padding(4, 4, 4, 4);
             this.groupBox4.Name = "groupBox4";
-            this.groupBox4.Padding = new System.Windows.Forms.Padding(4, 3, 4, 3);
-            this.groupBox4.Size = new System.Drawing.Size(460, 182);
+            this.groupBox4.Padding = new System.Windows.Forms.Padding(4, 4, 4, 4);
+            this.groupBox4.Size = new System.Drawing.Size(518, 218);
             this.groupBox4.TabIndex = 60;
             this.groupBox4.TabStop = false;
             this.groupBox4.Text = "Output Grid files";
@@ -231,12 +232,12 @@ namespace DDDSharp.Gridding
             // 
             this.textOutputFile.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left) 
             | System.Windows.Forms.AnchorStyles.Right)));
-            this.textOutputFile.Location = new System.Drawing.Point(2, 18);
-            this.textOutputFile.Margin = new System.Windows.Forms.Padding(4, 3, 4, 3);
+            this.textOutputFile.Location = new System.Drawing.Point(2, 22);
+            this.textOutputFile.Margin = new System.Windows.Forms.Padding(4, 4, 4, 4);
             this.textOutputFile.Multiline = true;
             this.textOutputFile.Name = "textOutputFile";
             this.textOutputFile.ScrollBars = System.Windows.Forms.ScrollBars.Both;
-            this.textOutputFile.Size = new System.Drawing.Size(450, 125);
+            this.textOutputFile.Size = new System.Drawing.Size(506, 149);
             this.textOutputFile.TabIndex = 11;
             this.textOutputFile.WordWrap = false;
             // 
@@ -244,10 +245,10 @@ namespace DDDSharp.Gridding
             // 
             this.outputButton.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
             this.outputButton.ForeColor = System.Drawing.Color.RoyalBlue;
-            this.outputButton.Location = new System.Drawing.Point(373, 149);
-            this.outputButton.Margin = new System.Windows.Forms.Padding(4, 3, 4, 3);
+            this.outputButton.Location = new System.Drawing.Point(420, 179);
+            this.outputButton.Margin = new System.Windows.Forms.Padding(4, 4, 4, 4);
             this.outputButton.Name = "outputButton";
-            this.outputButton.Size = new System.Drawing.Size(79, 27);
+            this.outputButton.Size = new System.Drawing.Size(89, 32);
             this.outputButton.TabIndex = 5;
             this.outputButton.Text = "Browse";
             this.outputButton.UseVisualStyleBackColor = true;
@@ -255,10 +256,10 @@ namespace DDDSharp.Gridding
             // 
             // textStepY
             // 
-            this.textStepY.Location = new System.Drawing.Point(249, 67);
-            this.textStepY.Margin = new System.Windows.Forms.Padding(4, 3, 4, 3);
+            this.textStepY.Location = new System.Drawing.Point(280, 80);
+            this.textStepY.Margin = new System.Windows.Forms.Padding(4, 4, 4, 4);
             this.textStepY.Name = "textStepY";
-            this.textStepY.Size = new System.Drawing.Size(112, 25);
+            this.textStepY.Size = new System.Drawing.Size(126, 28);
             this.textStepY.TabIndex = 17;
             this.textStepY.TextChanged += new System.EventHandler(this.textStepY_TextChanged);
             // 
@@ -266,10 +267,10 @@ namespace DDDSharp.Gridding
             // 
             this.label7.AutoSize = true;
             this.label7.ForeColor = System.Drawing.Color.Black;
-            this.label7.Location = new System.Drawing.Point(151, 19);
+            this.label7.Location = new System.Drawing.Point(170, 23);
             this.label7.Margin = new System.Windows.Forms.Padding(4, 0, 4, 0);
             this.label7.Name = "label7";
-            this.label7.Size = new System.Drawing.Size(63, 15);
+            this.label7.Size = new System.Drawing.Size(79, 19);
             this.label7.TabIndex = 9;
             this.label7.Text = "Maximum";
             // 
@@ -277,10 +278,10 @@ namespace DDDSharp.Gridding
             // 
             this.label6.AutoSize = true;
             this.label6.ForeColor = System.Drawing.Color.Black;
-            this.label6.Location = new System.Drawing.Point(42, 19);
+            this.label6.Location = new System.Drawing.Point(47, 23);
             this.label6.Margin = new System.Windows.Forms.Padding(4, 0, 4, 0);
             this.label6.Name = "label6";
-            this.label6.Size = new System.Drawing.Size(63, 15);
+            this.label6.Size = new System.Drawing.Size(79, 19);
             this.label6.TabIndex = 7;
             this.label6.Text = "Minimum";
             // 
@@ -288,10 +289,10 @@ namespace DDDSharp.Gridding
             // 
             this.label5.AutoSize = true;
             this.label5.ForeColor = System.Drawing.Color.Black;
-            this.label5.Location = new System.Drawing.Point(2, 40);
+            this.label5.Location = new System.Drawing.Point(2, 48);
             this.label5.Margin = new System.Windows.Forms.Padding(4, 0, 4, 0);
             this.label5.Name = "label5";
-            this.label5.Size = new System.Drawing.Size(23, 15);
+            this.label5.Size = new System.Drawing.Size(29, 19);
             this.label5.TabIndex = 4;
             this.label5.Text = "X:";
             // 
@@ -299,10 +300,10 @@ namespace DDDSharp.Gridding
             // 
             this.label1.AutoSize = true;
             this.label1.ForeColor = System.Drawing.Color.BlueViolet;
-            this.label1.Location = new System.Drawing.Point(10, 166);
+            this.label1.Location = new System.Drawing.Point(11, 199);
             this.label1.Margin = new System.Windows.Forms.Padding(4, 0, 4, 0);
             this.label1.Name = "label1";
-            this.label1.Size = new System.Drawing.Size(239, 15);
+            this.label1.Size = new System.Drawing.Size(299, 19);
             this.label1.TabIndex = 59;
             this.label1.Text = "Meshes Sorted by Z values Asc";
             // 
@@ -310,10 +311,10 @@ namespace DDDSharp.Gridding
             // 
             this.MoveDownBotton.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
             this.MoveDownBotton.ForeColor = System.Drawing.Color.SlateBlue;
-            this.MoveDownBotton.Location = new System.Drawing.Point(433, 132);
-            this.MoveDownBotton.Margin = new System.Windows.Forms.Padding(4, 3, 4, 3);
+            this.MoveDownBotton.Location = new System.Drawing.Point(487, 158);
+            this.MoveDownBotton.Margin = new System.Windows.Forms.Padding(4, 4, 4, 4);
             this.MoveDownBotton.Name = "MoveDownBotton";
-            this.MoveDownBotton.Size = new System.Drawing.Size(24, 27);
+            this.MoveDownBotton.Size = new System.Drawing.Size(27, 32);
             this.MoveDownBotton.TabIndex = 59;
             this.MoveDownBotton.Text = "↓";
             this.MoveDownBotton.UseVisualStyleBackColor = true;
@@ -322,10 +323,10 @@ namespace DDDSharp.Gridding
             // StopButton
             // 
             this.StopButton.ForeColor = System.Drawing.Color.SlateBlue;
-            this.StopButton.Location = new System.Drawing.Point(285, 591);
-            this.StopButton.Margin = new System.Windows.Forms.Padding(4, 3, 4, 3);
+            this.StopButton.Location = new System.Drawing.Point(321, 709);
+            this.StopButton.Margin = new System.Windows.Forms.Padding(4, 4, 4, 4);
             this.StopButton.Name = "StopButton";
-            this.StopButton.Size = new System.Drawing.Size(85, 27);
+            this.StopButton.Size = new System.Drawing.Size(96, 32);
             this.StopButton.TabIndex = 63;
             this.StopButton.Text = "Stop";
             this.StopButton.UseVisualStyleBackColor = true;
@@ -334,10 +335,10 @@ namespace DDDSharp.Gridding
             // PauseButton
             // 
             this.PauseButton.ForeColor = System.Drawing.Color.SlateBlue;
-            this.PauseButton.Location = new System.Drawing.Point(156, 591);
-            this.PauseButton.Margin = new System.Windows.Forms.Padding(4, 3, 4, 3);
+            this.PauseButton.Location = new System.Drawing.Point(176, 709);
+            this.PauseButton.Margin = new System.Windows.Forms.Padding(4, 4, 4, 4);
             this.PauseButton.Name = "PauseButton";
-            this.PauseButton.Size = new System.Drawing.Size(85, 27);
+            this.PauseButton.Size = new System.Drawing.Size(96, 32);
             this.PauseButton.TabIndex = 62;
             this.PauseButton.Text = "Pause";
             this.PauseButton.UseVisualStyleBackColor = true;
@@ -346,10 +347,10 @@ namespace DDDSharp.Gridding
             // StartButton
             // 
             this.StartButton.ForeColor = System.Drawing.Color.SlateBlue;
-            this.StartButton.Location = new System.Drawing.Point(30, 591);
-            this.StartButton.Margin = new System.Windows.Forms.Padding(4, 3, 4, 3);
+            this.StartButton.Location = new System.Drawing.Point(34, 709);
+            this.StartButton.Margin = new System.Windows.Forms.Padding(4, 4, 4, 4);
             this.StartButton.Name = "StartButton";
-            this.StartButton.Size = new System.Drawing.Size(85, 27);
+            this.StartButton.Size = new System.Drawing.Size(96, 32);
             this.StartButton.TabIndex = 61;
             this.StartButton.Text = "Start";
             this.StartButton.UseVisualStyleBackColor = true;
@@ -359,10 +360,10 @@ namespace DDDSharp.Gridding
             // 
             this.MoveUpButton.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
             this.MoveUpButton.ForeColor = System.Drawing.Color.SlateBlue;
-            this.MoveUpButton.Location = new System.Drawing.Point(433, 102);
-            this.MoveUpButton.Margin = new System.Windows.Forms.Padding(4, 3, 4, 3);
+            this.MoveUpButton.Location = new System.Drawing.Point(487, 122);
+            this.MoveUpButton.Margin = new System.Windows.Forms.Padding(4, 4, 4, 4);
             this.MoveUpButton.Name = "MoveUpButton";
-            this.MoveUpButton.Size = new System.Drawing.Size(24, 27);
+            this.MoveUpButton.Size = new System.Drawing.Size(27, 32);
             this.MoveUpButton.TabIndex = 57;
             this.MoveUpButton.Text = "↑";
             this.MoveUpButton.UseVisualStyleBackColor = true;
@@ -372,10 +373,10 @@ namespace DDDSharp.Gridding
             // 
             this.RemoveButton2.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
             this.RemoveButton2.ForeColor = System.Drawing.Color.SlateBlue;
-            this.RemoveButton2.Location = new System.Drawing.Point(433, 54);
-            this.RemoveButton2.Margin = new System.Windows.Forms.Padding(4, 3, 4, 3);
+            this.RemoveButton2.Location = new System.Drawing.Point(487, 65);
+            this.RemoveButton2.Margin = new System.Windows.Forms.Padding(4, 4, 4, 4);
             this.RemoveButton2.Name = "RemoveButton2";
-            this.RemoveButton2.Size = new System.Drawing.Size(24, 27);
+            this.RemoveButton2.Size = new System.Drawing.Size(27, 32);
             this.RemoveButton2.TabIndex = 56;
             this.RemoveButton2.Text = "-";
             this.RemoveButton2.UseVisualStyleBackColor = true;
@@ -387,20 +388,21 @@ namespace DDDSharp.Gridding
             | System.Windows.Forms.AnchorStyles.Right)));
             this.listBox2.FormattingEnabled = true;
             this.listBox2.HorizontalScrollbar = true;
-            this.listBox2.ItemHeight = 15;
-            this.listBox2.Location = new System.Drawing.Point(11, 24);
+            this.listBox2.ItemHeight = 18;
+            this.listBox2.Location = new System.Drawing.Point(12, 29);
+            this.listBox2.Margin = new System.Windows.Forms.Padding(3, 4, 3, 4);
             this.listBox2.Name = "listBox2";
-            this.listBox2.Size = new System.Drawing.Size(419, 139);
+            this.listBox2.Size = new System.Drawing.Size(471, 166);
             this.listBox2.TabIndex = 0;
             // 
             // textBoxGridInfo
             // 
-            this.textBoxGridInfo.Location = new System.Drawing.Point(30, 452);
-            this.textBoxGridInfo.Margin = new System.Windows.Forms.Padding(4, 3, 4, 3);
+            this.textBoxGridInfo.Location = new System.Drawing.Point(34, 542);
+            this.textBoxGridInfo.Margin = new System.Windows.Forms.Padding(4, 4, 4, 4);
             this.textBoxGridInfo.Multiline = true;
             this.textBoxGridInfo.Name = "textBoxGridInfo";
             this.textBoxGridInfo.ReadOnly = true;
-            this.textBoxGridInfo.Size = new System.Drawing.Size(457, 113);
+            this.textBoxGridInfo.Size = new System.Drawing.Size(514, 135);
             this.textBoxGridInfo.TabIndex = 72;
             // 
             // groupBox1
@@ -414,11 +416,11 @@ namespace DDDSharp.Gridding
             this.groupBox1.Controls.Add(this.listBox2);
             this.groupBox1.Controls.Add(this.AddButton2);
             this.groupBox1.ForeColor = System.Drawing.Color.Sienna;
-            this.groupBox1.Location = new System.Drawing.Point(502, 28);
-            this.groupBox1.Margin = new System.Windows.Forms.Padding(4, 3, 4, 3);
+            this.groupBox1.Location = new System.Drawing.Point(565, 34);
+            this.groupBox1.Margin = new System.Windows.Forms.Padding(4, 4, 4, 4);
             this.groupBox1.Name = "groupBox1";
-            this.groupBox1.Padding = new System.Windows.Forms.Padding(4, 3, 4, 3);
-            this.groupBox1.Size = new System.Drawing.Size(458, 194);
+            this.groupBox1.Padding = new System.Windows.Forms.Padding(4, 4, 4, 4);
+            this.groupBox1.Size = new System.Drawing.Size(515, 233);
             this.groupBox1.TabIndex = 71;
             this.groupBox1.TabStop = false;
             this.groupBox1.Text = "Restricted interfaces";
@@ -427,10 +429,10 @@ namespace DDDSharp.Gridding
             // 
             this.AddButton2.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
             this.AddButton2.ForeColor = System.Drawing.Color.SlateBlue;
-            this.AddButton2.Location = new System.Drawing.Point(433, 24);
-            this.AddButton2.Margin = new System.Windows.Forms.Padding(4, 3, 4, 3);
+            this.AddButton2.Location = new System.Drawing.Point(487, 29);
+            this.AddButton2.Margin = new System.Windows.Forms.Padding(4, 4, 4, 4);
             this.AddButton2.Name = "AddButton2";
-            this.AddButton2.Size = new System.Drawing.Size(24, 27);
+            this.AddButton2.Size = new System.Drawing.Size(27, 32);
             this.AddButton2.TabIndex = 55;
             this.AddButton2.Text = "+";
             this.AddButton2.UseVisualStyleBackColor = true;
@@ -445,11 +447,11 @@ namespace DDDSharp.Gridding
             this.groupBox6.Controls.Add(this.listBox1);
             this.groupBox6.Controls.Add(this.AddButton1);
             this.groupBox6.ForeColor = System.Drawing.Color.Sienna;
-            this.groupBox6.Location = new System.Drawing.Point(31, 28);
-            this.groupBox6.Margin = new System.Windows.Forms.Padding(4, 3, 4, 3);
+            this.groupBox6.Location = new System.Drawing.Point(35, 34);
+            this.groupBox6.Margin = new System.Windows.Forms.Padding(4, 4, 4, 4);
             this.groupBox6.Name = "groupBox6";
-            this.groupBox6.Padding = new System.Windows.Forms.Padding(4, 3, 4, 3);
-            this.groupBox6.Size = new System.Drawing.Size(458, 279);
+            this.groupBox6.Padding = new System.Windows.Forms.Padding(4, 4, 4, 4);
+            this.groupBox6.Size = new System.Drawing.Size(515, 335);
             this.groupBox6.TabIndex = 64;
             this.groupBox6.TabStop = false;
             this.groupBox6.Text = "Boreholes";
@@ -457,9 +459,10 @@ namespace DDDSharp.Gridding
             // checkedListBox2
             // 
             this.checkedListBox2.FormattingEnabled = true;
-            this.checkedListBox2.Location = new System.Drawing.Point(191, 39);
+            this.checkedListBox2.Location = new System.Drawing.Point(215, 47);
+            this.checkedListBox2.Margin = new System.Windows.Forms.Padding(3, 4, 3, 4);
             this.checkedListBox2.Name = "checkedListBox2";
-            this.checkedListBox2.Size = new System.Drawing.Size(265, 124);
+            this.checkedListBox2.Size = new System.Drawing.Size(298, 142);
             this.checkedListBox2.TabIndex = 74;
             this.checkedListBox2.ItemCheck += new System.Windows.Forms.ItemCheckEventHandler(this.checkedListBox2_ItemCheck);
             // 
@@ -467,10 +470,10 @@ namespace DDDSharp.Gridding
             // 
             this.label2.AutoSize = true;
             this.label2.ForeColor = System.Drawing.Color.Black;
-            this.label2.Location = new System.Drawing.Point(191, 21);
+            this.label2.Location = new System.Drawing.Point(215, 25);
             this.label2.Margin = new System.Windows.Forms.Padding(4, 0, 4, 0);
             this.label2.Name = "label2";
-            this.label2.Size = new System.Drawing.Size(87, 15);
+            this.label2.Size = new System.Drawing.Size(109, 19);
             this.label2.TabIndex = 73;
             this.label2.Text = "Properties";
             // 
@@ -480,10 +483,11 @@ namespace DDDSharp.Gridding
             this.propertyGrid1.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
             | System.Windows.Forms.AnchorStyles.Left)));
             this.propertyGrid1.HelpVisible = false;
-            this.propertyGrid1.Location = new System.Drawing.Point(191, 167);
+            this.propertyGrid1.Location = new System.Drawing.Point(215, 200);
+            this.propertyGrid1.Margin = new System.Windows.Forms.Padding(3, 4, 3, 4);
             this.propertyGrid1.Name = "propertyGrid1";
             this.propertyGrid1.PropertySort = System.Windows.Forms.PropertySort.NoSort;
-            this.propertyGrid1.Size = new System.Drawing.Size(265, 102);
+            this.propertyGrid1.Size = new System.Drawing.Size(298, 122);
             this.propertyGrid1.TabIndex = 57;
             this.propertyGrid1.PropertyValueChanged += new System.Windows.Forms.PropertyValueChangedEventHandler(this.propertyGrid1_PropertyValueChanged);
             // 
@@ -491,10 +495,10 @@ namespace DDDSharp.Gridding
             // 
             this.RemoveButton1.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
             this.RemoveButton1.ForeColor = System.Drawing.Color.SlateBlue;
-            this.RemoveButton1.Location = new System.Drawing.Point(159, 57);
-            this.RemoveButton1.Margin = new System.Windows.Forms.Padding(4, 3, 4, 3);
+            this.RemoveButton1.Location = new System.Drawing.Point(179, 68);
+            this.RemoveButton1.Margin = new System.Windows.Forms.Padding(4, 4, 4, 4);
             this.RemoveButton1.Name = "RemoveButton1";
-            this.RemoveButton1.Size = new System.Drawing.Size(24, 27);
+            this.RemoveButton1.Size = new System.Drawing.Size(27, 32);
             this.RemoveButton1.TabIndex = 56;
             this.RemoveButton1.Text = "-";
             this.RemoveButton1.UseVisualStyleBackColor = true;
@@ -507,10 +511,11 @@ namespace DDDSharp.Gridding
             | System.Windows.Forms.AnchorStyles.Right)));
             this.listBox1.FormattingEnabled = true;
             this.listBox1.HorizontalScrollbar = true;
-            this.listBox1.ItemHeight = 15;
-            this.listBox1.Location = new System.Drawing.Point(11, 24);
+            this.listBox1.ItemHeight = 18;
+            this.listBox1.Location = new System.Drawing.Point(12, 29);
+            this.listBox1.Margin = new System.Windows.Forms.Padding(3, 4, 3, 4);
             this.listBox1.Name = "listBox1";
-            this.listBox1.Size = new System.Drawing.Size(147, 244);
+            this.listBox1.Size = new System.Drawing.Size(165, 292);
             this.listBox1.TabIndex = 0;
             this.listBox1.SelectedIndexChanged += new System.EventHandler(this.listBox1_SelectedIndexChanged);
             // 
@@ -518,10 +523,10 @@ namespace DDDSharp.Gridding
             // 
             this.AddButton1.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
             this.AddButton1.ForeColor = System.Drawing.Color.SlateBlue;
-            this.AddButton1.Location = new System.Drawing.Point(159, 24);
-            this.AddButton1.Margin = new System.Windows.Forms.Padding(4, 3, 4, 3);
+            this.AddButton1.Location = new System.Drawing.Point(179, 29);
+            this.AddButton1.Margin = new System.Windows.Forms.Padding(4, 4, 4, 4);
             this.AddButton1.Name = "AddButton1";
-            this.AddButton1.Size = new System.Drawing.Size(24, 27);
+            this.AddButton1.Size = new System.Drawing.Size(27, 32);
             this.AddButton1.TabIndex = 55;
             this.AddButton1.Text = "+";
             this.AddButton1.UseVisualStyleBackColor = true;
@@ -529,45 +534,45 @@ namespace DDDSharp.Gridding
             // 
             // progressBar1
             // 
-            this.progressBar1.Location = new System.Drawing.Point(30, 624);
-            this.progressBar1.Margin = new System.Windows.Forms.Padding(4, 3, 4, 3);
+            this.progressBar1.Location = new System.Drawing.Point(34, 749);
+            this.progressBar1.Margin = new System.Windows.Forms.Padding(4, 4, 4, 4);
             this.progressBar1.Name = "progressBar1";
-            this.progressBar1.Size = new System.Drawing.Size(460, 27);
+            this.progressBar1.Size = new System.Drawing.Size(518, 32);
             this.progressBar1.TabIndex = 66;
             // 
             // textZNum
             // 
-            this.textZNum.Location = new System.Drawing.Point(376, 97);
-            this.textZNum.Margin = new System.Windows.Forms.Padding(4, 3, 4, 3);
+            this.textZNum.Location = new System.Drawing.Point(423, 116);
+            this.textZNum.Margin = new System.Windows.Forms.Padding(4, 4, 4, 4);
             this.textZNum.Name = "textZNum";
-            this.textZNum.Size = new System.Drawing.Size(68, 25);
+            this.textZNum.Size = new System.Drawing.Size(76, 28);
             this.textZNum.TabIndex = 23;
             this.textZNum.TextChanged += new System.EventHandler(this.textZNum_TextChanged);
             // 
             // textStepZ
             // 
-            this.textStepZ.Location = new System.Drawing.Point(249, 97);
-            this.textStepZ.Margin = new System.Windows.Forms.Padding(4, 3, 4, 3);
+            this.textStepZ.Location = new System.Drawing.Point(280, 116);
+            this.textStepZ.Margin = new System.Windows.Forms.Padding(4, 4, 4, 4);
             this.textStepZ.Name = "textStepZ";
-            this.textStepZ.Size = new System.Drawing.Size(112, 25);
+            this.textStepZ.Size = new System.Drawing.Size(126, 28);
             this.textStepZ.TabIndex = 22;
             this.textStepZ.TextChanged += new System.EventHandler(this.textStepZ_TextChanged);
             // 
             // textZ2
             // 
-            this.textZ2.Location = new System.Drawing.Point(138, 97);
-            this.textZ2.Margin = new System.Windows.Forms.Padding(4, 3, 4, 3);
+            this.textZ2.Location = new System.Drawing.Point(155, 116);
+            this.textZ2.Margin = new System.Windows.Forms.Padding(4, 4, 4, 4);
             this.textZ2.Name = "textZ2";
-            this.textZ2.Size = new System.Drawing.Size(97, 25);
+            this.textZ2.Size = new System.Drawing.Size(109, 28);
             this.textZ2.TabIndex = 21;
             this.textZ2.TextChanged += new System.EventHandler(this.textZ2_TextChanged);
             // 
             // textZ1
             // 
-            this.textZ1.Location = new System.Drawing.Point(26, 97);
-            this.textZ1.Margin = new System.Windows.Forms.Padding(4, 3, 4, 3);
+            this.textZ1.Location = new System.Drawing.Point(29, 116);
+            this.textZ1.Margin = new System.Windows.Forms.Padding(4, 4, 4, 4);
             this.textZ1.Name = "textZ1";
-            this.textZ1.Size = new System.Drawing.Size(100, 25);
+            this.textZ1.Size = new System.Drawing.Size(112, 28);
             this.textZ1.TabIndex = 20;
             this.textZ1.TextChanged += new System.EventHandler(this.textZ1_TextChanged);
             // 
@@ -575,39 +580,39 @@ namespace DDDSharp.Gridding
             // 
             this.label12.AutoSize = true;
             this.label12.ForeColor = System.Drawing.Color.Black;
-            this.label12.Location = new System.Drawing.Point(2, 100);
+            this.label12.Location = new System.Drawing.Point(2, 120);
             this.label12.Margin = new System.Windows.Forms.Padding(4, 0, 4, 0);
             this.label12.Name = "label12";
-            this.label12.Size = new System.Drawing.Size(23, 15);
+            this.label12.Size = new System.Drawing.Size(29, 19);
             this.label12.TabIndex = 19;
             this.label12.Text = "Z:";
             // 
             // SaveAsButton
             // 
             this.SaveAsButton.ForeColor = System.Drawing.Color.SlateBlue;
-            this.SaveAsButton.Location = new System.Drawing.Point(405, 591);
-            this.SaveAsButton.Margin = new System.Windows.Forms.Padding(4, 3, 4, 3);
+            this.SaveAsButton.Location = new System.Drawing.Point(456, 709);
+            this.SaveAsButton.Margin = new System.Windows.Forms.Padding(4, 4, 4, 4);
             this.SaveAsButton.Name = "SaveAsButton";
-            this.SaveAsButton.Size = new System.Drawing.Size(85, 27);
+            this.SaveAsButton.Size = new System.Drawing.Size(96, 32);
             this.SaveAsButton.TabIndex = 65;
             this.SaveAsButton.Text = "Save As";
             this.SaveAsButton.UseVisualStyleBackColor = true;
             // 
             // textYNum
             // 
-            this.textYNum.Location = new System.Drawing.Point(376, 67);
-            this.textYNum.Margin = new System.Windows.Forms.Padding(4, 3, 4, 3);
+            this.textYNum.Location = new System.Drawing.Point(423, 80);
+            this.textYNum.Margin = new System.Windows.Forms.Padding(4, 4, 4, 4);
             this.textYNum.Name = "textYNum";
-            this.textYNum.Size = new System.Drawing.Size(68, 25);
+            this.textYNum.Size = new System.Drawing.Size(76, 28);
             this.textYNum.TabIndex = 18;
             this.textYNum.TextChanged += new System.EventHandler(this.textYNum_TextChanged);
             // 
             // textX1
             // 
-            this.textX1.Location = new System.Drawing.Point(26, 37);
-            this.textX1.Margin = new System.Windows.Forms.Padding(4, 3, 4, 3);
+            this.textX1.Location = new System.Drawing.Point(29, 44);
+            this.textX1.Margin = new System.Windows.Forms.Padding(4, 4, 4, 4);
             this.textX1.Name = "textX1";
-            this.textX1.Size = new System.Drawing.Size(100, 25);
+            this.textX1.Size = new System.Drawing.Size(112, 28);
             this.textX1.TabIndex = 6;
             this.textX1.TextChanged += new System.EventHandler(this.textX1_TextChanged);
             // 
@@ -633,20 +638,20 @@ namespace DDDSharp.Gridding
             this.groupBox3.Controls.Add(this.textX1);
             this.groupBox3.Controls.Add(this.label5);
             this.groupBox3.ForeColor = System.Drawing.Color.Maroon;
-            this.groupBox3.Location = new System.Drawing.Point(31, 313);
-            this.groupBox3.Margin = new System.Windows.Forms.Padding(4, 3, 4, 3);
+            this.groupBox3.Location = new System.Drawing.Point(35, 376);
+            this.groupBox3.Margin = new System.Windows.Forms.Padding(4, 4, 4, 4);
             this.groupBox3.Name = "groupBox3";
-            this.groupBox3.Padding = new System.Windows.Forms.Padding(4, 3, 4, 3);
-            this.groupBox3.Size = new System.Drawing.Size(458, 133);
+            this.groupBox3.Padding = new System.Windows.Forms.Padding(4, 4, 4, 4);
+            this.groupBox3.Size = new System.Drawing.Size(515, 160);
             this.groupBox3.TabIndex = 59;
             this.groupBox3.TabStop = false;
             this.groupBox3.Text = "Gridding Geometry";
             // 
             // BoreholesCurvesInterpolationForm
             // 
-            this.AutoScaleDimensions = new System.Drawing.SizeF(8F, 15F);
+            this.AutoScaleDimensions = new System.Drawing.SizeF(9F, 18F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(978, 721);
+            this.ClientSize = new System.Drawing.Size(1100, 865);
             this.Controls.Add(this.groupBox2);
             this.Controls.Add(this.labelTitle);
             this.Controls.Add(this.labelTimeLeft);
@@ -660,6 +665,8 @@ namespace DDDSharp.Gridding
             this.Controls.Add(this.progressBar1);
             this.Controls.Add(this.SaveAsButton);
             this.Controls.Add(this.groupBox3);
+            this.Font = new System.Drawing.Font("SimSun", 10.8F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(134)));
+            this.Margin = new System.Windows.Forms.Padding(3, 4, 3, 4);
             this.Name = "BoreholesCurvesInterpolationForm";
             this.Text = "BoreholesCurvesInterpolationForm";
             this.Load += new System.EventHandler(this.BoreholesCurvesInterpolationForm_Load);

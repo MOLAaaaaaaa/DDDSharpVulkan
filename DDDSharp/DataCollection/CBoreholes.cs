@@ -1,13 +1,21 @@
-﻿using System;
+﻿using DataCollection;
+using GlmNet;
+using System;
 using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using DataCollection;
 using System.ComponentModel;
+using System.Diagnostics;
 using System.Drawing;
 using System.Drawing.Design;
+using System.Drawing.Imaging;
+using System.IO;
+using System.Linq;
+using System.Runtime.InteropServices;
+using System.Text;
+using System.Threading.Tasks;
+using System.Windows.Forms;
+using System.Xml.Linq;
+using static DataCollection.CBorehole;
+
 namespace DataCollection
 {
     public enum CylinderTypeEnum
@@ -477,16 +485,24 @@ namespace DataCollection
     /// </summary>
     public class BoreholeAnglesStruct: C3DObjectBaseHide
     {
+        [CategoryAttribute("Display"), DisplayNameAttribute("Name"), Browsable(true),ReadOnly(true)]
+        public override string Name { get; set; } = "Untitled";
+
         public Vector64 Start = new Vector64(); //开始位置
         [CategoryAttribute("Inclines"), DisplayNameAttribute("Length")]
         public double Depth { get; set; } = 0;   //孔深     
-        [CategoryAttribute("Inclines"), DisplayNameAttribute("Azimuth")]
+        [CategoryAttribute("Inclines"), DisplayNameAttribute("方位角(Azimuth)")]
         public double Azimuth { get; set; } = 0;    //方位角--地面投影与北向夹角
-        [CategoryAttribute("Inclines"), DisplayNameAttribute("Zenith")]
-        public double Zenith { get; set; } = 0;     //顶角、天顶角--与地表夹角 = 90 - DipAngle
+        [CategoryAttribute("Inclines"), DisplayNameAttribute("顶角(Zenith)")]
+        public double Zenith { get; set; } = 90;     //顶角、倾角、天顶角--与地表夹角 = 90 - DipAngle
         public BoreholeAnglesStruct()
         {
             type = ShapeEnum.BoreholeAngle;
+        }
+        public BoreholeAnglesStruct(string name)
+        {
+            type = ShapeEnum.BoreholeAngle;
+            Name = name;
         }
         public override string ToString()
         {
@@ -497,8 +513,40 @@ namespace DataCollection
         }
         public bool IsValid()
         {
-            if (Depth <= 0 || Zenith == 0) return false;
+            if (Depth <= 0) return false;
             else return true;
+        }
+        public Vector64 toTracedPoint(Vector64 top)
+        {
+            return top + toTracedPoint();
+        }
+        public Vector64 toTracedPoint()
+        {
+            double dx=0, dy=0, dz = 0, dxy = 0;
+            dz = -Math.Sin(Vector64.toRad(Zenith)) * Depth;//垂向投影高度
+            dxy = Math.Cos(Vector64.toRad(Zenith)) * Depth; //地面投影长度
+            if( Zenith == 90 )return new Vector64(0, 0, dz);
+            if ( Azimuth > 0 && Azimuth <= 90 ) // 0 - 360
+            {
+                dx = dxy * Math.Sin(Vector64.toRad(Azimuth));//east
+                dy = dxy * Math.Cos(Vector64.toRad(Azimuth));//north                
+            }
+            else if (Azimuth > 90 && Azimuth < 180 ) 
+            {
+                dx = dxy * Math.Cos(Vector64.toRad(Azimuth-90));
+                dy = -dxy * Math.Sin(Vector64.toRad(Azimuth-90));
+            }
+            else if (Azimuth >= 180 && Azimuth < 270 )
+            {
+                dx = -dxy * Math.Sin(Vector64.toRad(Azimuth - 180));
+                dy = -dxy * Math.Cos(Vector64.toRad(Azimuth - 180));
+            }
+            else if (Azimuth >= 270 && Azimuth < 360)
+            {
+                dx = -dxy * Math.Sin(Vector64.toRad(Azimuth - 270));
+                dy = dxy * Math.Cos(Vector64.toRad(Azimuth - 270));
+            }
+            return new Vector64(dx, dy, dz);
         }
 
         public BoreholeAnglesStruct Copy()
@@ -554,6 +602,7 @@ namespace DataCollection
             get { return TopDepth + Thickness; }
             set { Thickness = value - TopDepth; }
         }
+        public double Value { get; set; } = 0;
 
         [CategoryAttribute("Stratum"), DisplayNameAttribute("Thickness"), Browsable(true)]
         public double Thickness { get; set; } = 0.0;      //厚度
@@ -590,7 +639,13 @@ namespace DataCollection
         {
             Name = name;
             type = ShapeEnum.BoreholeStratum;            
-        }        
+        }
+        public StratumData(string name,double top,double thickness)
+        {
+            Name = name;
+            TopDepth = top;
+            Thickness = thickness;
+        }       
        
         public StratumData Copy()
         {
@@ -647,18 +702,27 @@ namespace DataCollection
             return true;
         }
     }
+    public enum SamplingMethodEnum
+    {
+        Importance =0,
+        Average =1,
+        Squared = 2,
+    }
     /// <summary>
     /// 井地层数据
     /// </summary>
     public class StratumDatas : C3DObjectBaseHide
-    {
+    {        
         [CategoryAttribute("Display"), DisplayNameAttribute("Visible"), Browsable(true)]
         public override bool Visible { get; set; } = true;
         [CategoryAttribute("Display"), DisplayNameAttribute("Name"), Browsable(true)]
         public override string Name { get; set; } = "Strata";
 
         public List<StratumData> Stratums = new List<StratumData>();
-        public int Count { get { return Stratums.Count; } }
+        public int Count { get { return Stratums.Count; } }        
+
+        Dictionary<string, int> stratumDictionary = new Dictionary<string, int>();
+
         public StratumData this[int index] 
         {
             get { return Stratums[index]; }
@@ -669,17 +733,376 @@ namespace DataCollection
             Name = name;
             type = ShapeEnum.BoreholeStratums;
         }
+        public CColorScale CreateColorScale()
+        {
+            CColorScale colorScale = new CColorScale();
+            colorScale.Levels.Clear();
+
+            ColorLevel lvl = new ColorLevel(0, 1, 1, 1); //背景，无地层
+            colorScale.Levels.Add(lvl);
+
+            float step = 100f / Stratums.Count;
+
+            for (int i = 0; i < Stratums.Count; i++)
+            {
+                float percent = (i + 1) * step;
+                float r = Stratums[i].Color.R / 255f;
+                float g = Stratums[i].Color.G / 255f;
+                float b = Stratums[i].Color.B / 255f;
+                lvl = new ColorLevel(percent, r, g, b);
+                colorScale.Levels.Add(lvl);
+            }
+            colorScale.SetValueRange(0, Stratums.Count);
+            return colorScale;
+        }
+        public void CreateDictionary()
+        {
+            stratumDictionary.Clear();
+            for (int i = 0; i < Stratums.Count; i++)
+            {
+                StratumData s = Stratums[i];
+                stratumDictionary.Add(s.Name.ToLower(), i);
+            }
+        }
+        public int GetStrataIdByName(string name)
+        {
+            if (Stratums.Count < 1) return -1;
+            if (stratumDictionary.Count < 1) CreateDictionary();
+            string s1 = name.ToLower();
+            if (stratumDictionary.ContainsKey(s1))
+            {
+                return stratumDictionary[s1];
+            }
+            return -1;
+        }
 
         public StratumData GetStrataByName(string name)
         {
-            for (int i = 0; i < Stratums.Count; i++)
+            int id = GetStrataIdByName(name);
+            if( id < 0 ) return null;
+            return Stratums[id];            
+        }
+        public List<string>toStratumNames()
+        {
+            List<string>names = new List<string>();
+            for(int i=0;i<Count;i++)
             {
-                if (Stratums[i].Name.ToLower() == name.ToLower())
-                    return Stratums[i];
+                names.Add(Stratums[i].Name);
             }
-            return null;
+            return names;
+        }
+        int SampleStratumByRect(Rectangle rect,int[] intBytes, int bmpWidth, int diff) 
+        {
+            int id = 0, count = -1, iStratum;
+            int length = intBytes.Length;            
+            int[] Indices = new int[Stratums.Count];            
+            for (int i = 0; i < Stratums.Count; i++) Indices[i] = -1;
+            for (int iy = rect.Top; iy < rect.Bottom; iy++ )
+            {
+                for (int ix = rect.Left; ix < rect.Right; ix++)
+                {
+                    id = iy * bmpWidth + ix;
+                    if ( id >= length ) continue;
+                    Color c = Color.FromArgb(intBytes[id]);
+                    iStratum = GetStratumIdByColor(c, diff);
+                    if (iStratum >= 0) Indices[iStratum]++;                    
+                }
+            }
+            iStratum = -1;           
+            for (int i = 0; i < Stratums.Count; i++) 
+            {
+                if (Indices[i] > count) 
+                { 
+                    count = Indices[i];
+                    iStratum = i; 
+                }                
+            }
+            Indices = null;            
+            return iStratum;
         }
 
+        int SeekTop(short[,] grid, int width, int height)
+        {
+            int top = 0;
+            for (int i = 0; i < height; i++)
+            {
+                for (int j = 0; j < width; j++)
+                {
+                    if ( grid[j, i] >= 0 )
+                    {
+                        if (i > top) top = i;
+                        return top;
+                    }
+                }
+            }
+            return top;
+        }
+        int SeekBottom(short[,] grid, int width, int height)
+        {
+            int bottom = height - 1;
+            for (int i = height-1; i >= 0; i--)
+            {
+                for (int j = 0; j < width; j++)
+                {
+                    if (grid[j, i] >= 0)
+                    {
+                        if (i < bottom) bottom = i;
+                        return bottom;
+                    }
+                }
+            }
+            return bottom;
+        }
+        int SeekLeft(short[,] grid, int width, int height)
+        {
+            int left = 0;
+            for (int j = 0; j < width; j++)
+            {
+                for (int i = 0; i < height; i++)
+                {
+                    if (grid[j, i] >= 0)
+                    {
+                        if (j > left) left = j;
+                        return left;
+                    }
+                }
+            }
+            return left;
+        }
+        int SeekRight(short[,] grid, int width, int height)
+        {
+            int right = width - 1;
+            for (int j = width-1; j >=0; j--)
+            {
+                for (int i = 0; i < height; i++)
+                {
+                    if (grid[j, i] >= 0)
+                    {
+                        if (j < right) right = j;
+                        return right;
+                    }
+                }
+            }
+            return right;
+        }
+        /// <summary>
+        /// 获取有效地层区域范围
+        /// </summary>
+        /// <param name="bmp"></param>
+        /// <param name="diff"></param>
+        /// <returns></returns>
+        public Rectangle CheckImageValidateArea(Bitmap bmp, int diff = 5)
+        {
+            int width = bmp.Width;
+            int height = bmp.Height;
+            short[,] grid = new short[width, height];
+            for (int i = 0; i < height; i++)
+            {              
+                for (int j = 0; j < width; j++)
+                {                    
+                    grid[j, i] = (short)GetStratumIdByColor(bmp.GetPixel(j, i), diff);
+                }
+            }
+            int top = SeekTop(grid, width, height);
+            int bottom = SeekBottom(grid, width, height);
+            int left = SeekLeft(grid, width, height);
+            int right = SeekRight(grid, width, height);
+            grid = null;
+            return new Rectangle(left, top, right - left, bottom - top);
+        }
+        /// <summary>
+        /// 按颜色色标对地层进行采样（随机重要点法）
+        /// </summary>
+        /// <param name="bmp"></param>
+        /// <param name="nx"></param>
+        /// <param name="ny"></param>
+        /// <param name="diff"></param>
+        /// <returns></returns>
+        int[,] SamplingFromImageByColorOnImportance(Bitmap bmp,int nx,int ny,int diff =5)
+        {
+            double dx = (double)bmp.Width / nx;
+            double dy = (double)bmp.Height / ny;
+            int[,] grid = new int[nx, ny];
+            int ix, iy;
+            for (int i = 0; i < ny; i++)
+            {
+                iy = (int)(dy * i);
+                for (int j = 0; j < nx; j++)
+                {
+                    ix = (int)(dx * j);
+                    Color c = bmp.GetPixel(ix, iy);
+                    grid[j, ny - 1 - i] = GetStratumIdByColor(c,diff);
+                }
+            }
+            return grid;
+        }
+
+        Object lock1 = new object();
+
+        /// <summary>
+        /// 按颜色色标对地层进行采样（面积法统计）
+        /// </summary>
+        /// <param name="bmp">地图图片</param>
+        /// <param name="nx">网格单元数（非节点数）</param>
+        /// <param name="ny">网格单元数（非节点数）</param>
+        /// <param name="diff">允许的颜色误差</param>
+        /// <returns></returns>
+        int[,] SamplingFromImageByColorOnSqured(Bitmap bmp, int nx, int ny, int diff = 5)
+        {
+            Rectangle rect = new Rectangle(0, 0, bmp.Width, bmp.Height);
+            BitmapData bd = bmp.LockBits(rect, ImageLockMode.ReadOnly, PixelFormat.Format32bppArgb);
+            int[] intBytes = new int[bmp.Width * bmp.Height];
+            Marshal.Copy(bd.Scan0, intBytes, 0, intBytes.Length);
+            bmp.UnlockBits(bd);
+
+            //网格单元数目nx,ny
+            int width = bmp.Width;
+            int height = bmp.Height;
+            double dx = (double)width / nx;
+            double dy = (double)height / ny;
+            int[,] grid = new int[nx, ny];
+            int ix, iy;
+            //Parallel.For(0, ny, i => //不能并行？？？采样错误？？？
+            for (int i = 0; i < ny; i++)
+            {
+                iy = (int)(dy * i);
+                for (int j = 0; j < nx; j++)
+                {
+                    ix = (int)(dx * j);
+                    rect = new Rectangle(ix, iy, (int)dx, (int)dy);
+                    grid[j, ny - 1 - i] = SampleStratumByRect(rect, intBytes, width, diff);
+                }
+            }//);
+            intBytes = null;
+            return grid;
+        }
+        /// <summary>
+        /// 根据图例颜色从图像中进行地层采样
+        /// </summary>
+        /// <param name="bmp">图像</param>
+        /// <param name="nx">采样横向间隔</param>
+        /// <param name="ny">采样纵向间隔</param>
+        /// <param name="method">采样方法</param>
+        /// <param name="diff">颜色误差</param>
+        /// <returns></returns>
+        public int[,] SamplingFromImageByColor(Bitmap bmp, int nx, int ny, SamplingMethodEnum method = SamplingMethodEnum.Squared, int diff = 5)
+        {
+            if (method == SamplingMethodEnum.Squared) return SamplingFromImageByColorOnSqured(bmp, nx, ny, diff);
+            else if (method == SamplingMethodEnum.Importance) return SamplingFromImageByColorOnImportance(bmp, nx, ny, diff);
+            else return null;
+        }
+        /// <summary>
+        /// 获取颜色在色标中的位置
+        /// </summary>
+        /// <param name="color"></param>
+        /// <param name="id1"></param>
+        /// <param name="id2"></param>
+        /// <returns></returns>
+        public float GetColorBetween(Color color, ref int id1,ref int id2, double err = 1E-6)
+        {
+            Color c = color;
+            float s1 = -1, s2 = -1, s3 = -1;
+            id1 = id2 = -1;
+            for (int i = 0; i < Stratums.Count - 1; i++ )
+            {
+                Color c1 = Stratums[i].Color;
+                Color c2 = Stratums[i+1].Color;
+                vec3 v1 = new vec3(c1.R, c1.G, c1.B);
+                vec3 v2 = new vec3(c2.R, c2.G, c2.B);
+                vec3 v = new vec3(c.R, c.G, c.B);
+
+                s1 = s2 = s3 = 500;//初始大于255
+                //判别标志，三个方向一致（符号），0 - 1之间
+                if ( Math.Abs(v2.x - v1.x) == 0 )
+                {
+                    if(Math.Abs(v.x - v1.x) == 0) s1 = 0;
+                }                
+                else s1 = (v.x - v1.x) / (v2.x - v1.x);
+
+                if (Math.Abs(v2.y - v1.y) == 0)
+                {
+                    if (Math.Abs(v.y - v1.y) == 0) s2 = 0;
+                }
+                else s2 = (v.y - v1.y) / (v2.y - v1.y);
+
+                if (Math.Abs(v2.z - v1.z) == 0)
+                {
+                    if (Math.Abs(v.z - v1.z) == 0) s3 = 0;
+                }
+                else s3 = (v.z - v1.z) / (v2.z - v1.z);
+
+                if (s1 < 0 || s2 < 0 || s3 < 0) continue;
+                if (s1 > 1 || s2 > 1 || s3 > 1) continue;
+                if (s1 * s2 < 0 || s2 * s3 < 0 || s1 * s3 < 0) continue;//不同向
+                id1 = i;
+                id2 = i + 1;
+                return Math.Max(Math.Max(s1, s2), Math.Max(s2, s3));
+            }
+            return -1;
+        }
+        
+        public int GetStratumIdByColor(Color color, int diff)
+        {
+            for (int i = 0; i < Stratums.Count; i++)
+            {
+                if (C3DData.IsSimilarColor(Stratums[i].Color, color, diff))
+                    return i;
+            }
+            return -1;
+        }
+        /// <summary>
+        /// 按属性采样，地层名称为属性值
+        /// </summary>
+        /// <param name="bmp"></param>
+        /// <param name="nx"></param>
+        /// <param name="ny"></param>
+        /// <param name="colordiff"></param>
+        /// <returns></returns>
+        public bool SamplingValuesFromImage(Bitmap bmp, int nx, int ny, float[,] grid,double err = 1E-6)
+        {
+            try
+            {
+                double dx = (double)bmp.Width / nx;
+                double dy = (double)bmp.Height / ny;                
+                int ix, iy, id1 = -1, id2 = -1;
+                float scale = 0,v1,v2;
+                for (int i = 0; i < ny; i++)
+                {
+                    iy = (int)(dy * i);
+                    for (int j = 0; j < nx; j++)
+                    {
+                        ix = (int)(dx * j);
+                        Color c = bmp.GetPixel(ix, iy);
+                        scale = GetColorBetween(c, ref id1, ref id2, err);
+                        if(scale >=0 && scale <= 1)
+                        {
+                            v1 = float.Parse(Stratums[id1].Name);
+                            v2 = float.Parse(Stratums[id2].Name);
+                            grid[j, ny - 1 - i] = v1 + scale * (v2 - v1);
+                        }                         
+                    }
+                }
+                return true;
+            }
+            catch (Exception ex)
+            {
+                errMessage = ex.Message;
+                return false;
+            }
+
+        }
+        /// <summary>
+        /// 地层采样
+        /// </summary>
+        /// <param name="bmp"></param>
+        /// <param name="nx"></param>
+        /// <param name="ny"></param>
+        /// <param name="colordiff"></param>
+        /// <returns></returns>
+        public int[,] SamplingFromImage(Bitmap bmp, int nx, int ny, int colordiff)
+        {
+            return SamplingFromImageByColor(bmp, nx, ny, SamplingMethodEnum.Squared, colordiff);
+        }
         public bool IsExist(string name)
         {
             for(int i=0;i< Stratums.Count;i++)
@@ -712,7 +1135,11 @@ namespace DataCollection
                 UpdateTopDepth(index + 1);
             }            
         }
-        public override void Clear() { Stratums.Clear(); }
+        public override void Clear() 
+        {
+            stratumDictionary.Clear();
+            Stratums.Clear(); 
+        }
         /// <summary>
         /// 得到第id层的层顶埋深
         /// </summary>
@@ -849,6 +1276,106 @@ namespace DataCollection
             }
         }
 
+        /// <summary>
+        /// 输出地层配色方案
+        /// </summary>
+        /// <param name="bh"></param>
+        /// <param name="filename"></param>
+        /// <returns></returns>
+        static public bool ExportStratumScheme(StratumDatas stratums, string filename)
+        {
+            try
+            {
+                StreamWriter br = new StreamWriter(new FileStream(filename, FileMode.Create));
+                string line = "// Stratums Color File";
+                br.WriteLine(line);
+                line = "// Created by " + C3DData.UserID + " on " + DateTime.Now.ToShortDateString();
+                br.WriteLine(line);
+                line = "Stratums Schemes " + C3DData.Version * 100;
+                br.WriteLine(line);
+                for (int i = 0; i < stratums.Count; i++)
+                {
+                    StratumData layer = stratums[i];
+                    line = layer.Name + ",  ";
+                    line += layer.Code + ",  ";
+                    line += layer.Color.R.ToString() + ",  "; ;
+                    line += layer.Color.G.ToString() + ",  "; ;
+                    line += layer.Color.B.ToString();
+                    br.WriteLine(line);
+                }
+                br.Close();
+                return true;
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(ex.Message);
+                return false;
+            }
+        }
+        /// <summary>
+        /// 载入地层配色方案
+        /// </summary>
+        /// <param name="filename"></param>
+        /// <returns></returns>
+        public StratumDatas LoadFromStratumScheme(string filename)
+        {           
+            try
+            {
+                StreamReader br = new StreamReader(new FileStream(filename, FileMode.Open));
+                string line;
+                int i = 0;
+                while ((line = br.ReadLine()) != null)
+                {
+                    if (line.Length < 1) continue;
+                    if (line.Length > 1 && line[0] == '/' && line[1] == '/') continue; //双斜杠备注                    
+                    if (line[0] == '!' || line[0] == '#') continue;
+                    if (i == 0) //第一行
+                    {
+                        if (!line.Contains("Stratums Schemes"))
+                        {
+                            errMessage = "Not a valid Stratums Schemes file.";
+                            br.Close();
+                            return this;
+                        }
+                        i++;
+                    }
+                    else
+                    {
+                        string[] ss = line.Split(new char[] { ',' });
+                        if (ss.Length < 4) continue;
+                        StratumData layer = new StratumData(ss[0].Trim());
+                        layer.Code = ss[1].Trim();
+                        layer.Color = Color.FromArgb(byte.Parse(ss[2]), byte.Parse(ss[3]), byte.Parse(ss[4]));
+                        AddLayer(layer);
+                    }
+                    i++;
+                }
+                br.Close();
+
+            }
+            catch (Exception ex)
+            {
+               errMessage = ex.Message;
+            }
+            return this;
+        }
+
+        public void AddStratums(CBoreholes boreholes)
+        {
+            for (int i = 0; i < boreholes.Count; i++)
+            {
+                AddStratums(boreholes[i]);
+            }
+        }
+
+        public void AddStratums(CBorehole bh)
+        {
+            for (int j = 0; j < bh.Stratums.Count; j++)
+            {
+                if (IsExist(bh.Stratums[j].Name)) continue;
+                AddLayer(bh.Stratums[j],false);
+            }
+        }
 
 
     }
@@ -897,35 +1424,14 @@ namespace DataCollection
         public List<Vector64> CreateTracesLine(Vector64 start, bool geocoord = false)
         {
             List<Vector64> traces = new List<Vector64>();
-            
-            BoreholeAnglesStruct angle;
-            Vector64 p1 = new Vector64(), p2 = new Vector64();
-            
-            p1 = start;
+            Vector64 p1 = start, p2;
             traces.Add(start); //地面点
-
-            double dx, dy, dz, dxy;
+            BoreholeAnglesStruct angle;
             for (int i = 0; i < Angles.Count; i++)
             {
                 angle = Angles[i];
                 if ( !angle.IsValid() ) continue;
-
-                dz = Math.Sin(Vector64.toRad(angle.Zenith)) * angle.Depth;//垂向投影高度
-                dxy = Math.Cos(Vector64.toRad(angle.Zenith)) * angle.Depth; //地面投影长度
-                dy = dxy * Math.Cos(Vector64.toRad(angle.Azimuth));
-                dx = dxy * Math.Sin(Vector64.toRad(angle.Azimuth));
-                if  ( geocoord ) //向下坐标系 Z向下,X指北，
-                {
-                    p2.X = p1.X + dy;
-                    p2.Y = p1.Y + dx;
-                    p2.Z = p1.Z - dz; //同样处理
-                }
-                else //向下坐标系 Z向上,X指东，y指北，地面标高 > 0
-                {
-                    p2.X = p1.X + dx;
-                    p2.Y = p1.Y + dy;
-                    p2.Z = p1.Z - dz;
-                }
+                p2 = angle.toTracedPoint(p1);
                 traces.Add(p2);
                 p1 = p2;
             }
@@ -983,85 +1489,367 @@ namespace DataCollection
                 errMessage = ex.Message;
                 return false;
             }
-        }
+        }       
 
     }
     public class CBorehole: C3DObjectBase
     {
+        public struct BoreholeSamplePoint 
+        {
+            public Vector64 Point;
+            public short boreholeID;
+            public BoreholeSamplePoint(Vector64 p,int id)
+            {
+                Point = p;
+                boreholeID = (short)id;
+            }
+        }
         //测井基准线，Z按由小到大排列
         public Vector64 Position = new Vector64();               //井口坐标
         public List<Vector64> Baseline = new List<Vector64>(); //基准线
         public BoreholeAngles boreholeAngles = new BoreholeAngles();//测斜数据
-
+        public StratumDatas Stratums = new StratumDatas(); //地层数据
+        public bool IsBaselineAscOrder
+        {
+            get 
+            { 
+                if ( Baseline.Count < 2 ) return false;
+                else 
+                {
+                    double z1 = Baseline[0].z;
+                    double z2 = Baseline[Baseline.Count-1].z;
+                    if (z1 < z2) return true;
+                    else return false;
+                }
+            }
+        }
         /// <summary>
-        /// 根据深度获得对于的插值位置
+        /// 根据高程获得对应的插值位置xy
         /// </summary>
-        /// <param name="z">深度位置</param>
+        /// <param name="z">高程位置</param>
         /// <param name="points">应该按升序排列</param>
         /// <returns></returns>
         public Vector64 GetPositionFromBaseline(double Z, List<Vector64>points = null)
         {
+            if (points == null || points.Count < 2) return new Vector64();
+            
             int n1 = -1, n2 = -1;
-            Vector64 pos = new Vector64(0,0,0);            
-            List<Vector64> traces = points;
-            if (points == null) traces = Baseline;
-
-            for (int i = 0; i < traces.Count; i++)
+            Vector64 pos = new Vector64(0, 0, 0);
+            double err = 1E-6;//误差
+            for (int i = 0; i < points.Count; i++)
             {
-                if (Z == traces[i].Z) return traces[i];
-                else if (Z < traces[i].Z)
+                if ( Math.Abs(Z - points[i].Z) <= err ) return points[i];
+                if (IsBaselineAscOrder)//升序排列
                 {
-                    n2 = i;
-                    break;
+                    if ( Math.Round(Z,6) < Math.Round(points[i].Z, 6) )
+                    {
+                        n2 = i;
+                        break;
+                    }
+                    else n1 = i;
                 }
-                else if (Z > traces[i].Z) n1 = i;
+                else //降序排列
+                {
+                    if (Math.Round(Z, 6) > Math.Round(points[i].Z, 6))
+                    {
+                        n1 = i;
+                        break;
+                    }
+                    else n2 = i;
+                }
             }
-            // 最低以下
-            if (n1 < 0) pos = traces[0];
-            else if (n2 < 0) pos = traces[traces.Count - 1];//最高以上
-            else
+            Vector64 p1 = new Vector64(0, 0, 0);
+            Vector64 p2 = new Vector64(0, 0, 0);
+            if (n1 < 0) // 最低以下
             {
-                Vector64 p1 = traces[n1];
-                Vector64 p2 = traces[n2];
-                if (p1.Z == p2.Z) pos = p1;
-                else pos = p1 + (p2 - p1) * (Z - p1.Z) / (p2.Z - p1.Z);                
+                if (IsBaselineAscOrder) { p1 = points[1]; p2 = points[0]; }
+                else { p2 = points[points.Count - 2]; p2 = points[points.Count - 1];}
             }
+            if (n2 < 0) // 最高以上
+            {
+                if (IsBaselineAscOrder) { p2 = points[points.Count - 1]; p1 = points[points.Count - 2]; }
+                else { p1 = points[1]; p2 = points[0]; }
+            }
+
+            if( n1 >= 0 && n2 >= 0 )
+            {
+                p1 = points[n1];
+                p2 = points[n2];                
+            }
+            
+            if (p1.Z == p2.Z) pos = p1;
+            else pos = p1 + (p2 - p1) * (Z - p1.Z) / (p2.Z - p1.Z);
+
             pos.Z = Z;
             return pos;
         }
 
         /// <summary>
-        /// 根据深度值获取基准线上的位置
+        /// 根据深度高程值获取基准线上的位置
         /// </summary>
-        /// <param name="z"></param>
+        /// <param name="z">高程值</param>
         /// <returns></returns>
-        public Vector64 GetPosFromBaseline(double z, bool geoCoordinate = false)
+        public Vector64 GetPositionFromBaseline(double z)
         {
             Vector64 p = new Vector64();
             int n = Baseline.Count;
-            if (n < 1) return p;            
-            int n1 = -1;
-            int n2 = -2;           
-            for (int i = 0; i < n; i++ )
+            if (n < 1) return p;
+
+            return GetPositionFromBaseline(z, Baseline);
+        }
+        /// <summary>
+        /// 根据孔深位置获得对应的点坐标xyz
+        /// </summary>
+        /// <param name="p0">井口坐标</param>
+        /// <param name="top">离井口深度</param>
+        /// <param name="points">基准线坐标，按升序排列</param>
+        /// <returns></returns>
+        public Vector64 GetPositionFromBaseline(Vector64 p0, double top, List<Vector64> points = null)
+        {
+            if (points == null || points.Count < 2) return new Vector64();
+            
+            double len = 0;
+            double err = 1E-6;//误差
+            int n1 = -1, n2 = -1;
+            Vector64 p, p1 = p0, p2 = p0;
+            
+            if (IsBaselineAscOrder)//Z升序排列
             {
-                if (z >= Baseline[i].Z) n1 = i;
-                else if ( z < Baseline[i].Z ) 
+                for (int i = points.Count-1; i >= 0; i--)
                 {
-                    n2 = i;
-                    break;
+                    p = points[i];
+                    len += p1.Distance(p); //井口距离
+                    if (Math.Abs(top - len) <= err) return p;
+                    if (Math.Round(len, 6) > Math.Round(top, 6))
+                    {  n2 = i;  p2 = p; break; }
+                    else { n1 = i; p1 = p; }
                 }
             }
-            if ( n1 < 0 && n2 >= 0 ) return Baseline[0];
-            else if ( n1 >= 0 && n2 < 0 ) return Baseline[n-1];
-            else 
-            {
-                Vector64 p1 = Baseline[n1];
-                Vector64 p2 = Baseline[n2];
-                p = p1 + ( p2 - p1 ) * (z - p1.Z) / (p2.Z - p1.Z);
+            else //Z降序排列
+            {   
+                for (int i = 0; i < points.Count; i++)
+                {
+                    p = points[i];
+                    len += p1.Distance(p); //井口距离
+                    if (Math.Abs(top - len) <= err) return p;
+                    if (Math.Round(len, 6) > Math.Round(top, 6))
+                    { n2 = i; p2 = p; break; }
+                    else { n1 = i; p1 = p; }
+                }
             }
-            return p;
+
+            if (n1 < 0) // 最低以下
+            {
+                if (IsBaselineAscOrder) { p1 = points[1]; p2 = points[0]; }
+                else { p2 = points[points.Count - 2]; p2 = points[points.Count - 1]; }
+            }
+            if (n2 < 0) // 最高以上
+            {
+                if (IsBaselineAscOrder) { p2 = points[points.Count - 1]; p1 = points[points.Count - 2]; }
+                else { p1 = points[1]; p2 = points[0]; }
+            }
+
+            double len1 = len - p1.Distance(p2);
+            Vector64 pos = p1 + (p2 - p1) * (top - len1) / p1.Distance(p2);
+            return pos;
         }
 
+
+        void StrataSampling(ref List<BoreholeSamplePoint> points,int boreholeId, double step, double bkstep, StratumData s1, StratumData s2,bool target )
+        {
+            double h1 = s1.TopDepth;
+            double h2 = s2.BottomDepth;
+            double min = step * 0.001;
+            Vector64 p0 = Position;
+            if ( h2 - h1 <= step )
+            {
+                points.Add(new BoreholeSamplePoint(new Vector64(p0.X, p0.Y, p0.Z - h1 - min, s1.Value),boreholeId));
+                points.Add(new BoreholeSamplePoint(new Vector64(p0.X, p0.Y, p0.Z - h2 + min, s2.Value),boreholeId));
+            }
+            else
+            {
+                double samplestep = bkstep; //实际采样间隔
+                if (target) samplestep = step;
+
+                int n =(int)( ( h2 - h1 ) / samplestep) + 1;
+                samplestep = (h2 - h1) / n;
+                double h = h1 - min;
+                for(int i=0; i < n; i++)
+                {
+                    if (i == 0) h = h1 - min; //顶
+                    else if (i == n - 1) h = h1 + min;//底
+                    else h = h1 + samplestep * i;
+                    points.Add(new BoreholeSamplePoint(new Vector64(p0.X, p0.Y, p0.Z - h, s1.Value),boreholeId));
+                }                
+            }
+        }
+        /// <summary>
+        /// 钻孔地层采样，采样成点文件
+        /// </summary>
+        /// <param name="points">点坐标数组</param>
+        /// <param name="step">采样间距</param>
+        /// <param name="step">采样间距</param>
+        /// <param name="bkstep">背景采样间距</param>
+        /// <param name="targets">目标地层的名称，可能有多个名称</param>
+        /// <param name="targetvalue">目标地层的值</param>
+        /// <param name="targetvalue">背景值</param>
+        /// <returns></returns>
+       /* public void StrataSampling(ref List<Vector64> points,StratumDatas stratums, double step, double bkstep, List<int>targets, double targetvalue = 1, double bkvalue = 0 )
+        {
+            if ( Stratums.Count < 1 ) return;                        
+            
+            StratumData s, s1, s2;
+            s1 = s2 = Stratums[0];
+            s1.Value = bkvalue;
+
+            s = stratums.GetStrataByName(s1.Name);
+            if ( s != null ) s1.Value = s.Value;
+            
+            int i = 1;
+            while (true)
+            {
+                if (i == Stratums.Count) //最后一层
+                {
+                    if (s1.Value == targetvalue) StrataSampling(ref points, step, bkstep, s1, s2, true);
+                    else StrataSampling(ref points, step, bkstep, s1, s2, false);
+                    break;
+                }
+                else
+                {
+                    s = Stratums[i];
+                    if (targets.Contains(s.Name)) s.Value = targetvalue;
+                    else s.Value = bkvalue;
+                    if (s.Value == s1.Value)
+                    {
+                        i++;
+                        s2 = s;
+                        continue;
+                    }
+                    else //a different layer
+                    {
+                        if (s1.Value == targetvalue) StrataSampling(ref points, step, bkstep, s1, s2, true);
+                        else StrataSampling(ref points, step, bkstep, s1, s2, false);
+                        s1 = s2 = s;
+                        i++;
+                    }
+                }
+            }
+           
+        } */
+        /// <summary>
+        /// 地层采样
+        /// </summary>
+        /// <param name="points">数组</param>
+        /// <param name="step">采样步长</param>
+        /// <param name="resetValue">是否重设地层值</param>
+        /// <param name="value">//重设目标地层值</param>
+        //
+        void StrataSampling(List<BoreholeSamplePoint> points,int boreholeid,List<StratumData>stratums, double step,bool resetValue = false,double value = 1)                                 
+        {
+            if (stratums.Count < 1) return; //地层为空                       
+            Vector64 p1, p2;
+            double val = 0;
+            for(int i=0;i< stratums.Count;i++)
+            {
+                StratumData s = stratums[i];
+                val = s.Value;  //地层值
+                if (resetValue) val = value;
+                p1 = s.Top;
+                p2 = s.Bottom;
+                p1.V = p2.V = val;                
+                if ( (p1.Z - p2.Z) <= step ) 
+                {   
+                    p1.Z -= step * 0.1;
+                    p2.Z += step * 0.1;
+                    points.Add(new BoreholeSamplePoint(p1,boreholeid));
+                    points.Add(new BoreholeSamplePoint(p2, boreholeid));
+                }
+                else
+                {                    
+                    for (double z = p2.Z + step*0.1; z <= p1.Z- step*0.1; z += step)
+                    { 
+                        Vector64 p = p2 +(p1 - p2) * (z - p2.Z) / (p1.Z - p2.Z);
+                        p.V = val;
+                        points.Add(new BoreholeSamplePoint(p, boreholeid));
+                    }
+                }
+            }
+        }
+        
+
+        List<StratumData> ResortStratums(List<StratumData>stratums,bool istarget,bool reset)
+        {            
+            List<StratumData> list1 = new List<StratumData>();//target list
+            if (stratums.Count == 0 ) return list1;
+            if (stratums.Count ==1) { list1.Add(stratums[0]);return list1; }
+            StratumData s1 = stratums[0].Copy();
+            for (int i = 1; i < stratums.Count; i++)
+            {
+                StratumData s = stratums[i];
+                if ( Math.Abs(s1.Bottom.Z - s.Top.Z ) <= 1E-6 && 
+                    (!istarget || reset || s1.Value == s.Value) )
+                {
+                    s1.Bottom = s.Bottom;
+                }
+                else
+                {
+                    list1.Add(s1);
+                    s1 = s.Copy();
+                }
+            }
+            list1.Add(s1);
+            return list1;
+        }
+        public void StrataSampling(List<BoreholeSamplePoint> points, 
+                                   int boreholeId,  //钻孔编号
+                                   List<StratumData>targets,//目标地层,null表示采样所有地层
+                                             double targetStep,   //地层采样步长
+                                             double bkStep,       //背景地层采样步长（非目标地层）                                             
+                                             bool samplebk = true,//是否采样背景地层
+                                             bool resetValue = false,//是否重设地层值
+                                             double targetvalue = 1, //重设目标地层值
+                                             double bkvalue = 0)     //重设背景地层值
+        {
+            if ( Stratums.Count < 1 ) return; //地层为空                       
+            if (targets == null || targets.Count < 1)
+            {
+                //全部地层采样
+                StrataSampling(points, boreholeId, Stratums.Stratums,targetStep, resetValue, targetvalue);
+                return;
+            }
+
+            //地层组织与合并
+            List<StratumData> stratums1 = new List<StratumData>();//target list
+            List<StratumData> stratums2 = new List<StratumData>();//none target list
+            for (int i = 0; i < Stratums.Count; i++)
+            {
+                StratumData s = Stratums[i];
+                bool istargrt = false;
+                foreach(StratumData s1 in targets)
+                {
+                    if( s1.Name.ToLower() == s.Name.ToLower() )
+                    {
+                        istargrt = true;
+                        s.Value = s1.Value;
+                        break;
+                    }
+                }
+                if (istargrt) stratums1.Add(s);
+                else stratums2.Add(s);
+            }
+
+            List<StratumData> list1 = ResortStratums(stratums1, true, resetValue);
+            StrataSampling(points, boreholeId,list1, targetStep, resetValue, targetvalue);
+            list1.Clear();
+            if (samplebk) //是否采样背景地层
+            {
+                List<StratumData> list2 = ResortStratums(stratums2, false, resetValue);
+                StrataSampling(points, boreholeId,list2, bkStep, resetValue, bkvalue);
+                list2.Clear();
+            }  
+            stratums1.Clear();
+            stratums2.Clear();
+        }
 
         [CategoryAttribute("Inclines"), DisplayNameAttribute("Visible")]
         public bool ShowBaseLine 
@@ -1095,7 +1883,24 @@ namespace DataCollection
             bh.Stratums = Stratums.Copy();
             return bh;
         }
-        
+        public void ApplyStrtumsColorScheme(StratumDatas layers)
+        {            
+            for(int i=0;i< Stratums.Count;i++)
+            {
+                StratumData s1 = Stratums[i];
+                for(int j=0;j< layers.Count;j++)
+                {
+                    StratumData s2 = layers[j];
+                    if(s1.Name == s2.Name)
+                    {
+                        s1.Code = s2.Code;
+                        s1.Color = s2.Color;
+                        Stratums[i] = s1;
+                        break;
+                    }
+                }
+            }
+        }
         public Vector64 GetPosFromBaseline(int id)
         {
             if (id >= Baseline.Count) return new Vector64();
@@ -1117,30 +1922,62 @@ namespace DataCollection
             {
                 Baseline = CreateBaselineFromStratums(Position, geocoord);
             }
-            if (geocoord)//按Z升序排列
-                Baseline.Sort((a, b) => { return a.Z.CompareTo(b.Z); });
-            else//按Z降序排列 
-                Baseline.Sort((a, b) => { return b.Z.CompareTo(a.Z); });
+            
+          //  if (geocoord)//按Z升序排列
+          //      Baseline.Sort((a, b) => { return a.Z.CompareTo(b.Z); });
+          //  else//按Z降序排列 
+          //      Baseline.Sort((a, b) => { return b.Z.CompareTo(a.Z); });
 
             UpdateRange();
         }
-        
-        public List<Vector64> CreateBaselineFromStratums(Vector64 p0, bool geoCoordinate = false )
+        /// <summary>
+        /// 从测斜数据创建
+        /// </summary>
+        /// <param name="p0"></param>
+        /// <param name="geoCoordinate"></param>
+        /// <returns> </returns>
+        public List<Vector64> CreateBaselineFromAngles(Vector64 p0, bool geoCoordinate = false)
         {
-            Vector64 p = p0;
-            StratumData layer;                        
+            return boreholeAngles.CreateTracesLine(Position);            
+        }
+
+        /// <summary>
+        /// 从地层创建轨迹线
+        /// </summary>
+        /// <param name="p0">地面点坐标</param>
+        /// <param name="geoCoordinate">暂不考虑</param>
+        /// <returns></returns>
+        public List<Vector64> CreateBaselineFromStratums(Vector64 p0, bool geoCoordinate = false)
+        { 
             List<Vector64> traces = new List<Vector64>();
-            traces.Add(p0); //地面坐标
+            traces.Add(p0); //地面坐标,第一层顶界面
+            Vector64 p = p0; 
             for (int i = 0; i < Stratums.Count; i++)
             {
-                layer = Stratums[i];
-                if (geoCoordinate)
+                if (i == Stratums.Count - 1)
+                {
+                    StratumData layer = Stratums[i];
                     p.Z = p0.Z - layer.TopDepth - layer.Thickness;
-                else 
-                    p.Z = p0.Z - layer.TopDepth - layer.Thickness;
-                traces.Add(p);
+                    traces.Add(p);
+                }
             }
-            return traces;
+                //for (int i = 0; i < Stratums.Count; i++)
+                //{
+                //    layer = Stratums[i];                
+                //    p.Z = p0.Z - layer.TopDepth;
+                //    if(p.Z < z)
+                //    { 
+                //        traces.Add(p);
+                //        z= p.Z;
+                //    }
+                //    if(i==Stratums.Count-1)
+                //    {
+                //        p.Z = p.Z - layer.Thickness;
+                //        traces.Add(p);
+                //    }                
+                //} 
+
+                return traces;
         }
 
         public List<Vector64> CreateBaselineFromLasDepth(int iDepth, LasFileData lasData, bool geoCoordinate = false)
@@ -1211,42 +2048,51 @@ namespace DataCollection
         /// </summary>
         /// <param name="layer">地层</param>       
         /// <param name="geocoord">坐标系</param>
-        public List<Vector64> GetLayerTraces( StratumData layer, bool geocoord = false )
+        public List<Vector64> CreateLayerTraces( StratumData layer, bool geocoord = false )
         {
-            Vector64 p0 = Position;//地面点
-            Vector64 p1= new Vector64(), p2 = new Vector64();
+            List<Vector64> traces = new List<Vector64>();
+            double l1 = Position.Z - layer.TopDepth;
+            double l2 = l1 - layer.Thickness;
+            Vector64 top = GetPositionFromBaseline(Position, layer.TopDepth, Baseline);
+            Vector64 bottom = GetPositionFromBaseline(Position, layer.TopDepth + layer.Thickness, Baseline);
+            layer.Top = top;layer.Bottom = bottom;
+            traces.Add(top);
+            traces.Add(bottom);
+            return traces;
+            /*            
+            List<Vector64> baselines = new List<Vector64>(Baseline);
+            if( IsBaselineAscOrder )baselines.Reverse(); //升序按反序排列            
+
             
-            List<Vector64> traces = new List<Vector64>();            
-            if (Baseline.Count < 2) return traces;
 
-            List<Vector64> basepoints = new List<Vector64>(Baseline);
-            if ( !geocoord ) basepoints.Reverse(); //按Z从小到大排列
-
-            double topz = p0.Z - layer.TopDepth;
-            double bottomz = topz - layer.Thickness;
-            if (geocoord) //一样处理
-            { 
-                topz = p0.Z - layer.TopDepth; 
-                bottomz = topz - layer.Thickness;
-            }
-            int n1 = GetInterpolatedPosition(basepoints, topz, out p1); //顶面位置
-            int n2 = GetInterpolatedPosition(basepoints, bottomz, out p2);//顶面位置
-            layer.Top = p1;
-            layer.Bottom = p2;            
-
-            traces.Add(p1);
-            Vector64 p, v1 = p1;
-            for (int i = n1; i < n2; i++)
+            double lensum=0, len = 0,len1,len2;
+            Vector64 p, p2, p1 = baselines[0];//地面点            
+            for (int i = 1; i < baselines.Count; i++ )//降序排列
             {
-                p = basepoints[i];
-                if (p.Z > v1.Z && p.Z < p2.Z)
-                    traces.Add(p);
-                v1 = p;
-            }            
-            traces.Add(p2);
-            
-            if ( !geocoord ) traces.Reverse();
+                p2 = baselines[i];
+                len = p1.Distance(p2);
+                lensum += len;
+                if (layer.TopDepth == lensum) //between [p1, p]
+                {
+                    traces.Add(p2);
 
+                }
+                else if ( layer.TopDepth < lensum ) //between [p1, p]
+                {
+                    len1 = lensum - len;
+                    len2 = lensum;
+                    len = layer.TopDepth - len1;
+                    p = p1 + (p2 - p1)*(len - len1) / (len2 - len1);
+                    traces.Add(p);
+                    len = layer.TopDepth + layer.Thickness;
+                    p = p1 + (p2 - p1) * (len - len1) / (len2 - len1);
+                    traces.Add(p);
+                    break;                    
+                }
+                p1 = p2;
+            }
+            baselines.Clear();
+            */
             return traces;
         }
 
@@ -1469,9 +2315,7 @@ namespace DataCollection
                 }
             }
             return cylinderTriangleObj;
-        }       
-
-        public StratumDatas Stratums = new StratumDatas();
+        }
        
         Vector64[]CreateCircleArray(double rad, int circle = 10, bool geocoord = false)
         {
@@ -1512,9 +2356,9 @@ namespace DataCollection
             Vector64[] pp = CreateCircleArray(Radius, cylinderCircles, geocoord);
             if ( pp == null ) return new TriangleObj();
 
-            int circles = pp.Length + 1;
+            int circles = pp.Length;
 
-            float u = 0,v=0;
+            float u = 0, v;
             TriangleObj tri = new TriangleObj();
             tri.CopyHeaderFrom(this);
             tri.textureStruct = layer.textureStruct;
@@ -1525,21 +2369,17 @@ namespace DataCollection
             tri.IsUniformColor = true;
 
             Vector64 p;
-            List<Vector64> traces = GetLayerTraces(layer, geocoord);
+            List<Vector64> traces = CreateLayerTraces(layer, geocoord);
             CubeModel64 range = GetBaseLineRange(traces);
 
             for (int k = 0; k < traces.Count; k++)
             {
                 p = traces[k];
-                v = (float)((p.Z - range.Z1) / range.ZWidth);
-
+                v = (float)((p.Z - range.Z1) / range.ZWidth);//计算贴图坐标
                 for (int j = 0; j < circles; j++)
                 {   
-                    if (j == circles-1)
-                        tri.AddPoint(pp[0].X + p.X, pp[0].Y + p.Y, p.Z);
-                    else
-                        tri.AddPoint(pp[j].X + p.X, pp[j].Y + p.Y, p.Z);
-                    u = (float)j / (circles-1);
+                    tri.AddPoint(pp[j] + p);
+                    u = (float)j / (circles - 1);
                     if (geocoord) tri.AddTexture(u, 1-v);
                     else tri.AddTexture(u, v);
                 }//for (int j = 0; j <= circle; j++)
@@ -1552,10 +2392,11 @@ namespace DataCollection
             int id1, id2, id3, id4;
             for (int k = 0; k < traces.Count - 1; k++)
             {
-                for (int j = 0; j < circles-1; j++)
+                for (int j = 0; j < circles; j++)
                 {
                     id1 = k * circles + j;
                     id2 = id1 + 1;
+                    if ( id2 >= circles ) id2 = k * circles;
                     id3 = id1 + circles;
                     id4 = id2 + circles;
                     tri.AddTriangleIndex(id1, id2, id3);
@@ -1712,24 +2553,30 @@ namespace DataCollection
             maxy = Position.Y + Radius;
             minz = maxz = Position.Z;
 
-            if ( Baseline.Count < 1) return;
-
-            minx = maxx = Baseline[0].X;
-            miny = maxy = Baseline[0].Y;
-            minz = maxz = Baseline[0].Z;
-            for (int i = 0; i < Baseline.Count; i++ )
+            if ( Baseline.Count > 1)
             {
-                if (Baseline[i].X < minx) minx = Baseline[i].X;
-                if (Baseline[i].Y < miny) miny = Baseline[i].Y;
-                if (Baseline[i].Z < minz) minz = Baseline[i].Z;
-                if (Baseline[i].X > maxx) maxx = Baseline[i].X;
-                if (Baseline[i].Y > maxy) maxy = Baseline[i].Y;
-                if (Baseline[i].Z > maxz) maxz = Baseline[i].Z;
+                minx = maxx = Baseline[0].X;
+                miny = maxy = Baseline[0].Y;
+                minz = maxz = Baseline[0].Z;
+                for (int i = 0; i < Baseline.Count; i++)
+                {
+                    if (Baseline[i].X < minx) minx = Baseline[i].X;
+                    if (Baseline[i].Y < miny) miny = Baseline[i].Y;
+                    if (Baseline[i].Z < minz) minz = Baseline[i].Z;
+                    if (Baseline[i].X > maxx) maxx = Baseline[i].X;
+                    if (Baseline[i].Y > maxy) maxy = Baseline[i].Y;
+                    if (Baseline[i].Z > maxz) maxz = Baseline[i].Z;
+                }
+                minx -= Radius;
+                maxx += Radius;
+                miny -= Radius;
+                maxy += Radius;
+            }   
+            else if( Stratums.Count > 0 )
+            {
+                StratumData layer = Stratums[Stratums.Count - 1];
+                minz = Position.Z -(layer.TopDepth+layer.Thickness);
             }
-            minx -= Radius;
-            maxx += Radius;
-            miny -= Radius;
-            maxy += Radius;
         }
 
         /// <summary>
@@ -2013,6 +2860,57 @@ namespace DataCollection
                 }
             }
         }
+        public bool _ShowBaseLine = false;
+        [CategoryAttribute("Inclines"), DisplayNameAttribute("Visible")]
+        public bool ShowBaseLine 
+        {   
+            get 
+            { 
+                return _ShowBaseLine; 
+            }
+            set 
+            {
+                _ShowBaseLine = value;
+                if (IsUniformStyle)
+                {
+                    foreach (CBorehole bh in pData)
+                        bh.ShowBaseLine = _ShowBaseLine;
+                }
+            }
+        }
+
+        public float _BaseLineWidth = 1.0f;
+        [CategoryAttribute("Inclines"), DisplayNameAttribute("LineWidth")]        
+        public float BaseLineWidth
+        {
+            get { return _BaseLineWidth; }
+            set
+            {
+                _BaseLineWidth = value;
+                if (IsUniformStyle)
+                {
+                    foreach (CBorehole bh in pData)
+                        bh.BaseLineWidth = _BaseLineWidth;
+                }
+            }
+        }
+
+        public Color _BaseLineColor = Color.AliceBlue;
+        [CategoryAttribute("Inclines"), DisplayNameAttribute("LineColor")]        
+        public Color BaseLineColor
+        {
+            get { return _BaseLineColor; }
+            set
+            {
+                _BaseLineColor = value;
+                if (IsUniformStyle)
+                {
+                    foreach (CBorehole bh in pData)
+                        bh.BaseLineColor = _BaseLineColor;
+                }
+            }
+        }
+
         public bool _ShowCurve = true;
         [CategoryAttribute("Curves"), DisplayNameAttribute("Visible"), Browsable(true)]
         public bool ShowCurve
@@ -2118,7 +3016,15 @@ namespace DataCollection
         {
             pData.Add(bh);
         }
-
+        public void ApplyStrtumsColorScheme(StratumDatas layers)
+        {
+            for(int i=0; i < Count;i++)
+            {
+                CBorehole bh = pData[i];
+                bh.ApplyStrtumsColorScheme(layers);
+                pData[i] = bh;
+            }
+        }
         public List<string>GetAllProperties()
         {
             List<string> properties = new List<string>();
@@ -2175,9 +3081,39 @@ namespace DataCollection
                 }
             }
         }
+
+        public StratumDatas GetStratums()
+        {
+            StratumDatas stratums = new StratumDatas();
+            for(int i=0;i<pData.Count;i++)
+            {
+                CBorehole bh = pData[i];
+                for (int j = 0; j < bh.Stratums.Count; j++)
+                {
+                    StratumData s = bh.Stratums[j];
+                    if (!stratums.IsExist(s.Name)) stratums.AddLayer(s);
+                }
+            }
+            return stratums;
+        }
         public override void Clear()
         {
             pData.Clear();            
+        }
+        public List<Vector64> StrataSampling(double sample_step, 
+                                             double bksample_step, 
+                                             StratumDatas stratums,
+                                             List<int> targets, //目标地层索引 
+                                             bool resetBkvalue)
+        {
+            List<Vector64> points = new List<Vector64>();
+            for(int i=0;i < pData.Count; i++) 
+            {
+                CBorehole bh = pData[i];
+                //bh.StrataSampling(ref points, sample_step, bksample_step,)
+
+            }
+            return null;
         }
         public override bool SaveAs(BinaryWriter br)
         {

@@ -12,12 +12,25 @@ using System.Windows.Forms;
 using DataCollection;
 using OpenCLNet;
 using CLInterpolation;
+using DDDSharp.Dialogs;
+using System.Security.Policy;
 
 namespace DDDSharp
 {    
     public partial class GriddingForm : Form
     {
-        Encoding[] encodes = new Encoding[7];
+        EncodingInfo[] encodingInfos = null;
+        public Encoding encoding = Encoding.UTF8;
+        public C3DGridData loaded3DGrid = null;
+        public int CodePage
+        {
+            get { return encoding.CodePage; }
+            set
+            {
+                encoding = Encoding.GetEncoding(value);
+            }
+        }
+
         List<Vector32> pOrg = new List<Vector32>();
         
         ColumnDataList pDataList = new ColumnDataList();
@@ -33,6 +46,8 @@ namespace DDDSharp
         static private bool workDisposed = false;
         private System.Object UpdateLock = new System.Object();
         static private System.Object InterpolateLock = new System.Object();
+        
+        bool doGeometryChange = true;
 
         protected char[] remarkChars = new char[] { '/', '#', '!' };
         protected char[] splitChars = new char[] { ' ', ',', '\t' };
@@ -40,10 +55,12 @@ namespace DDDSharp
 
         private bool Initializing = false;
 
+        double memrequired = 0;
+        double memavailable = 0;
+
         int progressState = 0;// 0没开始，1已开始，2已暂停        
 
         Thread globalThread = null;
-        Thread localThread = null;
         Thread checkThread = null;
 
         //GPU Interpolation 
@@ -61,6 +78,9 @@ namespace DDDSharp
         private const int XNUM = 101;
         private const int YNUM = 101;
         private const int ZNUM = 101;
+        
+        int floatNum = 6;
+
         public delegate void OnUpdateUI();
 
         public GriddingForm()
@@ -75,84 +95,145 @@ namespace DDDSharp
         }       
         private void textX1_TextChanged(object sender, EventArgs e)
         {
+            if (!doGeometryChange) return;
             DoRangeChange(0);
             UpdateGeometry();
+            UpdateMemoryStatusInfo();
         }
         private void textX2_TextChanged(object sender, EventArgs e)
         {
+            if (!doGeometryChange) return;
             DoRangeChange(0);
             UpdateGeometry();
+            UpdateMemoryStatusInfo();
         }
         private void textY1_TextChanged(object sender, EventArgs e)
         {
+            if (!doGeometryChange) return;
             DoRangeChange(1);
             UpdateGeometry();
+            UpdateMemoryStatusInfo();
         }
 
         private void textY2_TextChanged(object sender, EventArgs e)
         {
+            if (!doGeometryChange) return;
             DoRangeChange(1);
             UpdateGeometry();
+            UpdateMemoryStatusInfo();
         }
         private void textZ1_TextChanged(object sender, EventArgs e)
         {
+            if (!doGeometryChange) return;
             DoRangeChange(2);
             UpdateGeometry();
+            UpdateMemoryStatusInfo();
         }
         private void textZ2_TextChanged(object sender, EventArgs e)
         {
+            if (!doGeometryChange) return;
             DoRangeChange(2);
             UpdateGeometry();
+            UpdateMemoryStatusInfo();
         }
 
         private void textStepX_TextChanged(object sender, EventArgs e)
         {
+            if (!doGeometryChange) return;
             DoSpaceChange(0);
             UpdateGeometry();
+            UpdateMemoryStatusInfo();
         }
         private void textStepY_TextChanged(object sender, EventArgs e)
         {
+            if (!doGeometryChange) return;
             DoSpaceChange(1);
             UpdateGeometry();
+            UpdateMemoryStatusInfo();
         }
         private void textStepZ_TextChanged(object sender, EventArgs e)
         {
+            if (!doGeometryChange) return;
             DoSpaceChange(2);
             UpdateGeometry();
+            UpdateMemoryStatusInfo();
         }
         private void textXNum_TextChanged(object sender, EventArgs e)
         {
+            if (!doGeometryChange) return;
             DoNumChange(0);
             UpdateGeometry();
+            UpdateMemoryStatusInfo();
         }
         private void textYNum_TextChanged(object sender, EventArgs e)
         {
+            if (!doGeometryChange) return;
             DoNumChange(1);
             UpdateGeometry();
-        } 
+            UpdateMemoryStatusInfo();
+        }
+        private void textZNum_TextChanged(object sender, EventArgs e)
+        {
+            if (!doGeometryChange) return;
+            DoNumChange(2);
+            UpdateGeometry();
+        }
 
+        private void DoNumChange(int dir)
+        {
+            lock (UpdateLock)
+            {
+                if (!Initializing)
+                {
+
+                    if (dir == 0)
+                    {
+                        if (ConvertToInt(textXNum.Text, out nx))
+                            xstep = (maxx - minx) / (nx - 1);
+                    }
+                    if (dir == 1)
+                    {
+                        if (ConvertToInt(textYNum.Text, out ny))
+                            ystep = (maxy - miny) / (ny - 1);
+                    }
+                    if (dir == 2)
+                    {
+                        if (ConvertToInt(textZNum.Text, out nz))
+                            zstep = (maxz - minz) / (nz - 1);
+                    }
+                }
+            }
+        }
         private void comboBox1_SelectedIndexChanged(object sender, EventArgs e)
         {
-            UpdateSelect(0);            
+            UpdateSelect(0);
+            TransformPoints();
             UpdateGeometry();
+            UpdateDataInfo();
         }
 
         private void comboBox2_SelectedIndexChanged(object sender, EventArgs e)
         {
-            UpdateSelect(1);            
+            UpdateSelect(1);
+            TransformPoints();
             UpdateGeometry();
+            UpdateDataInfo();
         }
 
         private void comboBox3_SelectedIndexChanged(object sender, EventArgs e)
         {
-            UpdateSelect(2);            
+            UpdateSelect(2);
+            TransformPoints();
             UpdateGeometry();
+            UpdateDataInfo();
         }
 
         private void comboBox4_SelectedIndexChanged(object sender, EventArgs e)
         {
-            UpdateSelect(3);                        
+            UpdateSelect(3);
+            TransformPoints();
             UpdateGeometry();
+            UpdateDataInfo();
         }
         private bool GetSelectIndex()
         {
@@ -252,7 +333,7 @@ namespace DDDSharp
                 workDisposed = false;
                 checkProgress = true;
 
-                if ( ipmethod.method == InterpolationMethod.DirectGridding )
+                if ( ipmethod.method == InterpolationMethod.GriddedInterpolation)
                 {
                     data.pGridData  = ipmethod.DirectGridding(nx, ny, nz);
                 }
@@ -264,19 +345,15 @@ namespace DDDSharp
                     {
                         if (ipmethod.method == InterpolationMethod.RadicalBasisFunction)
                         {
-                            int np = ipmethod.RemoveDuplicated(0.0001);
-                            if (np > 0)
-                            {
+                            if (ipmethod.RemoveDuplicated() > 0) 
                                 UpdateDataInfo();
-                            }
                         }
                     }
 
                     if (selectedDevices.Count > 0) //GPU 并行计算
                         data.pGridData = ipmethod.GetInterpolatedValue(nx, ny, nz, selectedDevices.ToArray());//GPU version
-                    else data.pGridData = ipmethod.GetInterpolatedValue(nx, ny, nz, null); //CPU version
-
-                    data.UpdateDataRange();
+                    else data.pGridData = ipmethod.GetInterpolatedValue(nx, ny, nz, null); //CPU version                    
+                    if( !ipmethod.BigGridData ) data.UpdateRange();
                 }
 
                 percentage = 0;
@@ -294,35 +371,77 @@ namespace DDDSharp
                 MessageBox.Show(info);
                 data = null;
                 return;
-            }            
-
-            if (data.SaveAs(textOutputFile.Text))
+            }
+            bool ret = true;
+            if (!ipmethod.BigGridData) ret = data.SaveAs(textOutputFile.Text);
+            if ( ret )
             {
                 string info = "Gridding successfully!\n\n";
                 info += "Time elapsed -- " + ipmethod.formatTime(ipmethod.timeSlip);
-                MessageBox.Show( info );
+                MessageBox.Show(info);
             }
             else
             {
-               // MessageBox.Show("save gridding data failed!");
+                MessageBox.Show("save gridding data failed!" + data.errMessage);
             }
         }
         
-       
-        //Get points data from List buffer pDataList
-        private void TransformPoints()
-        {
-            //数据未更改，不需要重新读取
-            if ( pointsTransformed && ipmethod.pointCount > 0 ) return;
-
+       void TransformPointsFrom3DGrid(C3DGridData _data)
+       {
             ipmethod.Clear();
+            nx = _data.xNum;
+            ny = _data.yNum;
+            nz = _data.zNum;
+            minx = _data.minx;
+            miny = _data.miny;
+            minz = _data.minz;
+            minv = _data.minv;
+            maxx = _data.maxx;
+            maxy = _data.maxy;
+            maxz = _data.maxz;
+            maxv = _data.maxv;
+            xstep = _data.xStep;
+            ystep = _data.yStep;
+            zstep = _data.zStep;            
+            Vector32 p = new Vector32();
+            for (int i = 0; i < _data.pGridData.Length; i++)
+            {
+                p = _data.GetGridCoord(i);
+                ipmethod.AddPoint(p);
+            }            
+            pointsTransformed = true;
+            ipmethod.SetGeometry(minx, maxx, miny, maxy, minz, maxz, xstep, ystep, zstep, nx, ny, nz);
+            ipmethod.minv = minv;
+            ipmethod.maxv = maxv;
+        }
+        //Get points data from List buffer pDataList
+        /// <summary>
+        /// 数据传输到ipmethod
+        /// </summary>
+        /// <param name="forced">是否强制传输</param>
+        private void TransformPoints(bool forced = false)
+        {
             select1 = comboBox1.SelectedIndex;
             select2 = comboBox2.SelectedIndex;
             select3 = comboBox3.SelectedIndex;
             select4 = comboBox4.SelectedIndex;
-
-            if (select1 < 0 || select2 < 0 || select3 < 0 || select4 < 0)
+            if (select1 < 0 || select2 < 0 || 
+                select3 < 0 || select4 < 0)
                 return;
+
+            //数据未更改，不需要重新读取            
+            if ( !forced && pointsTransformed && ipmethod.pointCount > 0) return;
+
+            ipmethod.Clear();
+            
+            int select5 = -1;
+            RBFBoreholesInterpolation ip = null;
+            if (ipmethod.method == InterpolationMethod.BoreholesMineralInterpolation)
+            {
+                ip = ipmethod as RBFBoreholesInterpolation;
+                select5 = ip.boreholeColumn;
+                if (select5 < 0 || select5 >= pDataList.Col) return;
+            }
 
             Vector32 p = new Vector32();
             for (int i = 0; i < pDataList.Row; i++)
@@ -331,7 +450,18 @@ namespace DDDSharp
                 p.Y = pDataList[i, select2];
                 p.Z = pDataList[i, select3];
                 p.V = pDataList[i, select4];
+                if (roundUpCheckBox.Checked)
+                {
+                    p.X = (float)Math.Round(p.X, floatNum);
+                    p.Y = (float)Math.Round(p.Y, floatNum);
+                    p.Z = (float)Math.Round(p.Z, floatNum);
+                }
                 ipmethod.AddPoint(p);
+                if(ip != null) 
+                {
+                    short id = (short)(pDataList[i, select5] + 0.1);
+                    ip.boreholeIndices.Add(id);
+                }
             }
             pointsTransformed = true;
             ipmethod.SetGeometry(minx, maxx, miny, maxy, minz, maxz, xstep, ystep, zstep, nx, ny, nz);                       
@@ -339,27 +469,43 @@ namespace DDDSharp
         
         private void StartButton_Click(object sender, EventArgs e)
         {   
-            if (pDataList.Row < 1 || pDataList.Col < 1)
+            if(ipmethod.method == InterpolationMethod.GriddedInterpolation && loaded3DGrid!=null)
             {
-                MessageBox.Show("No enough data.");
-                return;
+
             }
-            select1 = comboBox1.SelectedIndex;
-            select2 = comboBox2.SelectedIndex;
-            select3 = comboBox3.SelectedIndex;
-            select4 = comboBox4.SelectedIndex;
-            if (select1 < 0 || select2 < 0 || select3 < 0 || select4 < 0)
+            else
             {
-                MessageBox.Show("no valid columns selected.");
-                return;
-            }
-            if ( !GetGeometryRange() )
-            {
-                MessageBox.Show("interpolation geometry is invalid.");
-                return;
-            }
-            
-            TransformPoints();                  
+                if (pDataList.Row < 1 || pDataList.Col < 1)
+                {
+                    MessageBox.Show("No enough data.");
+                    return;
+                }
+                select1 = comboBox1.SelectedIndex;
+                select2 = comboBox2.SelectedIndex;
+                select3 = comboBox3.SelectedIndex;
+                select4 = comboBox4.SelectedIndex;
+                if (select1 < 0 || select2 < 0 || select3 < 0 || select4 < 0)
+                {
+                    MessageBox.Show("no valid columns selected.");
+                    return;
+                }
+                if (ipmethod.method == InterpolationMethod.BoreholesMineralInterpolation)
+                {
+                    RBFBoreholesInterpolation ip = ipmethod as RBFBoreholesInterpolation;
+                    if (ip.boreholeColumn < 0)
+                    {
+                        MessageBox.Show("Please Set Borehole Column on Option.");
+                        return;
+                    }
+                }
+                if (!GetGeometryRange())
+                {
+                    MessageBox.Show("interpolation geometry is invalid.");
+                    return;
+                }
+
+                TransformPoints();
+            }                        
 
             try 
             {
@@ -367,7 +513,28 @@ namespace DDDSharp
                 data.xNum = nx;
                 data.yNum = ny;
                 data.zNum = nz;
-                data.pGridData = new float[nx * ny * nz];
+                
+                ulong msize = ipmethod.GetRequiredMemorySizeOnCPU();
+                memrequired = msize / 1024 / 1024;
+                memavailable = PhysicalMemory.GetAvailableMemoryMB();
+
+                if ( memrequired < memavailable )
+                { 
+                    data.pGridData = new float[nx * ny * nz];
+                    //ipmethod.BigGridData = false;
+                }
+                else if( !ipmethod.BigGridData )
+                {
+                    MessageBox.Show("no enough memory available.");
+                    ipmethod.Clear();
+                    return;
+                }
+                ipmethod.DividedNum = 1;
+                if (ipmethod.BigGridData)
+                {
+                    int divided = (int)(memrequired / memrequired) + 1;
+                    ipmethod.DividedNum = divided > 4 ? divided: 4;                    
+                }
             }
             catch(Exception ex)
             {
@@ -394,7 +561,8 @@ namespace DDDSharp
 
             //启动插值线程
             InitProgressBar(0, 100);
-            
+
+            ipmethod.gridDataFile = textOutputFile.Text;
             ipmethod.progressFile = textOutputFile.Text + ".prog";
             FileInfo fi = new FileInfo(ipmethod.progressFile);
             if( fi.Exists && ipmethod.method == InterpolationMethod.RadicalBasisFunction)
@@ -422,13 +590,14 @@ namespace DDDSharp
                     Cursor = Cursors.Default;
                 }
             }
-            if (globalThread == null || !globalThread.IsAlive)
+            if (globalThread != null && globalThread.IsAlive)
             {
-                ipmethod.threadStoped = false;
-                globalThread = new Thread(InterpolationThread);
-                globalThread.Start();
+                globalThread.Join();
+                globalThread = null;
             }
-
+            ipmethod.threadStoped = false;
+            globalThread = new Thread(InterpolationThread);
+            globalThread.Start();
             //启动进度线程
             if (checkThread == null || !checkThread.IsAlive)
             {
@@ -496,11 +665,7 @@ namespace DDDSharp
 #pragma warning disable CS0618 // '“Thread.Suspend()”已过时:“Thread.Suspend has been deprecated.  Please use other classes in System.Threading, such as Monitor, Mutex, Event, and Semaphore, to synchronize Threads or protect resources.  http://go.microsoft.com/fwlink/?linkid=14202”
                     globalThread.Suspend();
 #pragma warning restore CS0618 // '“Thread.Suspend()”已过时:“Thread.Suspend has been deprecated.  Please use other classes in System.Threading, such as Monitor, Mutex, Event, and Semaphore, to synchronize Threads or protect resources.  http://go.microsoft.com/fwlink/?linkid=14202”
-                if (localThread != null && localThread.IsAlive)               
-#pragma warning disable CS0618 // '“Thread.Suspend()”已过时:“Thread.Suspend has been deprecated.  Please use other classes in System.Threading, such as Monitor, Mutex, Event, and Semaphore, to synchronize Threads or protect resources.  http://go.microsoft.com/fwlink/?linkid=14202”
-                    localThread.Suspend();               
-#pragma warning restore CS0618 // '“Thread.Suspend()”已过时:“Thread.Suspend has been deprecated.  Please use other classes in System.Threading, such as Monitor, Mutex, Event, and Semaphore, to synchronize Threads or protect resources.  http://go.microsoft.com/fwlink/?linkid=14202”
-                progressState = 2;
+                  progressState = 2;
             }
             else if (progressState == 2)
             {
@@ -508,10 +673,7 @@ namespace DDDSharp
 #pragma warning disable CS0618 // '“Thread.Resume()”已过时:“Thread.Resume has been deprecated.  Please use other classes in System.Threading, such as Monitor, Mutex, Event, and Semaphore, to synchronize Threads or protect resources.  http://go.microsoft.com/fwlink/?linkid=14202”
                     globalThread.Resume();
 #pragma warning restore CS0618 // '“Thread.Resume()”已过时:“Thread.Resume has been deprecated.  Please use other classes in System.Threading, such as Monitor, Mutex, Event, and Semaphore, to synchronize Threads or protect resources.  http://go.microsoft.com/fwlink/?linkid=14202”
-                if (localThread != null && localThread.IsAlive)
-#pragma warning disable CS0618 // '“Thread.Resume()”已过时:“Thread.Resume has been deprecated.  Please use other classes in System.Threading, such as Monitor, Mutex, Event, and Semaphore, to synchronize Threads or protect resources.  http://go.microsoft.com/fwlink/?linkid=14202”
-                    localThread.Resume();
-#pragma warning restore CS0618 // '“Thread.Resume()”已过时:“Thread.Resume has been deprecated.  Please use other classes in System.Threading, such as Monitor, Mutex, Event, and Semaphore, to synchronize Threads or protect resources.  http://go.microsoft.com/fwlink/?linkid=14202”
+                
                 progressState = 1;
             }
             
@@ -523,17 +685,14 @@ namespace DDDSharp
             if ( progressState < 1) return;
 
             if (globalThread != null && globalThread.IsAlive)
-#pragma warning disable CS0618 // '“Thread.Suspend()”已过时:“Thread.Suspend has been deprecated.  Please use other classes in System.Threading, such as Monitor, Mutex, Event, and Semaphore, to synchronize Threads or protect resources.  http://go.microsoft.com/fwlink/?linkid=14202”
-                globalThread.Suspend();
-#pragma warning restore CS0618 // '“Thread.Suspend()”已过时:“Thread.Suspend has been deprecated.  Please use other classes in System.Threading, such as Monitor, Mutex, Event, and Semaphore, to synchronize Threads or protect resources.  http://go.microsoft.com/fwlink/?linkid=14202”
-            if (localThread != null && localThread.IsAlive)
-#pragma warning disable CS0618 // '“Thread.Suspend()”已过时:“Thread.Suspend has been deprecated.  Please use other classes in System.Threading, such as Monitor, Mutex, Event, and Semaphore, to synchronize Threads or protect resources.  http://go.microsoft.com/fwlink/?linkid=14202”
-                localThread.Suspend();
-#pragma warning restore CS0618 // '“Thread.Suspend()”已过时:“Thread.Suspend has been deprecated.  Please use other classes in System.Threading, such as Monitor, Mutex, Event, and Semaphore, to synchronize Threads or protect resources.  http://go.microsoft.com/fwlink/?linkid=14202”
+                globalThread.Suspend();            
 
-            if ( MessageBox.Show("Are you sure to abort current progress?\n Works have done will not be saved.", "Abort the progress?",
+            if (MessageBox.Show("Are you sure to abort current progress?\n Works have done will not be saved.", "Abort the progress?",
                  MessageBoxButtons.YesNo, MessageBoxIcon.Question, MessageBoxDefaultButton.Button2) != DialogResult.Yes)
-                return;                       
+            {
+                globalThread.Resume();                
+                return; 
+            }
             
             if ( ipmethod.progressStep > 0 )
             {
@@ -547,6 +706,7 @@ namespace DDDSharp
                 }
             }
 
+            globalThread.Resume();            
             ipmethod.threadStoped = true;
             checkProgress = false;
 
@@ -571,56 +731,17 @@ namespace DDDSharp
             UpdateButtonState();
         }       
 
-        private void textZNum_TextChanged(object sender, EventArgs e)
-        {
-            DoNumChange(2);
-            UpdateGeometry();
-        }        
-
-        private void DoNumChange(int dir)
-        {
-            lock (UpdateLock)
-            {
-                if (!Initializing)
-                {
-
-                    if (dir == 0)
-                    {
-                        if( ConvertToInt(textXNum.Text,out nx) )
-                            xstep = (maxx - minx) / (nx - 1);
-                    }
-                    if (dir == 1)
-                    {
-                        if (ConvertToInt(textYNum.Text, out ny))
-                            ystep = (maxy - miny) / (ny - 1);
-                    }
-                    if (dir == 2)
-                    {
-                        if (ConvertToInt(textZNum.Text, out nz))
-                            zstep = (maxz - minz) / (nz - 1);
-                    }
-                }
-            }      
-        }
-        private Encoding GetSelectedCoding()
-        {
-            int id = encodeComboBox.SelectedIndex;
-            return encodes[id];
-        }
+       
+       
         private void GriddingForm_Load(object sender, EventArgs e)
-        {            
-            encodes[0] = Encoding.Default;
-            encodes[1] = Encoding.Unicode;
-            encodes[2] = Encoding.BigEndianUnicode;
-            encodes[3] = Encoding.ASCII;
-            encodes[4] = Encoding.UTF8;
-            encodes[5] = Encoding.UTF7;
-            encodes[6] = Encoding.UTF32;
-            for (int i = 0; i < encodes.Length; i++)
+        {
+            encodingInfos = Encoding.GetEncodings();
+            for (int i = 0; i < encodingInfos.Length; i++)
             {
-                encodeComboBox.Items.Add(encodes[i].EncodingName);
-            }
-            encodeComboBox.SelectedIndex = 0;
+                encodeComboBox.Items.Add(encodingInfos[i].DisplayName);
+                if (CodePage == encodingInfos[i].CodePage)
+                    encodeComboBox.SelectedIndex = i;
+            }            
 
             XFilterCombox.Items.Add("==");
             XFilterCombox.Items.Add("<");            
@@ -646,18 +767,19 @@ namespace DDDSharp
             VFilterCombox.Items.Add("between");
             VFilterCombox.SelectedIndex = -1;
 
+            roundUpCheckBox.Checked = true;
+            decimalsNumTextBox.Text = floatNum.ToString();
+
             string[] names = Enum.GetNames(typeof(InterpolationMethod));
             foreach(string s in names )
             {
                 methodComboBox.Items.Add(s);
             }
-            //methodComboBox.Items.Add(InterpolationMethod.InverseDistanceWeighted.ToString());
-            //methodComboBox.Items.Add(InterpolationMethod.RadicalBasisFunction.ToString());
-            //methodComboBox.Items.Add(InterpolationMethod.DirectGridding.ToString());
 
+            
             methodComboBox.SelectedIndex = 0;
 
-            devices = OpenCLObj.GetDevices();
+            devices = OpenCLObj.GetDevices( DeviceType.ALL);
             string text;
             //double gb = 1024 * 1024*1024;
             for (int i = 0; i < devices.Count; i++)
@@ -674,8 +796,25 @@ namespace DDDSharp
 
         private void encodeComboBox_SelectedIndexChanged(object sender, EventArgs e)
         {
-            if( textInputFile.Text.Length > 0 )
-               ReadFromFile(textInputFile.Text);
+            if( encodeComboBox.SelectedIndex > 0 )
+            {
+                int code = encodingInfos[encodeComboBox.SelectedIndex].CodePage;
+                if (code != CodePage)
+                {
+                    CodePage = code;
+                    if (textInputFile.Text.Length > 0)
+                    { 
+                        if( ReadFromFile(textInputFile.Text))
+                        {
+                            InitSelect();
+                            UpdateGeometry();
+                            TransformPoints();
+                            UpdateDataInfo();
+                        }
+                    }
+                }
+            }
+            
         }
 
         private void outBrowse_Click(object sender, EventArgs e)
@@ -725,7 +864,7 @@ namespace DDDSharp
         /// </summary>
         /// <param name="col">0 X,1 Y,2 Z,3 V</param>
         /// <returns></returns>
-        bool Filter(int col)
+        bool Filter(int col,bool inverse = false)
         {
             int sel = -1;
             int selcol = -1;
@@ -755,22 +894,22 @@ namespace DDDSharp
             //filter begin
             if (sel == 0) //" == "
             {
-                pDataList.EqualFilter(selcol,v1);
+                pDataList.EqualFilter(selcol,v1,inverse);
                 return true;
             }
             if (sel == 1) //" < "
             {
-                pDataList.LowerFilter(selcol, v1);
+                pDataList.LowerFilter(selcol, v1, inverse);
                 return true;
             }
             if (sel == 2) //" < "
             {
-                pDataList.GreaterFilter(selcol, v1);
+                pDataList.GreaterFilter(selcol, v1, inverse);
                 return true;
             }
             if (sel == 3) //" between "
             {
-                pDataList.BetweenFilter(selcol, v1,v2);
+                pDataList.BetweenFilter(selcol, v1,v2, inverse);
                 return true;
             }
             return false;
@@ -849,27 +988,41 @@ namespace DDDSharp
         {
             if (ipmethod == null || update == true) //重新生成
             {
-                InterpolationMethod method = (InterpolationMethod)(methodComboBox.SelectedIndex);
+                InterpolationMethod method = (InterpolationMethod)Enum.Parse(typeof(InterpolationMethod), methodComboBox.SelectedItem.ToString());
                 if (method == InterpolationMethod.InverseDistanceWeighted)
                 {
-                    IDWInterpolator ip = new IDWInterpolator();
+                    IDWInterpolator ip = new IDWInterpolator();                    
                     ip.IsMultiThread = true;
                     if ( ipmethod!= null && ipmethod.pointCount > 0)
                     {
                         ip.CopyFrom(ipmethod);
                         ipmethod.Clear();                        
                     }
+                    ip.gridDataFile = textOutputFile.Text;
                     ipmethod = ip;
                 }                
                 else if (method == InterpolationMethod.RadicalBasisFunction)
                 {
-                    RBFInterpolation ip = new RBFInterpolation();
+                    RBFInterpolation ip = new RBFInterpolation();                   
                     if (ipmethod != null && ipmethod.pointCount > 0)
                     {
                         ip.CopyFrom(ipmethod);
                         ipmethod.Clear();                       
                     }
+                    ip.gridDataFile = textOutputFile.Text;
                     ipmethod = ip;
+                }
+                else if (method == InterpolationMethod.BoreholesMineralInterpolation)
+                {
+                    RBFBoreholesInterpolation ip = new RBFBoreholesInterpolation();
+                    if (ipmethod != null && ipmethod.pointCount > 0)
+                    {
+                        ip.CopyFrom(ipmethod);
+                        ipmethod.Clear();
+                    }
+                    ip.gridDataFile = textOutputFile.Text;
+                    ipmethod = ip;
+                    pointsTransformed = false;
                 }
                 else if (method == InterpolationMethod.Linear)
                 {
@@ -879,17 +1032,39 @@ namespace DDDSharp
                         ip.CopyFrom(ipmethod);
                         ipmethod.Clear();                        
                     }
+                    ip.gridDataFile = textOutputFile.Text;
                     ipmethod = ip;
                 }
-                else if (method == InterpolationMethod.DirectGridding)
+                else if (method == InterpolationMethod.GriddedInterpolation)
                 {
                     GriddedInterpolator ip = new GriddedInterpolator();
                     if (ipmethod != null && ipmethod.pointCount > 0)
                     {
-                        ip.CopyFrom(ipmethod);
-                        ipmethod.Clear();                       
+                        ip.CopyFrom(ipmethod);                      
+                        ip.floatNum = floatNum;
+                        if (loaded3DGrid == null)
+                        {
+                            //更新geometry
+                            float[] xgrids = ip.CreateGridsFromPoints(0);
+                            float[] ygrids = ip.CreateGridsFromPoints(1);
+                            float[] zgrids = ip.CreateGridsFromPoints(2);
+                            nx = xgrids.Length;
+                            ny = ygrids.Length;
+                            nz = zgrids.Length;
+                            xstep = Math.Round((maxx - minx) / (nx - 1), floatNum);
+                            ystep = Math.Round((maxy - miny) / (ny - 1), floatNum);
+                            zstep = Math.Round((maxz - minz) / (nz - 1), floatNum);
+                        }
+                        if ( nx*ny*nz != ip.pointCount )
+                        {
+                            MessageBox.Show("Not a Gridded data","Warning",MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                        }
+                        ipmethod.Clear();
+                        UpdateGeometry();
                     }
-                    ipmethod = ip;
+                    ip.gridDataFile = textOutputFile.Text;
+                    if (loaded3DGrid != null) ip.grid3d0 = loaded3DGrid;
+                    ipmethod = ip;                    
                 }
             }
             
@@ -902,14 +1077,46 @@ namespace DDDSharp
 
         private void Methodbutton1_Click(object sender, EventArgs e)
         {
-            InterpolationMethod method = (InterpolationMethod)(methodComboBox.SelectedIndex);
+            InterpolationMethod method = (InterpolationMethod)Enum.Parse(typeof(InterpolationMethod), methodComboBox.SelectedItem.ToString());
             if ( method ==  InterpolationMethod.InverseDistanceWeighted )
             {
+                IDWSet id = new IDWSet();             
+                id.ip = new IDWInterpolator();
+                id.ip.CopyFromWithOutPoints(ipmethod);
+                if (id.ShowDialog() == DialogResult.OK)
+                {                    
+                    ipmethod.CopyFromWithOutPoints(id.ip);                    
+                }
+            }
+            else if (method == InterpolationMethod.GriddedInterpolation)
+            {
                 IDWSet id = new IDWSet();
-                id.ip = (IDWInterpolator) ipmethod;
-                if( id.ShowDialog() == DialogResult.OK )
+                id.ip = new GriddedInterpolator();
+                id.ip.CopyFromWithOutPoints(ipmethod);
+                if (id.ShowDialog() == DialogResult.OK)
                 {
-                    ipmethod = id.ip;
+                    ipmethod.CopyFromWithOutPoints(id.ip);
+                    ((GriddedInterpolator)ipmethod).SearchingGridLength = ((GriddedInterpolator)id.ip).SearchingGridLength;
+                }
+            }
+            else if (method == InterpolationMethod.RadicalBasisFunction)
+            {
+                IDWSet id = new IDWSet();
+                id.ip = new RBFInterpolation();
+                id.ip.CopyFromWithOutPoints(ipmethod);
+                if (id.ShowDialog() == DialogResult.OK)
+                {
+                    ipmethod.CopyFromWithOutPoints(id.ip);                    
+                }
+            }
+            else if (method == InterpolationMethod.BoreholesMineralInterpolation)
+            {
+                IDWSet id = new IDWSet();
+                id.ip = new RBFBoreholesInterpolation();
+                id.ip.CopyFromWithOutPoints(ipmethod);
+                if (id.ShowDialog() == DialogResult.OK)
+                {
+                    ipmethod.CopyFromWithOutPoints(id.ip);
                 }
             }
         }
@@ -941,14 +1148,14 @@ namespace DDDSharp
         {
             Cursor = Cursors.WaitCursor;
 
-            Filter(0);
+            Filter(0,InverseCheckBoxX.Checked);
             pDataList.UpdateRanges();
             ipmethod.Clear();
-            TransformPoints();
+            
             UpdateSelect();
+            TransformPoints();
             UpdateGeometry();
             UpdateDataInfo();
-
             Cursor = Cursors.Default;
         }
 
@@ -965,7 +1172,7 @@ namespace DDDSharp
             Replace(0, value);
             pDataList.UpdateRanges();
             ipmethod.Clear();
-            TransformPoints();
+            TransformPoints(true);
             UpdateSelect();
             UpdateGeometry();
             UpdateDataInfo();
@@ -975,11 +1182,11 @@ namespace DDDSharp
         private void YFilterButton_Click(object sender, EventArgs e)
         {
             Cursor = Cursors.WaitCursor;
-            Filter(1);
+            Filter(1,InverseCheckBoxY.Checked);
             pDataList.UpdateRanges();
             ipmethod.Clear();
-            TransformPoints();
             UpdateSelect();
+            TransformPoints();
             UpdateGeometry();
             UpdateDataInfo();
             Cursor = Cursors.Default;
@@ -1006,11 +1213,11 @@ namespace DDDSharp
         private void ZFilterButton_Click(object sender, EventArgs e)
         {
             Cursor = Cursors.WaitCursor;
-            Filter(2);
+            Filter(2, InverseCheckBoxZ.Checked);
             pDataList.UpdateRanges();
-            ipmethod.Clear();
-            TransformPoints();
+            ipmethod.Clear();            
             UpdateSelect();
+            TransformPoints();
             UpdateGeometry();
             UpdateDataInfo();
             Cursor = Cursors.Default;
@@ -1037,11 +1244,11 @@ namespace DDDSharp
         private void VFilterButton_Click(object sender, EventArgs e)
         {
             Cursor = Cursors.WaitCursor;
-            Filter(3);
+            Filter(3, InverseCheckBoxV.Checked);
             pDataList.UpdateRanges();
             ipmethod.Clear();
-            TransformPoints();
             UpdateSelect();
+            TransformPoints();
             UpdateGeometry();
             UpdateDataInfo();
             Cursor = Cursors.Default;
@@ -1170,6 +1377,107 @@ namespace DDDSharp
             }
         }
 
+        private void RemoveAllButton_Click(object sender, EventArgs e)
+        {
+            DialogResult ret = MessageBox.Show("Remove All data loaded?",
+                                                "Clear data?",
+                                                MessageBoxButtons.OKCancel,
+                                                MessageBoxIcon.Question, 
+                                                MessageBoxDefaultButton.Button2);
+            if( ret == DialogResult.OK )
+            {
+                pOrg.Clear();
+                pDataList.Clear();
+                ipmethod.Clear();
+                
+                minx = maxx = 0;
+                miny = maxy = 0;
+                minz = maxz = 0;
+                minv = maxv = 0;
+
+                nx = ny = nz = 0;
+                InitSelect();
+                UpdateGeometry();
+                UpdateDataInfo();
+                UpdateBounds();                
+            }
+        }
+
+        private void decimalsNumTextBox_TextChanged(object sender, EventArgs e)
+        {
+            if( !int.TryParse(decimalsNumTextBox.Text,out floatNum) )
+            {
+                MessageBox.Show("Invalid Integer Number.");
+            }
+        }
+
+        private void decimalsNumTextBox_Validated(object sender, EventArgs e)
+        {
+
+        }
+
+        private void EnableBigGrid_Click(object sender, EventArgs e)
+        {
+            ipmethod.BigGridData = true;
+        }
+
+        private void SaveGeomtryButton_Click(object sender, EventArgs e)
+        {
+            SaveFileDialog dlg = new SaveFileDialog();
+            dlg.Filter = "Geometry File(*.txt)|*.txt";
+            if (dlg.ShowDialog() == DialogResult.OK) 
+            {
+                StreamWriter wr = new StreamWriter(dlg.FileName);
+                wr.WriteLine(textX1.Text);
+                wr.WriteLine(textX2.Text);
+                wr.WriteLine(textY1.Text);
+                wr.WriteLine(textY2.Text);
+                wr.WriteLine(textZ1.Text);
+                wr.WriteLine(textZ2.Text);
+                wr.WriteLine(textStepX.Text);
+                wr.WriteLine(textStepY.Text);
+                wr.WriteLine(textStepZ.Text);
+                wr.WriteLine(textXNum.Text);
+                wr.WriteLine(textYNum.Text);
+                wr.WriteLine(textZNum.Text);
+                wr.Close();
+                MessageBox.Show("Saved to " + dlg.FileName);
+            }
+        }
+
+        private void LoadGeomtryButton_Click(object sender, EventArgs e)
+        {
+            OpenFileDialog dlg = new OpenFileDialog();
+            dlg.Filter = "Geometry File(*.txt)|*.txt";
+            if (dlg.ShowDialog() == DialogResult.OK)
+            {
+                doGeometryChange = false;
+                try 
+                {
+                    StreamReader sr = new StreamReader(dlg.FileName);
+                    textX1.Text = sr.ReadLine();
+                    textX2.Text = sr.ReadLine();
+                    textY1.Text = sr.ReadLine();
+                    textY2.Text = sr.ReadLine();
+                    textZ1.Text = sr.ReadLine();
+                    textZ2.Text = sr.ReadLine();
+                    textStepX.Text = sr.ReadLine();
+                    textStepY.Text = sr.ReadLine();
+                    textStepZ.Text = sr.ReadLine();
+                    textXNum.Text = sr.ReadLine();
+                    textYNum.Text = sr.ReadLine();
+                    textZNum.Text = sr.ReadLine();
+                    sr.Close();
+                }
+                catch(Exception ex)
+                {
+                    MessageBox.Show("Failed to Load geometry parameters." + Environment.NewLine +  ex.Message);
+                }
+                
+                doGeometryChange = true;
+            }
+        }
+
         public bool IsNullValue(double value, double nullvalue, double zero = 0.0001)
         {
             if (value == nullvalue) return true;
@@ -1189,10 +1497,16 @@ namespace DDDSharp
                     title = true;
                     break;
                 }
+
                 if( C3DData.IsBlankValue(values[j]) )
                 {
                     values = null;
                     return false;
+                }
+
+                if( roundUpCheckBox.Checked && floatNum >=0 && floatNum <10)
+                {
+                    values[j] = (float)Math.Round(values[j],floatNum);
                 }
             }
 
@@ -1267,10 +1581,13 @@ namespace DDDSharp
         }
         public bool ReadFromFile(string filename,bool clear = true)
         {
-            if( clear ) pDataList.Clear();
+            if (clear) 
+            { 
+                pDataList.Clear(); 
+            }
 
             FileStream fs = new FileStream(filename, FileMode.Open, FileAccess.Read);
-            StreamReader sr = new StreamReader(fs, GetSelectedCoding());            
+            StreamReader sr = new StreamReader(fs, encoding );            
             
             string line;
             while ((line = sr.ReadLine()) != null)
@@ -1340,27 +1657,49 @@ namespace DDDSharp
                 comboBox2.Items.Add(head);
                 comboBox3.Items.Add(head);
                 comboBox4.Items.Add(head);
+                if( comboBox1.SelectedIndex < 0 &&
+                    CDataModel.ChooseXCoordinate(head) ) 
+                {
+                    comboBox1.SelectedIndex = i;
+                }
+                if (comboBox2.SelectedIndex < 0 &&
+                    CDataModel.ChooseYCoordinate(head))
+                {
+                    comboBox2.SelectedIndex = i;
+                }
+                if (comboBox3.SelectedIndex < 0 &&
+                    CDataModel.ChooseZCoordinate(head))
+                {
+                    comboBox3.SelectedIndex = i;
+                }
+                if (comboBox4.SelectedIndex < 0 &&
+                    CDataModel.ChooseVCoordinate(head))
+                {
+                    comboBox4.SelectedIndex = i;
+                }
             }
 
-            if( comboBox1.Items.Count > 0 )comboBox1.SelectedIndex = 0;
-            if (comboBox2.Items.Count > 1) comboBox2.SelectedIndex = 1;
-            if (comboBox3.Items.Count > 2) comboBox3.SelectedIndex = 2;
-            if (comboBox4.Items.Count > 3) comboBox4.SelectedIndex = 3;
-            else comboBox4.SelectedIndex = comboBox1.Items.Count - 1;
+            //if( comboBox1.Items.Count > 0 )comboBox1.SelectedIndex = 0;
+            //if (comboBox2.Items.Count > 1) comboBox2.SelectedIndex = 1;
+            //if (comboBox3.Items.Count > 2) comboBox3.SelectedIndex = 2;
+            //if (comboBox4.Items.Count > 3) comboBox4.SelectedIndex = 3;
+            //else comboBox4.SelectedIndex = comboBox1.Items.Count - 1;
 
             UpdateSelect();
         }
         void UpdateMemoryStatusInfo()
         {
             if ( ipmethod == null ) return;
-            
+            ipmethod.xGrid = nx;
+            ipmethod.yGrid = ny;
+            ipmethod.zGrid = nz;
             ulong msize = ipmethod.GetRequiredMemorySizeOnCPU();
-            double memrequired = msize / 1024 / 1024;
-            double memavailable = MMPhysicalMemory.GetAvailableMemoryMB();
-
+            memrequired = msize / 1024 / 1024;
+            memavailable = PhysicalMemory.GetAvailableMemoryMB();
+            
             if (memrequired > memavailable)
             {
-                labelMemoryInfo.Text = "No enough memory on CPU ! ";
+                labelMemoryInfo.Text = "No enough memory! ";
                 labelMemoryInfo.Text += "Required:" + Math.Round(memrequired, 2) + " MB";
                 labelMemoryInfo.Text += "| Available:" + Math.Round(memavailable, 2) + " MB";
                 labelMemoryInfo.Text += " | " + MMPhysicalMemory.GetDeveiceNum();
@@ -1488,9 +1827,25 @@ namespace DDDSharp
         private bool LoadSourceData(string filename,bool clear = true)
         {
             this.Cursor = Cursors.WaitCursor;
-
-            if (ReadFromFile(filename, clear))
+            bool ret = false;
+            string ext = Path.GetExtension(filename).ToLower();
+            if(ext == ".3dgrid") 
             {
+                if (loaded3DGrid != null) loaded3DGrid.Clear();
+                loaded3DGrid = new C3DGridData();
+                loaded3DGrid.LoadFrom(filename);
+                TransformPointsFrom3DGrid(loaded3DGrid);
+                textInputFile.Text = filename;
+                textOutputFile.Text = filename.PadLeft(filename.Length - 4) + ".3DGrid";                
+                UpdateGeometry();
+                UpdateDataInfo();
+                ret = true;
+            }
+            else if (ReadFromFile(filename, clear))
+            {
+                if (loaded3DGrid != null) loaded3DGrid.Clear();
+                loaded3DGrid = null;
+
                 textInputFile.Text = filename;
                 textOutputFile.Text = filename.PadLeft(filename.Length - 4) + ".3DGrid";
                 nx = XNUM;
@@ -1500,13 +1855,10 @@ namespace DDDSharp
                 UpdateGeometry();
                 TransformPoints();
                 UpdateDataInfo();
-
-                this.Cursor = DefaultCursor;
-
-                return true;
+                ret = true;
             }
-            
-            return false;
+            this.Cursor = DefaultCursor;
+            return ret;
         }
         
         //open an text file including 3D scattered points
@@ -1514,9 +1866,19 @@ namespace DDDSharp
         {
             try
             {
+                if (roundUpCheckBox.Checked)
+                {   
+                    if( !int.TryParse(decimalsNumTextBox.Text,out floatNum) )
+                    {
+                        MessageBox.Show("Decimals number not correct!");
+                        return;
+                    }
+                }
                 using (var dlg = new OpenFileDialog())
                 {
-                    dlg.Filter = "ASCII Data(*.csv,*.dat,*.txt)|*.csv;*.dat;*.txt|all files(*.*)|*.*";
+                    dlg.Filter = "ASCII data(*.csv,*.dat,*.txt)|*.csv;*.dat;*.txt";
+                    dlg.Filter += "|Gridded data(*.3DGrid)|*.3DGrid";
+                    dlg.Filter += "| all files(*.*)|*.*";
 
                     if (dlg.ShowDialog() == DialogResult.OK)
                     {

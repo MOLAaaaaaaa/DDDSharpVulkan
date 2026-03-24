@@ -14,6 +14,18 @@ namespace DDDSharp
 {
     public partial class ImportScatterPointsForm : Form
     {
+        public Encoding encoding = Encoding.UTF8;
+        public int CodePage
+        {
+            get { return encoding.CodePage; }
+            set
+            {
+                encoding = Encoding.GetEncoding(value);
+            }
+        }
+
+
+        EncodingInfo[] encodingInfos = null;
         public string datafile = "";
         int sel1 = -1;  //line
         int sel2 = -1;  //point
@@ -65,6 +77,7 @@ namespace DDDSharp
             InforBox.Text += "Z: " + MinZ + " to " + MaxZ + "\r\n";
             InforBox.Text += "V: " + MinV + " to " + MaxV;
         }
+        
 
         //预读文件
         private bool PreLoadFile(string file)
@@ -75,11 +88,13 @@ namespace DDDSharp
                 ascRows.Clear();
                 ascRows.PageNum = PageNum;
                 TotalRows =  ascRows.GetFileTotalRows(file);
-                
-                FileStream fs = new FileStream(file, FileMode.Open, FileAccess.Read);
-                // streamReader = new StreamReader(fs, Encoding.Default);
-                binaryReader = new BinaryReader(fs, Encoding.Default);
 
+                Encoding encoding = Encoding.GetEncoding("GB2312");
+                //if (CodePage > 0) encoding = Encoding.GetEncoding(CodePage);
+
+                FileStream fs = new FileStream(file, FileMode.Open, FileAccess.Read);                
+                // streamReader = new StreamReader(fs, Encoding.Default);
+                binaryReader = new BinaryReader(fs, encoding);
 
                 if ( TotalRows < 1 ) return false;
 
@@ -150,7 +165,16 @@ namespace DDDSharp
             comboBox4.SelectedIndex = -1;
             comboBox5.SelectedIndex = -1;            
         }
-
+        void SetEncodingCombox()
+        {
+            encodingInfos = Encoding.GetEncodings();
+            for (int i = 0; i < encodingInfos.Length; i++)
+            {
+                encodingCombox.Items.Add(encodingInfos[i].DisplayName);
+                if (CodePage == encodingInfos[i].CodePage)
+                    encodingCombox.SelectedIndex = i;
+            }
+        }
         private bool ImportFromFile(string file,string coordfile,int sel1,int sel2,int xsel,int ysel,int zsel)
         {
             try
@@ -232,32 +256,30 @@ namespace DDDSharp
             string ss1;
             for (int i = 0; i < ascRows.Titles.Count; i++)
             {
-                ss1 = ascRows.Titles[i].Trim().ToLower();
-
-                if (comboBox1.SelectedIndex < 0 &&
-                    (ss1.Contains("x") || ss1.Contains("north")))
+                ss1 = ascRows.Titles[i].Trim().ToLower();                
+                if ( comboBox1.SelectedIndex < 0 && 
+                     CDataModel.ChooseXCoordinate(ss1) )
                 { 
                     comboBox1.SelectedIndex = i;
                     continue;
                 }
 
                 if (comboBox2.SelectedIndex < 0 &&
-                    (ss1.Contains("y") || ss1.Contains("east")))
+                    CDataModel.ChooseYCoordinate(ss1) )
                 { 
                     comboBox2.SelectedIndex = i;
                     continue;
                 }
 
                 if (comboBox3.SelectedIndex < 0 &&
-                     (ss1.Contains("z") || ss1.Contains("深度") ||
-                       ss1.Contains("depth") || ss1.Contains("高程") ||
-                       ss1.Contains("elevation")))
+                     CDataModel.ChooseZCoordinate(ss1) )
                 { 
                     comboBox3.SelectedIndex = i;
                     continue;
                 }
 
-                if (comboBox4.SelectedIndex < 0 && ss1.Contains("val"))
+                if (comboBox4.SelectedIndex < 0 && 
+                    CDataModel.ChooseVCoordinate(ss1))
                 { 
                     comboBox4.SelectedIndex = i;
                     continue;
@@ -267,7 +289,7 @@ namespace DDDSharp
             comboBox5.SelectedIndex = ascRows.Titles.Count;
 
         }//void InitColumnSelection()
-
+      
         private void Form_Load(object sender, EventArgs e)
         {
             Cursor = Cursors.WaitCursor;   
@@ -279,13 +301,17 @@ namespace DDDSharp
                 return;
             }
             Cursor = Cursors.Default;
+
             SetComboxes();
+            SetEncodingCombox();
             InitColumnSelection();
 
             Cursor = Cursors.WaitCursor;
             InitListViewHeader();
             UpdateListView();
             UpdateInfo();
+            
+
             Cursor = Cursors.Default;
         }
        
@@ -310,8 +336,8 @@ namespace DDDSharp
 
         void InitListViewHeader()
         {
-            dataGridView1.Rows.Clear();
             dataGridView1.Columns.Clear();
+            dataGridView1.Rows.Clear();            
 
             dataGridView1.Columns.Add("ID", "ID");
             dataGridView1.Columns[0].Width = 60;
@@ -327,18 +353,28 @@ namespace DDDSharp
             {
                 dataGridView1.Columns.Add(ascRows.Titles[i], ascRows.Titles[i]);
                 dataGridView1.Columns[i + 1].Width = 100;
-               // dataGridView1.Columns[i+1].AutoSizeMode = DataGridViewAutoSizeColumnMode.DisplayedCells;
+                dataGridView1.Columns[i + 1].SortMode = DataGridViewColumnSortMode.NotSortable;
+                // dataGridView1.Columns[i+1].AutoSizeMode = DataGridViewAutoSizeColumnMode.DisplayedCells;
                 dataGridView1.Columns[i+1].DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleCenter;
                 //dataGridView1.Columns[i].HeaderCell.Style.BackColor = Color.Chocolate;
                 //dataGridView1.Columns[i].Resizable = DataGridViewTriState.True;
-                dataGridView1.Columns[i+1].SortMode = DataGridViewColumnSortMode.NotSortable;               
+                
             }
+            
             dataGridView1.SelectionMode = DataGridViewSelectionMode.ColumnHeaderSelect;
             dataGridView1.ColumnHeadersDefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleCenter;
             //dataGridView1.RowsDefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleCenter;//行的默认模式居中显示
             //dataGridView1.DefaultCellStyle.Alignment = System.Windows.Forms.DataGridViewContentAlignment.MiddleCenter;            
         }
-
+        void UpdateViewHeader()
+        {
+            
+            for (int i = 0; i < ascRows.Titles.Count; i++)
+            {
+                dataGridView1.Columns[i+1].HeaderText = ascRows.Titles[i];
+                
+            }            
+        }
         void UpdateListView()
         {
             //if (IgnorFirstRowCheckBox.Checked) start = 1;            
@@ -361,7 +397,10 @@ namespace DDDSharp
                 srow = CurrentPage.GetRow(i);
 
                 for (int j = 0; j < srow.Count; j++)
-                    dataGridView1.Rows[i].Cells[j + 1].Value = srow.GetColumn(j);
+                {
+                    if ( (j+1) >= dataGridView1.Rows[i].Cells.Count ) break;
+                    dataGridView1.Rows[i].Cells[j + 1].Value = srow.GetColumn(j); 
+                }
             }
             
             UpdateSelect();
@@ -465,6 +504,36 @@ namespace DDDSharp
             output = null;
             DialogResult = DialogResult.Cancel;
             this.Close();
+        }
+
+        private void EncodingUpdateButton_Click(object sender, EventArgs e)
+        {
+            if( encodingCombox.SelectedIndex >=0 )
+            {
+                CodePage = encodingInfos[encodingCombox.SelectedIndex].CodePage;
+                ascRows.CodePage = CodePage;
+                ascRows.GetFileTotalRows(datafile);
+
+                Cursor = Cursors.WaitCursor;
+                
+                if (!PreLoadFile(datafile))
+                {
+                    Cursor = Cursors.Default;
+                    MessageBox.Show("打开文件错误！\n" + errMsg);
+                    Cursor = Cursors.Default;
+                    return;
+                }             
+
+                SetComboxes();
+                InitColumnSelection();
+                UpdateViewHeader();
+                UpdateListView();
+                //UpdateInfo();
+
+
+                Cursor = Cursors.Default;
+            }
+           
         }
 
         private void comboBox4_SelectedIndexChanged(object sender, EventArgs e)

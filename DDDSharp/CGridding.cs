@@ -118,6 +118,9 @@ namespace DataCollection
         }
         public void Clear()
         {
+            pHeader.Clear();
+            pDataRanges.Clear();
+            MaxValues.Clear();
             pData.Clear();
         }
         public double GetMiniumValue(int col)
@@ -130,53 +133,85 @@ namespace DataCollection
             if (pDataRanges.Count <= col) return 0;
             return pDataRanges[col].Y;
         }
-        public int EqualFilter(int col, float value)
+        public int EqualFilter(int col, float value,bool inverse = false)
         {
             List<float[]> data = new List<float[]>();
             int count = 0;
             for(int i = 0; i < Row; i++)
             {
-                if (pData[i][col] == value) count++;
-                else data.Add(pData[i]);                
+                if (inverse) //是否反选
+                {
+                    if (pData[i][col] != value) count++;
+                    else data.Add(pData[i]);
+                }
+                else
+                {
+                    if (pData[i][col] == value) count++;
+                    else data.Add(pData[i]);
+                }                              
             }
             pData.Clear();
             pData = data;
             return count;
         }        
-        public int LowerFilter(int col, float value)
+        public int LowerFilter(int col, float value,bool inverse = false)
         {
             List<float[]> data = new List<float[]>();
             int count = 0;
             for (int i = 0; i < Row; i++)
             {
-                if (pData[i][col] < value) count++;
-                else data.Add(pData[i]);
+                if (inverse) //是否反选
+                {
+                    if (pData[i][col] >= value) count++;
+                    else data.Add(pData[i]);
+                }
+                else
+                {
+                    if (pData[i][col] < value) count++;
+                    else data.Add(pData[i]);
+                }                
             }
             pData.Clear();
             pData = data;
             return count;
         }
-        public int GreaterFilter(int col, float value)
+        public int GreaterFilter(int col, float value,bool inverse = false)
         {
             List<float[]> data = new List<float[]>();
             int count = 0;
             for (int i = 0; i < Row; i++)
             {
-                if (pData[i][col] > value) count++;
-                else data.Add(pData[i]);
+                if (inverse) 
+                {
+                    if (pData[i][col] <= value) count++;
+                    else data.Add(pData[i]);
+                }
+                else
+                { 
+                    if (pData[i][col] > value) count++;
+                    else data.Add(pData[i]);
+                }
             }
             pData.Clear();
             pData = data;
             return count;
         }
-        public int BetweenFilter(int col, float value1,float value2)
+        public int BetweenFilter(int col, float value1,float value2,bool inverse = false)
         {
             List<float[]> data = new List<float[]>();
             int count = 0;
             for (int i = 0; i < Row; i++)
             {
-                if (pData[i][col] > value1 && pData[i][col] < value2 ) count++;
-                else data.Add(pData[i]);
+                if( inverse )
+                {
+                    if (pData[i][col] < value1 || pData[i][col] > value2) count++;
+                    else data.Add(pData[i]);
+                }
+                else
+                {
+                    if (pData[i][col] >= value1 && pData[i][col] <= value2) count++;
+                    else data.Add(pData[i]);
+                }                
             }
             pData.Clear();
             pData = data;

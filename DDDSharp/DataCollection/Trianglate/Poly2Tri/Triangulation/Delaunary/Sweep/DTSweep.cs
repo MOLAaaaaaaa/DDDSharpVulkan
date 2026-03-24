@@ -51,17 +51,19 @@ using System.Diagnostics;
 using System.Linq;
 
 namespace Poly2Tri {
-	public static class DTSweep {
+	public static class DTSweep 
+	{
 		private const double PI_div2 = Math.PI / 2;
 		private const double PI_3div4 = 3 * Math.PI / 4;
 
 		/// <summary>
 		/// Triangulate simple polygon with holes
 		/// </summary>
-		public static void Triangulate( DTSweepContext tcx ) {
+		public static bool Triangulate( DTSweepContext tcx ) 
+		{		
+			bool ret = false;
 			tcx.CreateAdvancingFront();
-
-			Sweep(tcx);
+			ret = Sweep(tcx);
 
 			// TODO: remove temporary
 			// Check if the sweep algorithm is legalize robust
@@ -78,34 +80,46 @@ namespace Poly2Tri {
 			//        }
 
 			// Finalize triangulation
-			if (tcx.TriangulationMode == TriangulationMode.Polygon) {
+			if (tcx.TriangulationMode == TriangulationMode.Polygon) 
+			{
 				FinalizationPolygon(tcx);
-			} else {
+			} 
+			else 
+			{
 				FinalizationConvexHull(tcx);
 			}
 
 			tcx.Done();
+			return ret;
 		}
 
 		/// <summary>
 		/// Start sweeping the Y-sorted point set from bottom to top
 		/// </summary>
-		private static void Sweep( DTSweepContext tcx ) {
+		private static bool Sweep( DTSweepContext tcx ) 
+		{
 			var points = tcx.Points;
 			TriangulationPoint point;
 			AdvancingFrontNode node;
 
-			for (int i = 1; i < points.Count; i++) {
+			for (int i = 1; i < points.Count; i++) 
+			{
 				point = points[i];
-
 				node = PointEvent(tcx, point);
-
-				if (point.HasEdges) foreach (DTSweepConstraint e in point.Edges) {
-					if (tcx.IsDebugEnabled) tcx.DTDebugContext.ActiveConstraint = e;
-					EdgeEvent(tcx, e, node);
+				if (point.HasEdges)
+				{
+					foreach (DTSweepConstraint e in point.Edges)
+					{
+						if (tcx.IsDebugEnabled) tcx.DTDebugContext.ActiveConstraint = e;
+						if( !EdgeEvent(tcx, e, node) )
+						{
+							return false;
+						}
+					}
 				}
 				tcx.Update(null);
 			}
+			return true;
 		}
 
 		/// <summary>
@@ -194,8 +208,10 @@ namespace Poly2Tri {
 		private static void FinalizationPolygon( DTSweepContext tcx ) {
 			// Get an Internal triangle to start with
 			DelaunayTriangle t = tcx.Front.Head.Next.Triangle;
+			
 			TriangulationPoint p = tcx.Front.Head.Next.Point;
-			while (!t.GetConstrainedEdgeCW(p)) t = t.NeighborCCWFrom(p);
+
+			while (t!=null && !t.GetConstrainedEdgeCW(p) ) t = t.NeighborCCWFrom(p);
 
 			// Collect interior triangles constrained by edges
 			tcx.MeshClean(t);
@@ -248,25 +264,36 @@ namespace Poly2Tri {
 
 			return newNode;
 		}
-
-		private static void EdgeEvent( DTSweepContext tcx, DTSweepConstraint edge, AdvancingFrontNode node ) {
-			try {
+		public static string errMessage = "";
+		private static bool EdgeEvent( DTSweepContext tcx, DTSweepConstraint edge, AdvancingFrontNode node ) 
+		{
+			try 
+			{
 				tcx.EdgeEvent.ConstrainedEdge = edge;
 				tcx.EdgeEvent.Right = edge.P.X > edge.Q.X;
 
 				if (tcx.IsDebugEnabled) { tcx.DTDebugContext.PrimaryTriangle = node.Triangle; }
 
-				if (IsEdgeSideOfTriangle(node.Triangle, edge.P, edge.Q)) return;
+				if (IsEdgeSideOfTriangle(node.Triangle, edge.P, edge.Q)) return false;
 
 				// For now we will do all needed filling
 				// TODO: integrate with flip process might give some better performance 
 				//       but for now this avoid the issue with cases that needs both flips and fills
 				FillEdgeEvent(tcx, edge, node);
 
-				EdgeEvent(tcx, edge.P, edge.Q, node.Triangle, edge.Q);
-			} catch ( PointOnEdgeException e) {
-				//Debug.WriteLine( String.Format( "Warning: Skipping Edge: {0}", e.Message ) );
-				throw;
+				if( !EdgeEvent(tcx, edge.P, edge.Q, node.Triangle, edge.Q) )
+				{                    
+                    return false;
+				}
+				return true;
+			} 
+			catch ( PointOnEdgeException e) 
+			{
+                //Debug.WriteLine( String.Format( "Warning: Skipping Edge: {0}", e.Message ) );
+                //throw;
+                errMessage = e.Message;
+                return false;
+
 			}
 		}
 
@@ -413,48 +440,64 @@ namespace Poly2Tri {
 			return true;
 		}
 
-		private static void EdgeEvent( DTSweepContext tcx, TriangulationPoint ep, TriangulationPoint eq, DelaunayTriangle triangle, TriangulationPoint point ) {
+		private static bool EdgeEvent( DTSweepContext tcx, TriangulationPoint ep, TriangulationPoint eq, DelaunayTriangle triangle, TriangulationPoint point ) 
+		{
 			TriangulationPoint p1, p2;
-
 			if (tcx.IsDebugEnabled) tcx.DTDebugContext.PrimaryTriangle=triangle;
 
-			if (IsEdgeSideOfTriangle(triangle, ep, eq)) return;
+			if (IsEdgeSideOfTriangle(triangle, ep, eq)) return false;
 
 			p1 = triangle.PointCCWFrom(point);
 			Orientation o1 = TriangulationUtil.Orient2d(eq, p1, ep);
-			if (o1 == Orientation.Collinear) {
+			if (o1 == Orientation.Collinear) 
+			{
 				// TODO: Split edge in two
 				////            splitEdge( ep, eq, p1 );
 				//            edgeEvent( tcx, p1, eq, triangle, point );
 				//            edgeEvent( tcx, ep, p1, triangle, p1 );
 				//            return;
-				throw new PointOnEdgeException("EdgeEvent - Point on constrained edge not supported yet",eq,p1,ep);
+				//throw new PointOnEdgeException("EdgeEvent - Point on constrained edge not supported yet",eq,p1,ep);
+				errMessage = "EdgeEvent - Point on constrained edge not supported yet";
+                return false;
 			}
 
 			p2 = triangle.PointCWFrom(point);
 			Orientation o2 = TriangulationUtil.Orient2d(eq, p2, ep);
 			if (o2 == Orientation.Collinear) {
-				// TODO: Split edge in two
-				//            edgeEvent( tcx, p2, eq, triangle, point );
-				//            edgeEvent( tcx, ep, p2, triangle, p2 );
-				//            return;
-				throw new PointOnEdgeException("EdgeEvent - Point on constrained edge not supported yet",eq,p2,ep);
-			}
+                // TODO: Split edge in two
+                //            edgeEvent( tcx, p2, eq, triangle, point );
+                //            edgeEvent( tcx, ep, p2, triangle, p2 );
+                //            return;
+                //throw new PointOnEdgeException("EdgeEvent - Point on constrained edge not supported yet",eq,p2,ep);
+                errMessage = "EdgeEvent - Point on constrained edge not supported yet";
+                return false;
+            }
 
-			if (o1 == o2) {
+			if (o1 == o2) 
+			{
 				// Need to decide if we are rotating CW or CCW to get to a triangle
 				// that will cross edge
-				if (o1 == Orientation.CW) {
+				if (o1 == Orientation.CW) 
+				{
 					triangle = triangle.NeighborCCWFrom(point);
-				} else {
+				} 
+				else 
+				{
 					triangle = triangle.NeighborCWFrom(point);
 				}
-				EdgeEvent(tcx, ep, eq, triangle, point);
-			} else {
+				if (!EdgeEvent(tcx, ep, eq, triangle, point)) 
+				{
+                    errMessage = "EdgeEvent - Point on constrained edge not supported yet";
+                    return false;
+                }				
+			} 
+			else 
+			{
 				// This triangle crosses constraint so lets flippin start!
 				FlipEdgeEvent(tcx, ep, eq, triangle, point);
 			}
-		}
+            return true;
+        }
 
 		/// <summary>
 		/// In the case of a pointset with some constraint edges. If a triangle side is collinear

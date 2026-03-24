@@ -26,8 +26,8 @@ namespace DDDSharp
         }
         public void AutoSetWindow(double xyscale)
         {            
-            double x0 = (OrgDataRect.x1 + OrgDataRect.x2) / 2;
-            double y0 = (OrgDataRect.y1 + OrgDataRect.y2) / 2;
+            double x0 = (OrgDataRect.X1 + OrgDataRect.X2) / 2;
+            double y0 = (OrgDataRect.Y1 + OrgDataRect.Y2) / 2;
 
             //数据 横向 / 纵向比例
             double dataScale = xyscale * OrgDataRect.Width / OrgDataRect.Height;
@@ -36,20 +36,20 @@ namespace DDDSharp
             //按比例窗口宽度 
             if (dataScale * DrawRect.Height > DrawRect.Width ) //fit to Width
             {
-                DataRect.x1 = OrgDataRect.x1;
-                DataRect.x2 = OrgDataRect.x2;
+                DataRect.X1 = OrgDataRect.X1;
+                DataRect.X2 = OrgDataRect.X2;
                 //按比例窗口高度
                 double yy = DataRect.Width / winScale;
-                DataRect.y1 = y0 - yy;
-                DataRect.y2 = y0 + yy;
+                DataRect.Y1 = y0 - yy;
+                DataRect.Y2 = y0 + yy;
             }
             else //fit to height
             {
-                DataRect.y1 = OrgDataRect.y1;
-                DataRect.y2 = OrgDataRect.y2;
+                DataRect.Y1 = OrgDataRect.Y1;
+                DataRect.Y2 = OrgDataRect.Y2;
                 double xx = DataRect.Height * winScale;
-                DataRect.x1 = x0 - xx / 2;
-                DataRect.x2 = x0 + xx / 2;
+                DataRect.X1 = x0 - xx / 2;
+                DataRect.X2 = x0 + xx / 2;
             }
         }
         public void UpdateDrawRect(Rectangle _drawRect)
@@ -64,13 +64,13 @@ namespace DDDSharp
                 // y
                 // |
                 // |_______X
-                x = DrawRect.Left + DrawRect.Width * (x - DataRect.x1) / DataRect.Width;
-                y = DrawRect.Bottom - DrawRect.Height * (y - DataRect.y1) / DataRect.Height;
+                x = DrawRect.Left + DrawRect.Width * (x - DataRect.X1) / DataRect.Width;
+                y = DrawRect.Bottom - DrawRect.Height * (y - DataRect.Y1) / DataRect.Height;
             }
             else //y向下
             {
-                x = DrawRect.Left + DrawRect.Width * (x - DataRect.x1) / DataRect.Width;
-                y = DrawRect.Top + DrawRect.Height * (y - DataRect.y1) / DataRect.Height;
+                x = DrawRect.Left + DrawRect.Width * (x - DataRect.X1) / DataRect.Width;
+                y = DrawRect.Top + DrawRect.Height * (y - DataRect.Y1) / DataRect.Height;
             }
         }
         public void DPtoLP(ref double x, ref double y)
@@ -79,23 +79,23 @@ namespace DDDSharp
             {   // y
                 // |
                 // |_______X
-                x = DataRect.x1 + DataRect.Width * (x - DrawRect.Left) / DrawRect.Width;
-                y = DataRect.y1 + DataRect.Height * (DrawRect.Bottom - y) / DrawRect.Height;
+                x = DataRect.X1 + DataRect.Width * (x - DrawRect.Left) / DrawRect.Width;
+                y = DataRect.Y1 + DataRect.Height * (DrawRect.Bottom - y) / DrawRect.Height;
             }
             else
             {
-                x = DataRect.x1 + DataRect.Width * (x - DrawRect.Left) / DrawRect.Width;
-                y = DataRect.y1 + DataRect.Height * (y - DrawRect.Top) / DrawRect.Height;
+                x = DataRect.X1 + DataRect.Width * (x - DrawRect.Left) / DrawRect.Width;
+                y = DataRect.Y1 + DataRect.Height * (y - DrawRect.Top) / DrawRect.Height;
             }
         }
         public void Zoom(double x0,double y0, double scale = 0.8)
         {
             double xx = DataRect.Width * scale;
             double yy = DataRect.Height * scale;
-            DataRect.x1 = x0 - xx / 2;
-            DataRect.x2 = x0 + xx / 2;
-            DataRect.y1 = y0 - yy / 2;
-            DataRect.y2 = y0 + yy / 2;            
+            DataRect.X1 = x0 - xx / 2;
+            DataRect.X2 = x0 + xx / 2;
+            DataRect.Y1 = y0 - yy / 2;
+            DataRect.Y2 = y0 + yy / 2;            
         }
         //以x,y0为中心，窗口缩放
         public void ZoomRect(double x0, double y0, double width, double height)

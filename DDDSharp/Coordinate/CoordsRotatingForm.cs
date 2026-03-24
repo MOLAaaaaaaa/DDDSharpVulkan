@@ -126,7 +126,6 @@ namespace DDDSharp
 
                 string ss;
                 string[] sp;
-                bool ret1, ret2;
                 float x, y;
                 while ((ss = sr.ReadLine()) != null)
                 {
@@ -135,9 +134,9 @@ namespace DDDSharp
                     sp = ss.Split(new Char[] { ' ', '\t', ',' }, 50);
                     sp = TrimNull(sp);
                     if (sp.Length < 2) continue;
-                    ret1 = ConvertData.StringToFloat(sp[0], out x);
-                    ret2 = ConvertData.StringToFloat(sp[1], out y);
-                    if (ret1 == false || ret2 == false) continue;
+                    if( !float.TryParse(sp[0], out x) ) continue;
+                    if( !float.TryParse(sp[1], out y) ) continue;
+                    
                     pCoordsOrg.Add(new Vector32(x, y, 0));
                 }
                 sr.Close();
@@ -233,17 +232,17 @@ namespace DDDSharp
         private void RotateButton_Click(object sender, EventArgs e)
         {
             double x0, y0, angle;
-            if (!ConvertData.StringToDouble(Angle_textBox.Text, out angle))
+            if (!double.TryParse(Angle_textBox.Text, out angle))
             {
                 MessageBox.Show("Invalidate angle.");
                 return;
             }            
-            if (!ConvertData.StringToDouble(Center_x_textBox.Text, out x0))
+            if (!double.TryParse(Center_x_textBox.Text, out x0))
             {
                 MessageBox.Show("Invalidate angle.");
                 return;
             }
-            if (!ConvertData.StringToDouble(Center_y_textBox.Text, out y0))
+            if (!double.TryParse(Center_y_textBox.Text, out y0))
             {
                 MessageBox.Show("Invalidate angle.");
                 return;

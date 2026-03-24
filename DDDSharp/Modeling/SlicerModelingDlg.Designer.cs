@@ -30,41 +30,54 @@
         {
             this.listBox1 = new System.Windows.Forms.ListBox();
             this.groupBox1 = new System.Windows.Forms.GroupBox();
-            this.LoadSlicersButton = new System.Windows.Forms.Button();
+            this.LableOfRangeBox = new System.Windows.Forms.TextBox();
             this.groupBox2 = new System.Windows.Forms.GroupBox();
             this.ExportColorScaleButton = new System.Windows.Forms.Button();
             this.SaveButton = new System.Windows.Forms.Button();
             this.dataGridView1 = new System.Windows.Forms.DataGridView();
             this.LoadButton = new System.Windows.Forms.Button();
             this.groupBox3 = new System.Windows.Forms.GroupBox();
-            this.label6 = new System.Windows.Forms.Label();
-            this.label5 = new System.Windows.Forms.Label();
-            this.label2 = new System.Windows.Forms.Label();
             this.label1 = new System.Windows.Forms.Label();
-            this.textBox3 = new System.Windows.Forms.TextBox();
-            this.textBox4 = new System.Windows.Forms.TextBox();
-            this.textBox2 = new System.Windows.Forms.TextBox();
-            this.textBox1 = new System.Windows.Forms.TextBox();
+            this.label6 = new System.Windows.Forms.Label();
+            this.label4 = new System.Windows.Forms.Label();
+            this.label5 = new System.Windows.Forms.Label();
+            this.BkValueTextBox = new System.Windows.Forms.TextBox();
+            this.SampleBoudaryCheckBox = new System.Windows.Forms.CheckBox();
+            this.ResetLayerCheckBox = new System.Windows.Forms.CheckBox();
+            this.BkStepYTextBox = new System.Windows.Forms.TextBox();
+            this.BkStepXTextBox = new System.Windows.Forms.TextBox();
+            this.BoundaryStepTextBox = new System.Windows.Forms.TextBox();
+            this.label8 = new System.Windows.Forms.Label();
+            this.RedundantFilterRadiuTextBox = new System.Windows.Forms.TextBox();
+            this.FilterCheckBox1 = new System.Windows.Forms.CheckBox();
+            this.LayerValueTextBox = new System.Windows.Forms.TextBox();
             this.ExportButton = new System.Windows.Forms.Button();
             this.Cancel = new System.Windows.Forms.Button();
             this.progressBar1 = new System.Windows.Forms.ProgressBar();
             this.CreateButton = new System.Windows.Forms.Button();
             this.OK = new System.Windows.Forms.Button();
             this.groupBox4 = new System.Windows.Forms.GroupBox();
-            this.label7 = new System.Windows.Forms.Label();
+            this.label2 = new System.Windows.Forms.Label();
             this.comboBox1 = new System.Windows.Forms.ComboBox();
             this.label3 = new System.Windows.Forms.Label();
-            this.LayerValueTextBox = new System.Windows.Forms.TextBox();
-            this.BkValueTextBox = new System.Windows.Forms.TextBox();
-            this.ResetLayerCheckBox = new System.Windows.Forms.CheckBox();
-            this.SampleBoudaryCheckBox = new System.Windows.Forms.CheckBox();
-            this.BoundaryStepTextBox = new System.Windows.Forms.TextBox();
-            this.label4 = new System.Windows.Forms.Label();
+            this.menuStrip1 = new System.Windows.Forms.MenuStrip();
+            this.fileToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.loadSlicersToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.groupBox5 = new System.Windows.Forms.GroupBox();
+            this.groupBox6 = new System.Windows.Forms.GroupBox();
+            this.BackgroundSampleCheck = new System.Windows.Forms.CheckBox();
+            this.label7 = new System.Windows.Forms.Label();
+            this.label9 = new System.Windows.Forms.Label();
+            this.StepYTextBox = new System.Windows.Forms.TextBox();
+            this.StepXTextBox = new System.Windows.Forms.TextBox();
             this.groupBox1.SuspendLayout();
             this.groupBox2.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.dataGridView1)).BeginInit();
             this.groupBox3.SuspendLayout();
             this.groupBox4.SuspendLayout();
+            this.menuStrip1.SuspendLayout();
+            this.groupBox5.SuspendLayout();
+            this.groupBox6.SuspendLayout();
             this.SuspendLayout();
             // 
             // listBox1
@@ -76,31 +89,32 @@
             this.listBox1.ItemHeight = 15;
             this.listBox1.Location = new System.Drawing.Point(6, 19);
             this.listBox1.Name = "listBox1";
-            this.listBox1.Size = new System.Drawing.Size(229, 274);
+            this.listBox1.Size = new System.Drawing.Size(281, 229);
             this.listBox1.TabIndex = 0;
             // 
             // groupBox1
             // 
-            this.groupBox1.Controls.Add(this.LoadSlicersButton);
+            this.groupBox1.Controls.Add(this.LableOfRangeBox);
             this.groupBox1.Controls.Add(this.listBox1);
             this.groupBox1.ForeColor = System.Drawing.Color.MediumOrchid;
-            this.groupBox1.Location = new System.Drawing.Point(30, 18);
+            this.groupBox1.Location = new System.Drawing.Point(30, 31);
             this.groupBox1.Name = "groupBox1";
-            this.groupBox1.Size = new System.Drawing.Size(241, 336);
+            this.groupBox1.Size = new System.Drawing.Size(293, 350);
             this.groupBox1.TabIndex = 1;
             this.groupBox1.TabStop = false;
             this.groupBox1.Text = "Slicers list";
             // 
-            // LoadSlicersButton
+            // LableOfRangeBox
             // 
-            this.LoadSlicersButton.ForeColor = System.Drawing.Color.MediumBlue;
-            this.LoadSlicersButton.Location = new System.Drawing.Point(6, 305);
-            this.LoadSlicersButton.Name = "LoadSlicersButton";
-            this.LoadSlicersButton.Size = new System.Drawing.Size(125, 31);
-            this.LoadSlicersButton.TabIndex = 17;
-            this.LoadSlicersButton.Text = "Load From";
-            this.LoadSlicersButton.UseVisualStyleBackColor = true;
-            this.LoadSlicersButton.Click += new System.EventHandler(this.LoadSlicersButton_Click);
+            this.LableOfRangeBox.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left) 
+            | System.Windows.Forms.AnchorStyles.Right)));
+            this.LableOfRangeBox.Location = new System.Drawing.Point(6, 261);
+            this.LableOfRangeBox.Multiline = true;
+            this.LableOfRangeBox.Name = "LableOfRangeBox";
+            this.LableOfRangeBox.ReadOnly = true;
+            this.LableOfRangeBox.ScrollBars = System.Windows.Forms.ScrollBars.Both;
+            this.LableOfRangeBox.Size = new System.Drawing.Size(281, 83);
+            this.LableOfRangeBox.TabIndex = 18;
             // 
             // groupBox2
             // 
@@ -109,17 +123,18 @@
             this.groupBox2.Controls.Add(this.dataGridView1);
             this.groupBox2.Controls.Add(this.LoadButton);
             this.groupBox2.ForeColor = System.Drawing.Color.MediumOrchid;
-            this.groupBox2.Location = new System.Drawing.Point(345, 18);
+            this.groupBox2.Location = new System.Drawing.Point(345, 31);
             this.groupBox2.Name = "groupBox2";
-            this.groupBox2.Size = new System.Drawing.Size(359, 336);
+            this.groupBox2.Size = new System.Drawing.Size(359, 350);
             this.groupBox2.TabIndex = 2;
             this.groupBox2.TabStop = false;
-            this.groupBox2.Text = "Layers list";
+            this.groupBox2.Text = "Stratums list";
             // 
             // ExportColorScaleButton
             // 
+            this.ExportColorScaleButton.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Right)));
             this.ExportColorScaleButton.ForeColor = System.Drawing.Color.MediumBlue;
-            this.ExportColorScaleButton.Location = new System.Drawing.Point(240, 305);
+            this.ExportColorScaleButton.Location = new System.Drawing.Point(240, 313);
             this.ExportColorScaleButton.Name = "ExportColorScaleButton";
             this.ExportColorScaleButton.Size = new System.Drawing.Size(113, 31);
             this.ExportColorScaleButton.TabIndex = 18;
@@ -129,8 +144,10 @@
             // 
             // SaveButton
             // 
+            this.SaveButton.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left) 
+            | System.Windows.Forms.AnchorStyles.Right)));
             this.SaveButton.ForeColor = System.Drawing.Color.MediumBlue;
-            this.SaveButton.Location = new System.Drawing.Point(87, 305);
+            this.SaveButton.Location = new System.Drawing.Point(87, 313);
             this.SaveButton.Name = "SaveButton";
             this.SaveButton.Size = new System.Drawing.Size(75, 31);
             this.SaveButton.TabIndex = 17;
@@ -147,15 +164,16 @@
             this.dataGridView1.Location = new System.Drawing.Point(6, 24);
             this.dataGridView1.Name = "dataGridView1";
             this.dataGridView1.RowHeadersWidth = 51;
-            this.dataGridView1.Size = new System.Drawing.Size(347, 271);
+            this.dataGridView1.Size = new System.Drawing.Size(347, 283);
             this.dataGridView1.TabIndex = 15;
             this.dataGridView1.CellDoubleClick += new System.Windows.Forms.DataGridViewCellEventHandler(this.dataGridView1_CellDoubleClick);
             this.dataGridView1.SelectionChanged += new System.EventHandler(this.dataGridView1_SelectionChanged);
             // 
             // LoadButton
             // 
+            this.LoadButton.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
             this.LoadButton.ForeColor = System.Drawing.Color.MediumBlue;
-            this.LoadButton.Location = new System.Drawing.Point(6, 305);
+            this.LoadButton.Location = new System.Drawing.Point(6, 313);
             this.LoadButton.Name = "LoadButton";
             this.LoadButton.Size = new System.Drawing.Size(75, 31);
             this.LoadButton.TabIndex = 16;
@@ -165,97 +183,151 @@
             // 
             // groupBox3
             // 
-            this.groupBox3.Controls.Add(this.label4);
-            this.groupBox3.Controls.Add(this.BoundaryStepTextBox);
-            this.groupBox3.Controls.Add(this.SampleBoudaryCheckBox);
+            this.groupBox3.Controls.Add(this.label7);
             this.groupBox3.Controls.Add(this.label6);
-            this.groupBox3.Controls.Add(this.label5);
-            this.groupBox3.Controls.Add(this.label2);
-            this.groupBox3.Controls.Add(this.label1);
-            this.groupBox3.Controls.Add(this.textBox3);
-            this.groupBox3.Controls.Add(this.textBox4);
-            this.groupBox3.Controls.Add(this.textBox2);
-            this.groupBox3.Controls.Add(this.textBox1);
+            this.groupBox3.Controls.Add(this.label9);
+            this.groupBox3.Controls.Add(this.LayerValueTextBox);
+            this.groupBox3.Controls.Add(this.label4);
+            this.groupBox3.Controls.Add(this.StepYTextBox);
+            this.groupBox3.Controls.Add(this.StepXTextBox);
+            this.groupBox3.Controls.Add(this.SampleBoudaryCheckBox);
+            this.groupBox3.Controls.Add(this.ResetLayerCheckBox);
+            this.groupBox3.Controls.Add(this.BoundaryStepTextBox);
             this.groupBox3.ForeColor = System.Drawing.Color.MediumOrchid;
-            this.groupBox3.Location = new System.Drawing.Point(30, 360);
+            this.groupBox3.Location = new System.Drawing.Point(30, 387);
             this.groupBox3.Name = "groupBox3";
-            this.groupBox3.Size = new System.Drawing.Size(293, 130);
+            this.groupBox3.Size = new System.Drawing.Size(293, 110);
             this.groupBox3.TabIndex = 3;
             this.groupBox3.TabStop = false;
-            this.groupBox3.Text = "Layer Sampling";
-            // 
-            // label6
-            // 
-            this.label6.AutoSize = true;
-            this.label6.ForeColor = System.Drawing.SystemColors.ActiveCaptionText;
-            this.label6.Location = new System.Drawing.Point(11, 72);
-            this.label6.Name = "label6";
-            this.label6.Size = new System.Drawing.Size(127, 15);
-            this.label6.TabIndex = 16;
-            this.label6.Text = "Resample Extent";
-            // 
-            // label5
-            // 
-            this.label5.AutoSize = true;
-            this.label5.ForeColor = System.Drawing.SystemColors.ActiveCaptionText;
-            this.label5.Location = new System.Drawing.Point(28, 40);
-            this.label5.Name = "label5";
-            this.label5.Size = new System.Drawing.Size(111, 15);
-            this.label5.TabIndex = 15;
-            this.label5.Text = "Sampling Grid";
-            // 
-            // label2
-            // 
-            this.label2.AutoSize = true;
-            this.label2.ForeColor = System.Drawing.SystemColors.ActiveCaptionText;
-            this.label2.Location = new System.Drawing.Point(219, 14);
-            this.label2.Name = "label2";
-            this.label2.Size = new System.Drawing.Size(71, 15);
-            this.label2.TabIndex = 10;
-            this.label2.Text = "Y Number";
+            this.groupBox3.Text = "Sampling";
             // 
             // label1
             // 
             this.label1.AutoSize = true;
             this.label1.ForeColor = System.Drawing.SystemColors.ActiveCaptionText;
-            this.label1.Location = new System.Drawing.Point(142, 12);
+            this.label1.Location = new System.Drawing.Point(168, 23);
             this.label1.Name = "label1";
-            this.label1.Size = new System.Drawing.Size(71, 15);
-            this.label1.TabIndex = 9;
-            this.label1.Text = "X Number";
+            this.label1.Size = new System.Drawing.Size(47, 15);
+            this.label1.TabIndex = 22;
+            this.label1.Text = "stepY";
             // 
-            // textBox3
+            // label6
             // 
-            this.textBox3.Location = new System.Drawing.Point(145, 67);
-            this.textBox3.Name = "textBox3";
-            this.textBox3.Size = new System.Drawing.Size(68, 25);
-            this.textBox3.TabIndex = 8;
+            this.label6.AutoSize = true;
+            this.label6.ForeColor = System.Drawing.SystemColors.ActiveCaptionText;
+            this.label6.Location = new System.Drawing.Point(175, 78);
+            this.label6.Name = "label6";
+            this.label6.Size = new System.Drawing.Size(23, 15);
+            this.label6.TabIndex = 18;
+            this.label6.Text = "as";
             // 
-            // textBox4
+            // label4
             // 
-            this.textBox4.Location = new System.Drawing.Point(219, 68);
-            this.textBox4.Name = "textBox4";
-            this.textBox4.Size = new System.Drawing.Size(68, 25);
-            this.textBox4.TabIndex = 7;
+            this.label4.AutoSize = true;
+            this.label4.ForeColor = System.Drawing.SystemColors.ActiveCaptionText;
+            this.label4.Location = new System.Drawing.Point(170, 52);
+            this.label4.Name = "label4";
+            this.label4.Size = new System.Drawing.Size(39, 15);
+            this.label4.TabIndex = 17;
+            this.label4.Text = "step";
             // 
-            // textBox2
+            // label5
             // 
-            this.textBox2.Location = new System.Drawing.Point(219, 37);
-            this.textBox2.Name = "textBox2";
-            this.textBox2.Size = new System.Drawing.Size(68, 25);
-            this.textBox2.TabIndex = 5;
+            this.label5.AutoSize = true;
+            this.label5.ForeColor = System.Drawing.SystemColors.ActiveCaptionText;
+            this.label5.Location = new System.Drawing.Point(15, 23);
+            this.label5.Name = "label5";
+            this.label5.Size = new System.Drawing.Size(47, 15);
+            this.label5.TabIndex = 15;
+            this.label5.Text = "stepX";
             // 
-            // textBox1
+            // BkValueTextBox
             // 
-            this.textBox1.Location = new System.Drawing.Point(145, 37);
-            this.textBox1.Name = "textBox1";
-            this.textBox1.Size = new System.Drawing.Size(68, 25);
-            this.textBox1.TabIndex = 1;
+            this.BkValueTextBox.Location = new System.Drawing.Point(219, 48);
+            this.BkValueTextBox.Name = "BkValueTextBox";
+            this.BkValueTextBox.Size = new System.Drawing.Size(68, 25);
+            this.BkValueTextBox.TabIndex = 16;
+            // 
+            // SampleBoudaryCheckBox
+            // 
+            this.SampleBoudaryCheckBox.AutoSize = true;
+            this.SampleBoudaryCheckBox.Location = new System.Drawing.Point(15, 51);
+            this.SampleBoudaryCheckBox.Name = "SampleBoudaryCheckBox";
+            this.SampleBoudaryCheckBox.Size = new System.Drawing.Size(149, 19);
+            this.SampleBoudaryCheckBox.TabIndex = 17;
+            this.SampleBoudaryCheckBox.Text = "Border Sampling";
+            this.SampleBoudaryCheckBox.UseVisualStyleBackColor = true;
+            // 
+            // ResetLayerCheckBox
+            // 
+            this.ResetLayerCheckBox.AutoSize = true;
+            this.ResetLayerCheckBox.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(192)))), ((int)(((byte)(0)))), ((int)(((byte)(192)))));
+            this.ResetLayerCheckBox.Location = new System.Drawing.Point(15, 78);
+            this.ResetLayerCheckBox.Name = "ResetLayerCheckBox";
+            this.ResetLayerCheckBox.Size = new System.Drawing.Size(141, 19);
+            this.ResetLayerCheckBox.TabIndex = 15;
+            this.ResetLayerCheckBox.Text = "Reset Property";
+            this.ResetLayerCheckBox.UseVisualStyleBackColor = true;
+            // 
+            // BkStepYTextBox
+            // 
+            this.BkStepYTextBox.Location = new System.Drawing.Point(219, 19);
+            this.BkStepYTextBox.Name = "BkStepYTextBox";
+            this.BkStepYTextBox.Size = new System.Drawing.Size(68, 25);
+            this.BkStepYTextBox.TabIndex = 5;
+            // 
+            // BkStepXTextBox
+            // 
+            this.BkStepXTextBox.Location = new System.Drawing.Point(68, 19);
+            this.BkStepXTextBox.Name = "BkStepXTextBox";
+            this.BkStepXTextBox.Size = new System.Drawing.Size(68, 25);
+            this.BkStepXTextBox.TabIndex = 1;
+            // 
+            // BoundaryStepTextBox
+            // 
+            this.BoundaryStepTextBox.Location = new System.Drawing.Point(219, 48);
+            this.BoundaryStepTextBox.Name = "BoundaryStepTextBox";
+            this.BoundaryStepTextBox.Size = new System.Drawing.Size(68, 25);
+            this.BoundaryStepTextBox.TabIndex = 15;
+            // 
+            // label8
+            // 
+            this.label8.AutoSize = true;
+            this.label8.ForeColor = System.Drawing.SystemColors.ActiveCaptionText;
+            this.label8.Location = new System.Drawing.Point(195, 30);
+            this.label8.Name = "label8";
+            this.label8.Size = new System.Drawing.Size(55, 15);
+            this.label8.TabIndex = 21;
+            this.label8.Text = "Radius";
+            // 
+            // RedundantFilterRadiuTextBox
+            // 
+            this.RedundantFilterRadiuTextBox.Location = new System.Drawing.Point(256, 24);
+            this.RedundantFilterRadiuTextBox.Name = "RedundantFilterRadiuTextBox";
+            this.RedundantFilterRadiuTextBox.Size = new System.Drawing.Size(97, 25);
+            this.RedundantFilterRadiuTextBox.TabIndex = 20;
+            // 
+            // FilterCheckBox1
+            // 
+            this.FilterCheckBox1.AutoSize = true;
+            this.FilterCheckBox1.Location = new System.Drawing.Point(8, 26);
+            this.FilterCheckBox1.Name = "FilterCheckBox1";
+            this.FilterCheckBox1.Size = new System.Drawing.Size(149, 19);
+            this.FilterCheckBox1.TabIndex = 19;
+            this.FilterCheckBox1.Text = "RedundantFilter";
+            this.FilterCheckBox1.UseVisualStyleBackColor = true;
+            // 
+            // LayerValueTextBox
+            // 
+            this.LayerValueTextBox.Location = new System.Drawing.Point(219, 79);
+            this.LayerValueTextBox.Name = "LayerValueTextBox";
+            this.LayerValueTextBox.Size = new System.Drawing.Size(68, 25);
+            this.LayerValueTextBox.TabIndex = 17;
             // 
             // ExportButton
             // 
             this.ExportButton.ForeColor = System.Drawing.Color.MediumBlue;
-            this.ExportButton.Location = new System.Drawing.Point(280, 82);
+            this.ExportButton.Location = new System.Drawing.Point(615, 554);
             this.ExportButton.Name = "ExportButton";
             this.ExportButton.Size = new System.Drawing.Size(83, 30);
             this.ExportButton.TabIndex = 4;
@@ -265,7 +337,7 @@
             // 
             // Cancel
             // 
-            this.Cancel.Location = new System.Drawing.Point(580, 525);
+            this.Cancel.Location = new System.Drawing.Point(580, 635);
             this.Cancel.Name = "Cancel";
             this.Cancel.Size = new System.Drawing.Size(124, 30);
             this.Cancel.TabIndex = 5;
@@ -275,7 +347,7 @@
             // 
             // progressBar1
             // 
-            this.progressBar1.Location = new System.Drawing.Point(30, 496);
+            this.progressBar1.Location = new System.Drawing.Point(30, 606);
             this.progressBar1.Name = "progressBar1";
             this.progressBar1.Size = new System.Drawing.Size(674, 23);
             this.progressBar1.TabIndex = 6;
@@ -283,7 +355,7 @@
             // CreateButton
             // 
             this.CreateButton.ForeColor = System.Drawing.Color.MediumBlue;
-            this.CreateButton.Location = new System.Drawing.Point(280, 48);
+            this.CreateButton.Location = new System.Drawing.Point(353, 554);
             this.CreateButton.Name = "CreateButton";
             this.CreateButton.Size = new System.Drawing.Size(83, 30);
             this.CreateButton.TabIndex = 7;
@@ -293,7 +365,7 @@
             // 
             // OK
             // 
-            this.OK.Location = new System.Drawing.Point(30, 525);
+            this.OK.Location = new System.Drawing.Point(30, 635);
             this.OK.Name = "OK";
             this.OK.Size = new System.Drawing.Size(124, 30);
             this.OK.TabIndex = 7;
@@ -303,125 +375,182 @@
             // 
             // groupBox4
             // 
-            this.groupBox4.Controls.Add(this.label7);
+            this.groupBox4.Controls.Add(this.label2);
             this.groupBox4.Controls.Add(this.comboBox1);
-            this.groupBox4.Controls.Add(this.label3);
-            this.groupBox4.Controls.Add(this.LayerValueTextBox);
-            this.groupBox4.Controls.Add(this.BkValueTextBox);
-            this.groupBox4.Controls.Add(this.ExportButton);
-            this.groupBox4.Controls.Add(this.ResetLayerCheckBox);
-            this.groupBox4.Controls.Add(this.CreateButton);
             this.groupBox4.ForeColor = System.Drawing.Color.MediumOrchid;
-            this.groupBox4.Location = new System.Drawing.Point(329, 360);
+            this.groupBox4.Location = new System.Drawing.Point(345, 425);
             this.groupBox4.Name = "groupBox4";
-            this.groupBox4.Size = new System.Drawing.Size(375, 130);
+            this.groupBox4.Size = new System.Drawing.Size(359, 58);
             this.groupBox4.TabIndex = 14;
             this.groupBox4.TabStop = false;
-            this.groupBox4.Text = "Layers Select";
+            this.groupBox4.Text = "Stratums Select";
             // 
-            // label7
+            // label2
             // 
-            this.label7.AutoSize = true;
-            this.label7.ForeColor = System.Drawing.Color.Black;
-            this.label7.Location = new System.Drawing.Point(20, 24);
-            this.label7.Name = "label7";
-            this.label7.Size = new System.Drawing.Size(55, 15);
-            this.label7.TabIndex = 21;
-            this.label7.Text = "Layers";
+            this.label2.AutoSize = true;
+            this.label2.ForeColor = System.Drawing.Color.Black;
+            this.label2.Location = new System.Drawing.Point(12, 24);
+            this.label2.Name = "label2";
+            this.label2.Size = new System.Drawing.Size(151, 15);
+            this.label2.TabIndex = 19;
+            this.label2.Text = "Stratums selection";
             // 
             // comboBox1
             // 
             this.comboBox1.FormattingEnabled = true;
-            this.comboBox1.Location = new System.Drawing.Point(81, 20);
+            this.comboBox1.Location = new System.Drawing.Point(169, 21);
             this.comboBox1.Name = "comboBox1";
-            this.comboBox1.Size = new System.Drawing.Size(178, 23);
-            this.comboBox1.TabIndex = 20;
+            this.comboBox1.Size = new System.Drawing.Size(184, 23);
+            this.comboBox1.TabIndex = 21;
             // 
             // label3
             // 
             this.label3.AutoSize = true;
             this.label3.ForeColor = System.Drawing.Color.Black;
-            this.label3.Location = new System.Drawing.Point(19, 56);
+            this.label3.Location = new System.Drawing.Point(78, 55);
             this.label3.Name = "label3";
             this.label3.Size = new System.Drawing.Size(135, 15);
             this.label3.TabIndex = 18;
-            this.label3.Text = "Background Value";
+            this.label3.Text = "Background value";
             // 
-            // LayerValueTextBox
+            // menuStrip1
             // 
-            this.LayerValueTextBox.Location = new System.Drawing.Point(191, 86);
-            this.LayerValueTextBox.Name = "LayerValueTextBox";
-            this.LayerValueTextBox.Size = new System.Drawing.Size(68, 25);
-            this.LayerValueTextBox.TabIndex = 17;
+            this.menuStrip1.ImageScalingSize = new System.Drawing.Size(20, 20);
+            this.menuStrip1.Items.AddRange(new System.Windows.Forms.ToolStripItem[] {
+            this.fileToolStripMenuItem});
+            this.menuStrip1.Location = new System.Drawing.Point(0, 0);
+            this.menuStrip1.Name = "menuStrip1";
+            this.menuStrip1.Size = new System.Drawing.Size(722, 28);
+            this.menuStrip1.TabIndex = 18;
+            this.menuStrip1.Text = "menuStrip1";
+            this.menuStrip1.ItemClicked += new System.Windows.Forms.ToolStripItemClickedEventHandler(this.menuStrip1_ItemClicked);
             // 
-            // BkValueTextBox
+            // fileToolStripMenuItem
             // 
-            this.BkValueTextBox.Location = new System.Drawing.Point(191, 49);
-            this.BkValueTextBox.Name = "BkValueTextBox";
-            this.BkValueTextBox.Size = new System.Drawing.Size(68, 25);
-            this.BkValueTextBox.TabIndex = 16;
+            this.fileToolStripMenuItem.DropDownItems.AddRange(new System.Windows.Forms.ToolStripItem[] {
+            this.loadSlicersToolStripMenuItem});
+            this.fileToolStripMenuItem.Name = "fileToolStripMenuItem";
+            this.fileToolStripMenuItem.Size = new System.Drawing.Size(48, 24);
+            this.fileToolStripMenuItem.Text = "&File";
             // 
-            // ResetLayerCheckBox
+            // loadSlicersToolStripMenuItem
             // 
-            this.ResetLayerCheckBox.AutoSize = true;
-            this.ResetLayerCheckBox.ForeColor = System.Drawing.Color.Black;
-            this.ResetLayerCheckBox.Location = new System.Drawing.Point(22, 89);
-            this.ResetLayerCheckBox.Name = "ResetLayerCheckBox";
-            this.ResetLayerCheckBox.Size = new System.Drawing.Size(165, 19);
-            this.ResetLayerCheckBox.TabIndex = 15;
-            this.ResetLayerCheckBox.Text = "Reset Layer Value";
-            this.ResetLayerCheckBox.UseVisualStyleBackColor = true;
+            this.loadSlicersToolStripMenuItem.Name = "loadSlicersToolStripMenuItem";
+            this.loadSlicersToolStripMenuItem.Size = new System.Drawing.Size(179, 26);
+            this.loadSlicersToolStripMenuItem.Text = "&Load Slicers";
+            this.loadSlicersToolStripMenuItem.Click += new System.EventHandler(this.loadSlicersToolStripMenuItem_Click);
             // 
-            // SampleBoudaryCheckBox
+            // groupBox5
             // 
-            this.SampleBoudaryCheckBox.AutoSize = true;
-            this.SampleBoudaryCheckBox.Location = new System.Drawing.Point(14, 102);
-            this.SampleBoudaryCheckBox.Name = "SampleBoudaryCheckBox";
-            this.SampleBoudaryCheckBox.Size = new System.Drawing.Size(149, 19);
-            this.SampleBoudaryCheckBox.TabIndex = 17;
-            this.SampleBoudaryCheckBox.Text = "Sample Boundary";
-            this.SampleBoudaryCheckBox.UseVisualStyleBackColor = true;
+            this.groupBox5.Controls.Add(this.RedundantFilterRadiuTextBox);
+            this.groupBox5.Controls.Add(this.label8);
+            this.groupBox5.Controls.Add(this.FilterCheckBox1);
+            this.groupBox5.ForeColor = System.Drawing.Color.MediumOrchid;
+            this.groupBox5.Location = new System.Drawing.Point(345, 490);
+            this.groupBox5.Name = "groupBox5";
+            this.groupBox5.Size = new System.Drawing.Size(359, 58);
+            this.groupBox5.TabIndex = 19;
+            this.groupBox5.TabStop = false;
+            this.groupBox5.Text = "Filter";
             // 
-            // BoundaryStepTextBox
+            // groupBox6
             // 
-            this.BoundaryStepTextBox.Location = new System.Drawing.Point(159, 98);
-            this.BoundaryStepTextBox.Name = "BoundaryStepTextBox";
-            this.BoundaryStepTextBox.Size = new System.Drawing.Size(83, 25);
-            this.BoundaryStepTextBox.TabIndex = 15;
+            this.groupBox6.Controls.Add(this.label1);
+            this.groupBox6.Controls.Add(this.BackgroundSampleCheck);
+            this.groupBox6.Controls.Add(this.label3);
+            this.groupBox6.Controls.Add(this.label5);
+            this.groupBox6.Controls.Add(this.BkStepYTextBox);
+            this.groupBox6.Controls.Add(this.BkValueTextBox);
+            this.groupBox6.Controls.Add(this.BkStepXTextBox);
+            this.groupBox6.ForeColor = System.Drawing.Color.MediumOrchid;
+            this.groupBox6.Location = new System.Drawing.Point(30, 505);
+            this.groupBox6.Name = "groupBox6";
+            this.groupBox6.Size = new System.Drawing.Size(293, 79);
+            this.groupBox6.TabIndex = 20;
+            this.groupBox6.TabStop = false;
             // 
-            // label4
+            // BackgroundSampleCheck
             // 
-            this.label4.AutoSize = true;
-            this.label4.ForeColor = System.Drawing.SystemColors.ActiveCaptionText;
-            this.label4.Location = new System.Drawing.Point(248, 103);
-            this.label4.Name = "label4";
-            this.label4.Size = new System.Drawing.Size(39, 15);
-            this.label4.TabIndex = 17;
-            this.label4.Text = "step";
+            this.BackgroundSampleCheck.AutoSize = true;
+            this.BackgroundSampleCheck.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(192)))), ((int)(((byte)(0)))), ((int)(((byte)(192)))));
+            this.BackgroundSampleCheck.Location = new System.Drawing.Point(15, -1);
+            this.BackgroundSampleCheck.Name = "BackgroundSampleCheck";
+            this.BackgroundSampleCheck.Size = new System.Drawing.Size(157, 19);
+            this.BackgroundSampleCheck.TabIndex = 21;
+            this.BackgroundSampleCheck.Text = "Backgound sample";
+            this.BackgroundSampleCheck.UseVisualStyleBackColor = true;
+            // 
+            // label7
+            // 
+            this.label7.AutoSize = true;
+            this.label7.ForeColor = System.Drawing.SystemColors.ActiveCaptionText;
+            this.label7.Location = new System.Drawing.Point(168, 24);
+            this.label7.Name = "label7";
+            this.label7.Size = new System.Drawing.Size(47, 15);
+            this.label7.TabIndex = 26;
+            this.label7.Text = "stepY";
+            // 
+            // label9
+            // 
+            this.label9.AutoSize = true;
+            this.label9.ForeColor = System.Drawing.SystemColors.ActiveCaptionText;
+            this.label9.Location = new System.Drawing.Point(15, 24);
+            this.label9.Name = "label9";
+            this.label9.Size = new System.Drawing.Size(47, 15);
+            this.label9.TabIndex = 25;
+            this.label9.Text = "stepX";
+            // 
+            // StepYTextBox
+            // 
+            this.StepYTextBox.Location = new System.Drawing.Point(219, 20);
+            this.StepYTextBox.Name = "StepYTextBox";
+            this.StepYTextBox.Size = new System.Drawing.Size(68, 25);
+            this.StepYTextBox.TabIndex = 24;
+            // 
+            // StepXTextBox
+            // 
+            this.StepXTextBox.Location = new System.Drawing.Point(68, 20);
+            this.StepXTextBox.Name = "StepXTextBox";
+            this.StepXTextBox.Size = new System.Drawing.Size(68, 25);
+            this.StepXTextBox.TabIndex = 23;
             // 
             // SlicerModelingDlg
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(8F, 15F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(731, 596);
+            this.ClientSize = new System.Drawing.Size(722, 680);
+            this.Controls.Add(this.groupBox6);
+            this.Controls.Add(this.groupBox5);
             this.Controls.Add(this.groupBox4);
             this.Controls.Add(this.OK);
+            this.Controls.Add(this.ExportButton);
+            this.Controls.Add(this.CreateButton);
             this.Controls.Add(this.progressBar1);
             this.Controls.Add(this.Cancel);
             this.Controls.Add(this.groupBox3);
             this.Controls.Add(this.groupBox2);
             this.Controls.Add(this.groupBox1);
+            this.Controls.Add(this.menuStrip1);
+            this.MainMenuStrip = this.menuStrip1;
             this.Name = "SlicerModelingDlg";
-            this.Text = "Create Models From Outlines";
+            this.Text = "  ";
             this.Load += new System.EventHandler(this.SlicerModelingDlg_Load);
             this.groupBox1.ResumeLayout(false);
+            this.groupBox1.PerformLayout();
             this.groupBox2.ResumeLayout(false);
             ((System.ComponentModel.ISupportInitialize)(this.dataGridView1)).EndInit();
             this.groupBox3.ResumeLayout(false);
             this.groupBox3.PerformLayout();
             this.groupBox4.ResumeLayout(false);
             this.groupBox4.PerformLayout();
+            this.menuStrip1.ResumeLayout(false);
+            this.menuStrip1.PerformLayout();
+            this.groupBox5.ResumeLayout(false);
+            this.groupBox5.PerformLayout();
+            this.groupBox6.ResumeLayout(false);
+            this.groupBox6.PerformLayout();
             this.ResumeLayout(false);
+            this.PerformLayout();
 
         }
 
@@ -431,12 +560,8 @@
         private System.Windows.Forms.GroupBox groupBox1;
         private System.Windows.Forms.GroupBox groupBox2;
         private System.Windows.Forms.GroupBox groupBox3;
-        private System.Windows.Forms.Label label2;
-        private System.Windows.Forms.Label label1;
-        private System.Windows.Forms.TextBox textBox3;
-        private System.Windows.Forms.TextBox textBox4;
-        private System.Windows.Forms.TextBox textBox2;
-        private System.Windows.Forms.TextBox textBox1;
+        private System.Windows.Forms.TextBox BkStepYTextBox;
+        private System.Windows.Forms.TextBox BkStepXTextBox;
         private System.Windows.Forms.Button ExportButton;
         private System.Windows.Forms.Button Cancel;
         private System.Windows.Forms.ProgressBar progressBar1;
@@ -451,13 +576,27 @@
         private System.Windows.Forms.TextBox LayerValueTextBox;
         private System.Windows.Forms.TextBox BkValueTextBox;
         private System.Windows.Forms.CheckBox ResetLayerCheckBox;
-        private System.Windows.Forms.Label label6;
         private System.Windows.Forms.Label label5;
-        private System.Windows.Forms.Label label7;
-        private System.Windows.Forms.ComboBox comboBox1;
-        private System.Windows.Forms.Button LoadSlicersButton;
         private System.Windows.Forms.Label label4;
         private System.Windows.Forms.TextBox BoundaryStepTextBox;
         private System.Windows.Forms.CheckBox SampleBoudaryCheckBox;
+        private System.Windows.Forms.TextBox LableOfRangeBox;
+        private System.Windows.Forms.MenuStrip menuStrip1;
+        private System.Windows.Forms.ToolStripMenuItem fileToolStripMenuItem;
+        private System.Windows.Forms.ToolStripMenuItem loadSlicersToolStripMenuItem;
+        private System.Windows.Forms.CheckBox FilterCheckBox1;
+        private System.Windows.Forms.Label label6;
+        private System.Windows.Forms.Label label8;
+        private System.Windows.Forms.TextBox RedundantFilterRadiuTextBox;
+        private System.Windows.Forms.Label label1;
+        private System.Windows.Forms.Label label2;
+        private System.Windows.Forms.ComboBox comboBox1;
+        private System.Windows.Forms.GroupBox groupBox5;
+        private System.Windows.Forms.GroupBox groupBox6;
+        private System.Windows.Forms.CheckBox BackgroundSampleCheck;
+        private System.Windows.Forms.Label label7;
+        private System.Windows.Forms.Label label9;
+        private System.Windows.Forms.TextBox StepYTextBox;
+        private System.Windows.Forms.TextBox StepXTextBox;
     }
 }

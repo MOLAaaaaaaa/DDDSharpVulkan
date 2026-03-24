@@ -9,6 +9,7 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using DataCollection;
+using DataCollection.Triangulation;
 namespace DDDSharp
 {
     public partial class LasInterpolationForm : Form
@@ -352,12 +353,12 @@ namespace DDDSharp
                     {
                         x = minx + ix * xstep;
                         v = Interpolate(x, y, z);
-                        data.pGridData[no++] = (float)v;
+                        data[no++] = (float)v;
                     }
                 }
                 UpdateProgress();
             }
-            data.UpdateDataRange();
+            data.UpdateRange();
             data.SaveAs(textOutputFile.Text);
         }
 
@@ -508,7 +509,7 @@ namespace DDDSharp
         {
             triangles.Clear();
 
-            DataCollection.Triangulation.Triangulate tr = new DataCollection.Triangulation.Triangulate();
+            Triangulate tr = new Triangulate();
             //tr.switches = "-z";
 
             Vector64 p;

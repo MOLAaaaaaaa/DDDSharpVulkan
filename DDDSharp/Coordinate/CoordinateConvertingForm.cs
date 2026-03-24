@@ -41,5 +41,10 @@ namespace DDDSharp.Coordinate
         {
 
         }
+
+        private void CoordinateConvertingForm_Load_1(object sender, EventArgs e)
+        {
+
+        }
     }
 }

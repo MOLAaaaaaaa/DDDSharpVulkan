@@ -432,7 +432,8 @@ namespace DataCollection
                 points.Add(p);
             }
             UpdateRange();            
-        }
+        }        
+
         public override void Clear()
         {
             points.Clear();
@@ -543,9 +544,12 @@ namespace DataCollection
                 br.Write(VisibleValue1);
                 br.Write(VisibleValue2);
                 br.Write(IsUniformColor);
+
+                br.Write(ShowSymbol);//2025-8-28
+
                 br.Write(ObjColor.ToArgb());
                 ColorScale.WriteBinary(br);
-
+                
                 //br.Write(symbolOffset.x);
                 //br.Write(symbolOffset.y);
                 //br.Write(symbolOffset.z);
@@ -615,6 +619,9 @@ namespace DataCollection
                 VisibleValue1 = br.ReadDouble();
                 VisibleValue2 = br.ReadDouble();
                 IsUniformColor = br.ReadBoolean();
+
+                if(C3DData.DataVersion >=1.31f)ShowSymbol = br.ReadBoolean();//2025-8-28
+
                 ObjColor = Color.FromArgb(br.ReadInt32());
                 ColorScale.LoadBinary(br);
 
@@ -1004,6 +1011,7 @@ namespace DataCollection
                     if (i % Interval == 0)
                     {
                         string[] ss = line.Split(splitChars, StringSplitOptions.RemoveEmptyEntries);
+                        //string[] ss = line.Split(splitChars);
                         if (xcol >= 0 && xcol < ss.Length) x = float.Parse(ss[xcol]);
                         if (ycol >= 0 && ycol < ss.Length) y = float.Parse(ss[ycol]);
                         if (zcol >= 0 && zcol < ss.Length) z = float.Parse(ss[zcol]);

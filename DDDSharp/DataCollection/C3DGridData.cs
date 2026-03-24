@@ -10,6 +10,13 @@ using System.Drawing;
 using GlmNet;
 using System.Drawing.Design;
 using Graphics3D;
+using CLInterpolation;
+using System.Xml.Schema;
+using System.Runtime.CompilerServices;
+using glfw3;
+using WinFormAnimation;
+using System.Runtime.InteropServices;
+using System.Diagnostics;
 
 namespace DataCollection
 {
@@ -76,7 +83,7 @@ namespace DataCollection
                     for (int j = 0; j < xNum; j++)
                     {
                         id = i * data.xNum * data.yNum + j * data.xNum + ix;
-                        pGridData[i * xNum + j] = data.pGridData[id];
+                        pGridData[i * xNum + j] = data[id];
                     }
                 }
             }
@@ -96,7 +103,7 @@ namespace DataCollection
                     for (int j = 0; j < xNum; j++)
                     {
                         id = i * data.xNum * data.yNum + iy * data.xNum + j;
-                        pGridData[i * xNum + j] = data.pGridData[id];
+                        pGridData[i * xNum + j] = data[id];
                     }
                 }
             }
@@ -116,7 +123,7 @@ namespace DataCollection
                     for (int j = 0; j < xNum; j++)
                     {
                         id = iz * data.xNum * data.yNum + i * data.xNum + j;
-                        pGridData[i * xNum + j] = data.pGridData[id];
+                        pGridData[i * xNum + j] = data[id];
                     }
                 }
             }
@@ -263,18 +270,12 @@ namespace DataCollection
     //叠加到grid对象上的数据
     public class COverlayObject
     {
+        public string errMessage = "";
         public C3DGridData p3DGrid = null;          //3DGrid对象
         public int Demension = 1;                   //维度，1维只有1个值
         public float[] data = null;                 //grid 数据
         public C3DObjectBase sourceObject = null;   //叠加对象原始数据
-        public ShapeEnum type //叠加数据对象类型
-        { 
-            get 
-            {
-                if (sourceObject != null) return sourceObject.type;
-                else return ShapeEnum.Undefine;
-            } 
-        }  
+        public ShapeEnum type = ShapeEnum.Points; //叠加数据对象类型        
 
         double[] minvArray = null, maxvArray = null;
         double minv = 0, maxv = 0;
@@ -384,7 +385,76 @@ namespace DataCollection
         {
             Demension = demension;
             data = new float[demension * length];
-        }        
+        }
+        public virtual bool Save(BinaryWriter br)
+        {
+            br.Write(Demension);
+            br.Write((int)type);
+            br.Write(minv);
+            br.Write(maxv);
+            br.Write(Enable);
+            br.Write(Blend);
+            br.Write(Alpha);
+            br.Write((int)method);
+            br.Write((int)channel);
+            br.Write(offset.x);
+            br.Write(offset.y);
+            br.Write(offset.z);
+            br.Write(rotate.x);
+            br.Write(rotate.y);
+            br.Write(rotate.z);
+            br.Write(scale.x);
+            br.Write(scale.y);
+            br.Write(scale.z);
+            if (data == null) br.Write((int)0);
+            else 
+            { 
+                br.Write(data.Length);
+                for (int i = 0; i < data.Length; i++)
+                    br.Write(data[i]);
+            }
+
+            return true;
+        }
+        public virtual bool Load(BinaryReader br)
+        {
+            try 
+            {
+                Demension = br.ReadInt32();
+                type = (ShapeEnum)br.ReadInt32();
+                minv = br.ReadDouble();
+                maxv = br.ReadDouble();
+                Enable = br.ReadBoolean();
+                Blend = br.ReadBoolean();
+                Alpha = br.ReadSingle();
+                method = (OverlapMethod)br.ReadInt32();
+                channel = (OverlapChannel)br.ReadInt32();
+                offset.x = br.ReadSingle();
+                offset.y = br.ReadSingle();
+                offset.z = br.ReadSingle();
+                rotate.x = br.ReadSingle();
+                rotate.y = br.ReadSingle();
+                rotate.z = br.ReadSingle();
+                scale.x = br.ReadSingle();
+                scale.y = br.ReadSingle();
+                scale.z = br.ReadSingle();
+
+                data = null;
+                int n = br.ReadInt32();
+                if (n > 0)
+                {
+                    data = new float[n];
+                    for (int i = 0; i < n; i++)
+                        data[i] = br.ReadSingle();
+                }
+
+                return true;
+            }
+            catch(Exception ex)
+            {
+                return false;
+            }            
+        }
         public virtual Color GetColor(double v)
         {
             return ColorScale.GetColor(v);
@@ -449,14 +519,15 @@ namespace DataCollection
         public void from3Dgrid(C3DGridData grid3d)
         {
             sourceObject = grid3d;
-            Array.Copy(grid3d.pGridData,data, grid3d.pGridData.Length);
+            type = grid3d.type;
+            Array.Copy(grid3d.pGridData,data, grid3d.Length);
             ColorScale.SetValueRange(sourceObject.minv, sourceObject.maxv);
         }
         public void fromScatterPoints(ScatteredPoints sc)
         {
             sourceObject = sc;
-
-            for(int i=0;i<data.Length;i++)
+            type = sc.type;
+            for (int i = 0; i < data.Length; i++ )
             {
                 data[i] = float.NaN;
             }
@@ -470,6 +541,36 @@ namespace DataCollection
                 data[ix + iy * p3DGrid.xNum + iz * p3DGrid.xyNum] = p.V;
             }
             ColorScale.SetValueRange(sourceObject.minv,sourceObject.maxv);
+        }
+        public override bool Save(BinaryWriter br)
+        {
+            if (!base.Save(br)) return false;
+            br.Write(Filled);
+            br.Write(arrowSize);
+            br.Write(Theta);
+            br.Write(LineWidth);
+            br.Write(LineLength);
+            br.Write(EnableLineColor);
+            br.Write(LineColor.ToArgb());            
+            br.Write(XInterval);
+            br.Write(YInterval);
+            br.Write(ZInterval);
+            return true;
+        }
+        public override bool Load(BinaryReader br)
+        {
+            if (!base.Load(br)) return false;
+            Filled = br.ReadBoolean();
+            arrowSize = br.ReadSingle();
+            Theta = br.ReadSingle();
+            LineWidth = br.ReadSingle();
+            LineLength = br.ReadSingle();
+            EnableLineColor = br.ReadBoolean();
+            LineColor = Color.FromArgb(br.ReadInt32());
+            XInterval = br.ReadInt32();
+            YInterval = br.ReadInt32();
+            ZInterval = br.ReadInt32();
+            return true;
         }
     }
     public class Arrow3DOverlayObject : COverlayObject
@@ -494,7 +595,7 @@ namespace DataCollection
         }
         public void from3Dgrid(C3DGridData grid3d)
         {
-            Array.Copy(grid3d.pGridData, data, grid3d.pGridData.Length);
+            Array.Copy(grid3d.pGridData, data, grid3d.Length);
         }
         public void fromScatterPoints(ScatteredPoints sc)
         {
@@ -521,26 +622,122 @@ namespace DataCollection
         MC = 1,     //MC Meshes
         ImprovedMC = 2,//Improved MC Meshes
     };
+    /// <summary>
+    /// 大数据3DGrid输入/输出
+    /// </summary>
+    public class C3DGridDataStream
+    {
+        public string dataFile = "";
+        public string errMessage = "";
+        public C3DGridData gridData = new C3DGridData();
+        int num = 0;
+        public bool Create( string filename,int nx, int ny, int nz, 
+                            double minx, double miny, double minz,double minv,
+                            double maxx, double maxy, double maxz,double maxv )
+        {
+            try
+            {
+                dataFile = filename;
+                BinaryWriter br;
+                br = new BinaryWriter(new FileStream(dataFile, FileMode.Create));
+                gridData = new C3DGridData(minx,maxx,miny,maxy,minz,maxz,minv,maxv);
+                gridData.xNum = nx;
+                gridData.yNum = ny;
+                gridData.zNum = nz;
+                gridData.Write3DGridHeader(br,10);
+                num = 0;
+                br.Close();
+                return true;
+            }
+            catch (IOException e)
+            {
+                errMessage = "write file failed.\n" + e.Message;
+                return false;
+            }
+        }
+        
+        public bool WriteData(float[] grid,int start,int length) 
+        {
+            try
+            {
+                BinaryWriter br = new BinaryWriter(new FileStream(dataFile, FileMode.Append));
+                for (int i = start; i < start + length; i++)
+                { 
+                    br.Write(grid[i + start]); 
+                    num++;
+                }
+                br.Close();
+                return true;
+            }
+            catch (IOException e)
+            {
+                errMessage = "write file failed.\n" + e.Message;
+                return false;
+            }
+        }
+        public bool Close()
+        {
+            if (num == gridData.xNum * gridData.yNum * gridData.zNum)
+                return true;
+            else 
+            {
+                errMessage = "data not correct!";
+                return false; 
+            }
+        }
+    }
     public class C3DGridData : C3DObjectBase
     {
         public int xNum;
         public int yNum;
         public int zNum;
+        public long xyzNum
+        {
+            get { return xNum * yNum * zNum; }
+        }
+
         public double xStep, yStep, zStep;
         public long xyNum = 0;
+        
+        //grid data
+        public float[] pGridData = null;
+        //public Vector32[] pGridCoords = null; //网格节点坐标 Added 2024.12.6
+        public double m_blankvalue = C3DData.m_BlankedValue;
+        public AxisEnum zAxis = AxisEnum.zAxis; //Z轴
+        //show state of each unit, 0-don't show,1-show,2-blend
+        public byte[] pgridShowTable;
+        public Int16[] pColorIndexTable;        
+        
+        public List<UInt32XYZ> pShowIndexArray = new List<UInt32XYZ>();
+        public List<CTriangle3f> pTriangleArray = new List<CTriangle3f>();
+        public float[] pXGrids = null; //非均匀网格情况下X坐标
+        public float[] pYGrids = null; //非均匀网格情况下Y坐标
+        public float[] pZGrids = null; //非均匀网格情况下Z坐标
+        MyBinarySearch binarySearch = new MyBinarySearch(null);
+
         public MarchingCubes m_MarchCube = new MarchingCubes();
         public MarchingCubesExt m_MarchCubeExt = new MarchingCubesExt();
+        public List<vec2> visibleValues = new List<vec2>();
+
         //public List<COverlayObject> overlaps = new List<COverlayObject>();
         public C3DGridData objP32 = null;
 
         public int[] pBlankedPointIndexes = null;
         public List<vec3> pBlankedPoints = new List<vec3>();
-        public bool[] pBlankTable = null;
-        public int version = -1;    //10,11,12
+        public bool[] pBlankTable = null;        
+        public virtual int Length 
+        { 
+            get 
+            {
+                if ( pGridData == null ) return 0;
+                else return pGridData.Length; 
+            } 
+        }
+
 
         #region Overlaps section
         [CategoryAttribute("Overlaps"), DisplayNameAttribute("Count")]
-        public int Count { get { return overlaps.Count; } }
+        public int OverlayCount { get { return overlaps.Count; } }
         [CategoryAttribute("Overlaps"), DisplayNameAttribute("Objects")]
         public List<COverlayObject> overlaps { get; set; } = new List<COverlayObject>();
         [CategoryAttribute("Overlaps"), DisplayNameAttribute("Enabled")]
@@ -555,8 +752,9 @@ namespace DataCollection
             get { return _meshMethod; } 
             set { _meshMethod = value;RenderMode = RenderingUpdateMode.Redraw; } 
         }
+        [CategoryAttribute("Display"), DisplayNameAttribute("Is Stratums")]
+        public bool ShowAsStratum { get; set; } = false;
 
-        
         #endregion Display section
 
         #region Color section
@@ -602,22 +800,146 @@ namespace DataCollection
 
         #endregion Color section
 
-        
+        //double tracedMinx, tracedMiny, tracedMinz, tracedMaxx, tracedMaxy, tracedMaxz;
         public override string Information
         {
             get
             {
                 string info = "Size = " + xNum + " * " + yNum + " * " + zNum + ";\n";
-                info += "X: " + Minx + " to " + Maxx + ";\n";
-                info += "Y: " + Miny + " to " + Maxy + ";\n";
-                info += "Z: " + Minz + " to " + Maxz;
+                info += "X: " + Math.Round(Minx,4) + " to " + Math.Round(Maxx,4) + ";\n";
+                info += "Y: " + Math.Round(Miny,4) + " to " + Math.Round(Maxy,4) + ";\n";
+                info += "Z: " + Math.Round(Minz,4) + " to " + Math.Round(Maxz,4) + ";\n";
+                info += "V: " + Math.Round(Minv,4) + " to " + Math.Round(Maxv,4);
                 return info;
             }
             //set { name = value; }
         }
+       
+        /// <summary>
+        /// 网格重插值
+        /// </summary>
+        /// <param name="invalid_value">需插值网格</param>
+        /// <param name="blank_interpolate">是否对白化网格插值</param>
+        public float[] GridsSampledInterpolating( float invalid_value = 0, 
+                                                  bool blank_interpolate = false )
+        {
+            float[] grid = new float[pGridData.Length];
+            float val;
+            
+            for(int i = 0; i < pGridData.Length; i++ )
+            {
+                val = pGridData[i];
+                if( (IsBlankValue(val) && blank_interpolate)
+                    || val <= 0 )
+                    {
+                        val = ReInterpolateFromGrid(i);
+                    }
+                grid[i] = val;
+            }
+            return grid;
+        }
+        public float ReInterpolateFromGrid(int id)
+        {
+            Int32XYZ xyz = GetIndices(id);
+            List<Vector32>points = SearchNearestPoints(xyz.x, xyz.y, xyz.z, -1);
+            if (points.Count < 1) return float.NaN;
 
-        //this table include all blanked intersections on edge
-        // int index, vec3 p, p.x,p.y,p.z are intersect value on x,y,z axis,
+            float val = 0;
+            double maxdist = 1E10, dist;
+            Vector32 p0 = GetGridCoord(xyz.x, xyz.y, xyz.z);
+            for (int i = 0; i < points.Count; i++)
+            {
+                Vector32 p = points[i];
+                dist = p.DistancePower2(p0);
+                if (dist < maxdist)
+                {
+                    maxdist = dist;
+                    val = p.V;
+                }
+            }
+            points.Clear();
+            return val;
+        }
+        public C3DGridData Copy()
+        {
+            C3DGridData data = new C3DGridData(xNum, yNum, zNum);
+            data.CopyHeaderFrom(this);           
+            data.xStep = xStep;
+            data.yStep = yStep;
+            data.zStep = zStep;
+            data.xyNum = xyNum;
+            //grid data
+            if(pGridData != null)
+            {
+                data.pGridData = new float[Length];
+                Array.Copy(pGridData, data.pGridData, Length);
+            }
+            //show state of each unit, 0-don't show,1-show,2-blend
+            if (pgridShowTable != null)
+            {
+                data.pgridShowTable = new byte[pgridShowTable.Length];
+                Array.Copy(pgridShowTable, data.pgridShowTable, pgridShowTable.Length);
+            }
+            if (pColorIndexTable != null)
+            {
+                data.pColorIndexTable = new Int16[pgridShowTable.Length];
+                Array.Copy(pColorIndexTable, data.pColorIndexTable, pColorIndexTable.Length);
+            }      
+            if(pShowIndexArray.Count>0)
+            {
+                data.pShowIndexArray = new List<UInt32XYZ>(pShowIndexArray);
+            }
+            if (pXGrids != null)
+            {
+                data.pXGrids = new float[pXGrids.Length];
+                Array.Copy(pXGrids, data.pXGrids, pXGrids.Length);
+            }
+            if (pYGrids != null)
+            {
+                data.pYGrids = new float[pYGrids.Length];
+                Array.Copy(pYGrids, data.pYGrids, pYGrids.Length);
+            }
+            if (pZGrids != null)
+            {
+                data.pZGrids = new float[pZGrids.Length];
+                Array.Copy(pZGrids, data.pZGrids, pZGrids.Length);
+            }
+            
+            if (pTriangleArray.Count > 0)
+            {
+                data.pTriangleArray = new List<CTriangle3f>(pTriangleArray);
+            }
+
+            data.Version = Version;
+            data._meshMethod = _meshMethod;
+            data._ObjColor = _ObjColor;
+            data._EnableColorLevel = _EnableColorLevel;
+            data._ColorScale = _ColorScale.Copy();
+
+            if ( pBlankedPointIndexes != null)
+            {
+                data.pBlankedPointIndexes = new int[pBlankedPointIndexes.Length];
+                Array.Copy(pBlankedPointIndexes, data.pBlankedPointIndexes, pBlankedPointIndexes.Length);
+            }
+            if (pBlankTable != null)
+            {
+                data.pBlankTable = new bool[pBlankTable.Length];
+                Array.Copy(pBlankTable, data.pBlankTable, pBlankTable.Length);
+            }
+            if (pBlankedPoints.Count > 0)
+            {
+                data.pBlankedPoints = new List<vec3>(pBlankedPoints);
+            }
+            
+            data.m_MarchCube = m_MarchCube;
+            data.m_MarchCubeExt = m_MarchCubeExt;
+            data.visibleValues = new List<vec2>(visibleValues);
+
+            return data;
+    }
+
+    //this table include all blanked intersections on edge
+    // int index, vec3 p, p.x,p.y,p.z are intersect value on x,y,z axis,
         public void AddBlankIntersection(long id, vec3 pos)
         {
             pBlankedPointIndexes[id] = pBlankedPoints.Count;
@@ -643,13 +965,45 @@ namespace DataCollection
             }
             return cube * count;
         }
-        public void GetIndices(long id,ref int ix,ref int iy,ref int iz)
+
+
+        public float this[int id]
         {
-            iz =(int)( id / xyNum );
-            long left = id % xyNum;
-            iy = (int)(left / xNum);
-            ix = (int)(left % xNum);
+            get
+            {
+                return pGridData[id];
+            }
+            set
+            {
+                pGridData[id] = value;
+            }
         }
+        public float this[long id]
+        {
+            get
+            {
+                return pGridData[id];
+            }
+            set
+            {
+                pGridData[id] = value;
+            }
+        }
+        public float this[int ix, int iy, int iz]
+        {
+            get
+            {
+                long id = GetVerticIndex(ix, iy, iz);
+                return pGridData[id];
+            }
+            set
+            {
+                long id = GetVerticIndex(ix, iy, iz);
+                pGridData[id] = value;
+            }
+        }
+
+       
         public void GetIndices(Vector32 p, ref int ix, ref int iy, ref int iz)
         {
             ix = (int)( (p.X - minx) / xStep);
@@ -664,29 +1018,47 @@ namespace DataCollection
             xyz.z = (int)((p.Z - minz) / zStep);
             return xyz;
         }
-        public void GetIndices(Vector64 p, ref int ix, ref int iy, ref int iz)
+       
+        public Int32XYZ GetIndices(Vector64 p,double percent)
         {
-            ix = (int)((p.X - minx) / xStep);
-            iy = (int)((p.Y - miny) / yStep);
-            iz = (int)((p.Z - minz) / zStep);
-        }
-        public Int32XYZ GetIndices(Vector64 p)
-        {
-            Int32XYZ xyz = new Int32XYZ();
-            xyz.x = (int)((p.X - minx) / xStep);
-            xyz.y = (int)((p.Y - miny) / yStep);
-            xyz.z = (int)((p.Z - minz) / zStep);
-            return xyz;
+            int ix = (int)( (p.x - minx) / xStep );
+            double dx = p.X - ix * xStep;
+            if ( Math.Abs(xStep - dx) < xStep * percent ) ix++;
+            
+            int iy = (int)((p.y - miny) / yStep);
+            double dy = p.Y - iy * yStep;
+            if ( Math.Abs(yStep - dy) < yStep * percent) iy++;
+
+            int iz = (int)((p.z - minz) / zStep);
+            double dz = p.Z - iz * zStep;
+            if ( Math.Abs(zStep - dz) < zStep * percent) iz++;
+
+            return (new Int32XYZ(ix, iy, iz)); 
         }
         public Int32XYZ GetIndices(long id)
         {
+            xyNum = xNum * yNum;
             Int32XYZ xyz = new Int32XYZ();
-            xyz.z = (int)(id / xyNum);
+            xyz.z = (int)(id /xyNum);
             long left = id % xyNum;
             xyz.y = (int)(left / xNum);
             xyz.x = (int)(left % xNum);
             return xyz;
         }
+
+        double GetXStep(int ix,int iy,int iz)
+        {
+            return xStep;           
+        }
+        double GetYStep(int ix, int iy, int iz)
+        {
+            return yStep;            
+        }
+        double GetZStep(int ix, int iy, int iz)
+        {
+            return zStep;            
+        }
+
         public bool IsEdgeGrid(long id)
         {
             Int32XYZ xyz = GetIndices(id);
@@ -718,7 +1090,7 @@ namespace DataCollection
         public bool IsBlankedGrid(int ix, int iy, int iz, int ver = 0)
         {
             if ( ix < 0 || iy < 0 || iz < 0 || 
-                 ix >= xNum || ix >= yNum || ix >= zNum ) return true;
+                 ix >= xNum || iy >= yNum || iz >= zNum ) return true;
             return IsBlankedGrid( GetVerticIndex( ix, iy, iz, ver ) );
         }
 
@@ -738,6 +1110,19 @@ namespace DataCollection
                 p = pBlankedPoints[pBlankedPointIndexes[id]];
                 return true;
             }
+        }
+        public bool GetBlankedValue(long id, AxisEnum axis, out vec3 p)
+        {
+            if ( GetBlankedValue(id, out p) )
+            { 
+                if (axis == AxisEnum.xAxis && !float.IsNaN(p.x))
+                    return true;
+                if (axis == AxisEnum.yAxis && !float.IsNaN(p.y))
+                    return true;
+                if (axis == AxisEnum.zAxis && !float.IsNaN(p.z))
+                    return true;
+            }
+            return false;
         }
         public bool GetBlankedValue(int ix, int iy, int iz, out vec3 p)
         {
@@ -772,7 +1157,7 @@ namespace DataCollection
             if (index < 0)//是否存数据，没有则创建一个并添加
             {
                 pBlankedPointIndexes[id] = pBlankedPoints.Count;
-                vec3 p = new vec3((float)minx - 1, (float)miny - 1, (float)minz - 1);
+                vec3 p = new vec3(float.NaN, float.NaN, float.NaN);
                 if (axis == AxisEnum.xAxis) p.x = (float)v;
                 if (axis == AxisEnum.yAxis) p.y = (float)v;
                 if (axis == AxisEnum.zAxis) p.z = (float)v;
@@ -782,56 +1167,56 @@ namespace DataCollection
 
             //else blanked value existed
             vec3 p0 = pBlankedPoints[index];
-            double newv = v;
+            
             if (axis == AxisEnum.xAxis) // x轴
             {
-                if (IsValidX(p0.x))
+                if ( !IsValid(p0.x) ) p0.x = (float)v;                
+                else
                 {
                     if (sort == AxisOrderEnum.Lower)//保留低值
                     {
-                        if (newv > p0.x) newv = p0.x;
+                        if (v < p0.x) p0.x = (float)v;
                     }
                     else if (sort == AxisOrderEnum.Upper)//保留高值
                     {
-                        if (newv < p0.x) newv = p0.x;
+                        if (v > p0.x) p0.x = (float)v;
                     }
                 }
-                p0.x = (float)newv;
             }
             else if (axis == AxisEnum.yAxis)// Y轴
             {
-                if (IsValidY(p0.y))
+                if (!IsValid(p0.y)) p0.y = (float)v;
+                else
                 {
                     if (sort == AxisOrderEnum.Lower)//保留低值
                     {
-                        if (newv > p0.y) newv = p0.y;
+                        if (v < p0.y) p0.y = (float)v;
                     }
                     else if (sort == AxisOrderEnum.Upper)//保留高值
                     {
-                        if (newv < p0.y) newv = p0.y;
+                        if (v > p0.y) p0.y = (float)v;
                     }
                 }
-                p0.y = (float)newv;
             }
             else if (axis == AxisEnum.zAxis)// Z轴
             {
-                if (IsValidZ(p0.z))
+                if (!IsValid(p0.z)) p0.z = (float)v;
+                else
                 {
                     if (sort == AxisOrderEnum.Lower)//保留低值
                     {
-                        if (newv > p0.z) newv = p0.z;
+                        if (v < p0.z) p0.z = (float)v;
                     }
                     else if (sort == AxisOrderEnum.Upper)//保留高值
                     {
-                        if (newv < p0.z) newv = p0.z;
+                        if (v > p0.z) p0.z = (float)v;
                     }
                 }
-                p0.z = (float)newv;
             }
 
             pBlankedPoints[index] = p0;
         }
-        public void SetBlankValue(int ix, int iy, int iz, float v, AxisEnum axis, AxisOrderEnum sort = AxisOrderEnum.Anyway)
+        public void SetBlankValue(int ix, int iy, int iz, double v, AxisEnum axis, AxisOrderEnum sort = AxisOrderEnum.Anyway)
         {
             SetBlankValue(GetVerticIndex(ix, iy, iz), v, axis, sort);
         }
@@ -855,20 +1240,91 @@ namespace DataCollection
                 else return false;
             }
         }
+        /// <summary>
+        /// Flip grid data
+        /// </summary>
+        /// <param name="xyz"></param>
+        public void FlipGridData(AxisEnum xyz)
+        {
+            float[] grid = new float[pGridData.Length];
+            Array.Copy(pGridData, grid, grid.Length);
+            long id ,id1 = 0;
+            for (int iz = 0; iz < zNum; iz++)
+            {
+                for (int iy = 0; iy < yNum; iy++)
+                {
+                    for (int ix = 0; ix < xNum; ix++)
+                    {
+                        id = GetVerticIndex(ix, iy, iz);
+                        if (xyz == AxisEnum.xAxis) id1 = GetVerticIndex(xNum - 1 - ix, iy, iz);
+                        else if (xyz == AxisEnum.yAxis) id1 = GetVerticIndex(ix, yNum - 1 - iy, iz);
+                        else if (xyz == AxisEnum.zAxis) id1 = GetVerticIndex(ix, iy, zNum - 1 - iz);
+                        else if (xyz == AxisEnum.XYExchange) id1 = GetVerticIndex(iy, ix, iz);
+                        pGridData[id] = grid[id1];
+                    }
+                }
+            }
+            grid = null;
+        }
+        public void SampleTo(string path, int xstep,int ystep,int zstep)
+        {
+            double x, y, z;
+            int ix, iy, iz;
+            float val = 0;
+            StreamWriter wr = new StreamWriter(path);
+            wr.WriteLine("x,y,z,value");
+            for (iz = 0; iz <zNum; iz+=zstep)
+                for (iy = 0; iy < yNum; iy+=ystep)
+                    for (ix = 0; ix < xNum; ix+=xstep)
+                    {
+                        x = minx + ix * xStep;
+                        y = miny + iy * yStep;
+                        z = minz + iz * zStep;
+                        val = this[ix, iy, iz];
+                        Vector64 p = new Vector64(x,y,z,val);
+                        wr.WriteLine(p.toString(4));
+                    }
+            wr.Close();
+        }
+        public void DoFilter(int step = 1)
+       {
+            int ix, iy, iz,ix1,iy1,iz1;
+            float val = 0,val1 = 0;
+            for(int i=0;i<pGridData.Length;i++)
+            {
+                GetXYZIndexFromIndex(i, out ix, out iy, out iz);
+                val = pGridData[i];
+                int count = 0, countall = 0;
+                for (iz1 = iz - step; iz1 <= iz + step; iz1++)
+                  for (iy1 = iy - step; iy1 <= iy + step; iy1++)
+                    for (ix1 = ix - step; ix1 <= ix + step; ix1++ )
+                     {
+                         if (!IsGridIndexValid(ix1, iy1, iz1)) continue;
+                         if (ix1 == ix && iy1 == iy && iz1 == iz) continue;
+                         val1 = this[ix1, iy1, iz1];
+                         if (Math.Abs(val - val1) > (maxv - minv) * 0.1) count++;
+                         countall++;
+                     }
+                if( (float)count / (float)countall >= 0.8 ) pGridData[i] = val1;
+            }
+       }
         public override float[] toValuesArray()
         {
             return pGridData;
         }
+       
         public override void UpdateRange()
         {
             minv = maxv = 0;
             if (xNum < 1 || yNum < 1 || zNum < 1) return;
-            if (pGridData == null) return;
-
+            if (pGridData == null) return;            
             int k = 0;
             for (int i = 0; i < xNum * yNum * zNum; i++)
             {
-                if ( IsBlankValue(pGridData[i]) ) continue;
+                if (float.IsNaN(pGridData[i]) ||
+                    float.IsInfinity(pGridData[i]) ||
+                    pGridData[i]== float.MaxValue ||
+                    IsBlankValue(pGridData[i]) ) continue;
                 if ( k == 0) { minv = maxv = pGridData[i]; k++; }
                 else
                 {
@@ -876,12 +1332,7 @@ namespace DataCollection
                     if (pGridData[i] > maxv) maxv = pGridData[i];
                 }                
             }
-        }
-
-        public void UpdateDataRange()
-        {
-            UpdateRange();
-        }
+        }       
 
         //normalize grid value to v1 v2
         public void NormalizeGrid(double v1 = 0, double v2 = 1)
@@ -935,21 +1386,39 @@ namespace DataCollection
             maxy = y2;
             maxz = z2;
         }
+        public bool IsValid(float v)
+        {
+            return !float.IsNaN(v);
+        }
+        public bool IsValid(double v)
+        {
+            return !double.IsNaN(v);
+        }
         public bool IsValidX(double v)
         {
+            if (!IsValid(v)) return false;
             if (v >= minx && v <= maxx)
                 return true;
             else return false;
         }
         public bool IsValidY(double v)
         {
+            if (!IsValid(v)) return false;
             if (v >= miny && v <= maxy)
                 return true;
             else return false;
         }
         public bool IsValidZ(double v)
         {
+            if (!IsValid(v)) return false;
             if (v >= minz && v <= maxz)
+                return true;
+            else return false;
+        }
+        public bool IsValidV(double v)
+        {
+            if (!IsValid(v)) return false;
+            if (v >= minv && v <= maxv)
                 return true;
             else return false;
         }
@@ -962,19 +1431,25 @@ namespace DataCollection
             if (ix < 0 || iy < 0 || iz < 0) return false;
             else return true;
         }
-        public long GetVerticIndexByPosition(double x, double y, double z)
+        public Int32XYZ GetVerticIndexByPosition(double x, double y, double z, double err = 0.1)
         {
-            int ix = (int)((x - minx + 0.01 * xStep) / xStep);
-            int iy = (int)((y - miny + 0.01 * yStep) / yStep);
-            int iz = (int)((z - minz + 0.01 * zStep) / zStep);
-            return GetVerticIndex(ix, iy, iz);
+            int ix = (int)((x - minx) / xStep + err);            
+            int iy = (int)((y - miny) / yStep + err);            
+            int iz = (int)((z - minz) / zStep + err);            
+            return new Int32XYZ(ix, iy, iz);
         }
+        
         public long GetVerticIndex(int ix, int iy, int iz)
         {
             return ix + iy * xNum + iz * xNum * yNum;
         }
+        public long GetVerticIndex(Int32XYZ p)
+        {
+            return GetVerticIndex(p.x,p.y,p.z);
+        }
         public long GetVerticIndex(int ix, int iy, int iz, int vert)
         {
+            xyNum = xNum * yNum;
             long icur = ix + iy * xNum + iz * xyNum;
             switch (vert)
             {
@@ -1018,70 +1493,36 @@ namespace DataCollection
         /// |-----|
         /// |  p  |
         /// --------->x
-        public Vector64 GetGridCoord(int ix, int iy, int iz)
-        { 
+        public Vector32 GetGridCoord(int ix, int iy, int iz)
+        {
             double x = minx + ix * xStep;
             double y = miny + iy * yStep;
             double z = minz + iz * zStep;
-            return new Vector64(x, y, z);
+            double v = this[ix,iy,iz];
+            return new Vector32(x, y, z,v);
         }
-        public Vector64 GetGridCoord(long id)
+        public Vector32 GetGridCoord(long id)
         {
-            int ix, iy, iz;
-            GetXYZIndexFromIndex(id, out ix, out iy, out iz);
-            return GetGridCoord(ix,iy,iz);
+            GetXYZIndexFromIndex(id, out int ix, out int iy, out int iz);
+            return GetGridCoord(ix, iy, iz);
         }
-        public Vector32 GetVerticCoord(int ix, int iy, int iz, int ver)
+
+        public Vector32 GetVerticCoord(int ix0, int iy0, int iz0, int ver)
         {
-            Vector32 p = new Vector32();
-            p.X = (float)(minx + ix * xStep);
-            p.Y = (float)(miny + iy * yStep);
-            p.Z = (float)(minz + iz * zStep);
-            long icur = ix + iy * xNum + iz * xyNum;
-            switch (ver)
-            {
-                case 0:
-                    break;
-                case 1:
-                    icur += 1;
-                    p.X += (float)xStep;
-                    break;
-                case 2:
-                    icur += 1;
-                    icur += xyNum;
-                    p.X += (float)xStep;
-                    p.Z += (float)zStep;
-                    break;
-                case 3:
-                    icur += xyNum;
-                    p.Z += (float)zStep;
-                    break;
-                case 4:
-                    icur += xNum;
-                    p.Y += (float)yStep;
-                    break;
-                case 5:
-                    icur += 1;
-                    icur += xNum;
-                    p.X += (float)xStep;
-                    p.Y += (float)yStep;
-                    break;
-                case 6:
-                    icur += 1;
-                    icur += xNum;
-                    icur += xyNum;
-                    p.X += (float)xStep;
-                    p.Y += (float)yStep;
-                    p.Z += (float)zStep;
-                    break;
-                case 7:
-                    icur += xyNum;
-                    icur += xNum;
-                    p.Y += (float)yStep;
-                    p.Z += (float)zStep;
-                    break;
-            }
-            return p;
+            int ix = ix0;
+            int iy = iy0;
+            int iz = iz0;
+            if (ver == 1) ix++;
+            if (ver == 2) { ix++; iz++; }
+            if (ver == 3) iz++;
+            if (ver == 4) iy++;
+            if (ver == 5) { ix++; iy++; }
+            if (ver == 6) { ix++; iy++;iz++; }
+            if (ver == 7) { iy++; iz++; }
+            if (ix >= xNum) ix = xNum - 1;
+            if (iy >= yNum) iy = yNum - 1;
+            if (iz >= zNum) iz = zNum - 1;
+            return GetGridCoord(ix, iy, iz);
         }
 
         public void InitBlankTable()
@@ -1385,20 +1826,37 @@ namespace DataCollection
             return false;
         }
         */
-        public bool CutWithSurface(C2DGridData data, int onaxis, bool keepup = false)
+        public void OverlapDem(C2DGridData data, bool on_top = true)
         {
-            if (onaxis == 2) return CutWithZSurface(data, keepup);
-            else return false;
+            double x, y, z;
+            double val;
+            double z1 = data.minz;
+            double z2 = data.maxz; //最高点
+            int znum = 0;
+            maxz = z2;
+            
+            zStep = (maxz - minz) / (zNum-1);
+
+            for( int iy = 0; iy < yNum; iy++ )
+            {
+                for (int ix = 0; ix < xNum; ix++)
+                {
+                    x = minx + xStep * ix;
+                    y = miny + yStep * iy;
+                    z = data.GetGridValue(x, y);
+                    znum = (int)((z2 - z) / zStep);
+                    if ( znum <= 0 || znum >= zNum ) continue;
+                    for(int iz = 0;iz < zNum-znum; iz++ )
+                    {
+                        val = GetGridValue(ix, iy,iz+znum);
+                        SetGridValue(ix, iy, iz,val);
+                    }
+                }
+            }
+
         }
-        /// <summary>
-        /// Cut 3D grid with meshes on Z axis
-        /// </summary>
-        /// <param name="data">2D grid data</param>
-        /// <param name="keepup">keep upper part</param>
-        /// <param name="exchangeXY">change x and y</param>        
-        /// <param name="zscale"></param>
-        /// <returns></returns>
-        public bool CutWithZSurface(C2DGridData data, bool keepup = false, bool exchangeXY = false, double offset = 0)
+
+        public bool CutWithZSurfaceOnUniform(C2DGridData data, bool keepup = false, bool exchangeXY = false, double offset = 0)
         {
             double x0, y0, z0;
             double vx, vy, vz;
@@ -1408,7 +1866,7 @@ namespace DataCollection
 
             bool[] blanked = new bool[xNum * yNum * zNum];
             for (id = 0; id < xNum * yNum * zNum; id++)
-                blanked[id] = false;        
+                blanked[id] = false;
 
             //set z grid first
             for (iy = 0; iy < yNum; iy++)
@@ -1417,20 +1875,19 @@ namespace DataCollection
                 for (ix = 0; ix < xNum; ix++)
                 {
                     x0 = minx + xStep * ix;
-
                     if (exchangeXY) vz = data.GetGridValue(y0, x0) + offset;
-                    else vz = data.GetGridValue(x0, y0) + offset;
+                    else vz = data.GetGridValue(x0, y0) + offset;                    
                     //0--1--2--3
                     //iz = (int)((vz - minz + 0.01 * zStep) / zStep);
-                    iz = (int)( (vz - minz) / zStep );
+                    iz = (int)((vz - minz) / zStep);
 
                     if (keepup) // blank below( 0 - iz )
                     {
-                        if ( vz < minz || iz < 0) continue;
+                        if (vz < minz || iz < 0) continue;
                         if (iz > zNum - 1) iz = zNum - 1;
 
                         //2--z轴，sort=2坐标轴方向，保留较高位置的值
-                        SetBlankValue(ix, iy, iz, (float)vz, AxisEnum.zAxis, AxisOrderEnum.Upper);
+                        SetBlankValue(ix, iy, iz, vz, AxisEnum.zAxis, AxisOrderEnum.Upper);
                         for (int i = 0; i <= iz; i++)
                         {
                             id = ix + iy * xNum + i * xyNum;
@@ -1440,11 +1897,11 @@ namespace DataCollection
                     }
                     else // keep lower，blank upper(iz - zNum）
                     {
-                        if ( iz >= zNum - 1 ) continue;
-                        if ( iz < -1 ) iz = -1;
+                        if (iz >= zNum - 1) continue;
+                        if (iz < -1) iz = -1;
 
                         //2--z轴，sort=1坐标轴方向，保留较低位置的值
-                        if(iz >= 0)SetBlankValue(ix, iy, iz, (float)vz, AxisEnum.zAxis, AxisOrderEnum.Lower);
+                        if (iz >= 0) SetBlankValue(ix, iy, iz, vz, AxisEnum.zAxis, AxisOrderEnum.Lower);
 
                         for (int i = iz + 1; i < zNum; i++)
                         {
@@ -1476,7 +1933,7 @@ namespace DataCollection
                     {
                         id0 = GetVerticIndex(ix, iy, iz);
                         b0 = blanked[id0];
-                        
+
                         // intersection on y axis
                         //y axis edge 04
                         id4 = GetVerticIndex(ix, iy + 1, iz);
@@ -1496,8 +1953,8 @@ namespace DataCollection
                             if (l2 < 0) l2 = -l2;
                             vy = y0 + yStep * l1 / (l1 + l2);
                             //0----vy---->1
-                            if (b0) SetBlankValue(id0, (float)vy, AxisEnum.yAxis, AxisOrderEnum.Upper);
-                            else SetBlankValue(id0, (float)vy, AxisEnum.yAxis, AxisOrderEnum.Lower);
+                            if (b0) SetBlankValue(id0, vy, AxisEnum.yAxis, AxisOrderEnum.Upper);
+                            else SetBlankValue(id0, vy, AxisEnum.yAxis, AxisOrderEnum.Lower);
                         }
 
                         // intersection on x axis
@@ -1509,7 +1966,7 @@ namespace DataCollection
                             vz = data.GetGridValue(x0, y0);
                             vz1 = data.GetGridValue(x0 + xStep, y0);
                             //vz = data.GetGridValue(ix, iy);
-                            //vz1 = data.GetGridValue(ix+1,iy);
+                            //vz1 = data.GetGridValue(ix + 1, iy);
 
                             z0 = minz + iz * zStep;
                             l1 = vz - z0;
@@ -1517,8 +1974,148 @@ namespace DataCollection
                             if (l1 < 0) l1 = -l1;
                             if (l2 < 0) l2 = -l2;
                             vx = x0 + xStep * l1 / (l1 + l2);
-                            if (b0) SetBlankValue(id0, (float)vx, AxisEnum.xAxis, AxisOrderEnum.Upper);
-                            else SetBlankValue(id0, (float)vx, AxisEnum.xAxis, AxisOrderEnum.Lower);
+                            if (b0) SetBlankValue(id0, vx, AxisEnum.xAxis, AxisOrderEnum.Upper);
+                            else SetBlankValue(id0, vx, AxisEnum.xAxis, AxisOrderEnum.Lower);
+                        }
+
+                    }//for (iz = 0; iz < zNum - 1; iz++)
+                }//for (ix = 0; ix < xNum-1; ix++)
+            }//for (iy = 0; iy < yNum-1; iy++)
+
+            blanked = null;
+
+            return true;
+        }
+
+        public bool CutWithZSurface(C2DGridData data, bool keepup = false,bool exchange=false, double offset = 0)
+        {
+            return CutWithZSurfaceOnUniform(data, keepup);
+        }
+
+        /// <summary>
+        /// Cut 3D grid with meshes on Z axis
+        /// </summary>
+        /// <param name="data">2D grid data</param>
+        /// <param name="keepup">keep upper part</param>
+        /// <param name="exchangeXY">change x and y</param>        
+        /// <param name="zscale"></param>
+        /// <returns></returns>
+        public bool CutWithZSurfaceOnYAxis(C2DGridData data, bool keepup = false,
+                                    bool exchangeXY = false, double offset = 0)
+        {
+            double x0, y0, z0;
+            double vx, vy, vz;
+            double vz1;
+            int ix, iy, iz,iy0;
+            long id;
+
+            bool[] blanked = new bool[xNum * yNum * zNum];
+            for (id = 0; id < xNum * yNum * zNum; id++)
+                blanked[id] = false;
+
+            Vector32 p,p1,p2;
+            
+            for (ix = 0; ix < xNum; ix++)
+            {
+                for (iz = 0; iz < zNum; iz++)
+                {
+                    p = GetGridCoord(ix, yNum-1, iz);
+                    //是否在范围内
+                    if (p.X < data.minx||p.X > data.maxx||
+                        p.Y < data.miny||p.Y > data.maxy ) continue;
+                    
+                    //计算高程位置
+                    if (exchangeXY) vz = data.GetGridValue(p.Y, p.X) + offset;
+                    else vz = data.GetGridValue(p.X, p.Y) + offset;
+                    iy0 = -1;
+                    for(iy = 0; iy <yNum; iy++ )
+                    {
+                        p = GetGridCoord(ix, iy, iz);
+                        if (p.Z > vz) { iy0 = iy; break; }
+                    }
+
+                    if ( iy0 <= 0 ) continue;
+
+                    if ( keepup) // blank below( 0 - iz )
+                    {
+                        //2--z轴，sort=2坐标轴方向，保留较高位置的值
+                        SetBlankValue(ix, iy0, iz, vz, AxisEnum.yAxis, AxisOrderEnum.Upper);
+                        for (iy = 0; iy <= iy0; iy++)
+                        {                            
+                            blanked[GetVerticIndex(ix, iy, iz)] = true;
+                            SetBlankGrid(ix, iy, iz);
+                        }
+                    }
+                    else // keep lower，blank upper(iz - zNum）
+                    {
+                        //2--z轴，sort=1坐标轴方向，保留较低位置的值
+                        SetBlankValue(ix, iy0, iz, vz, AxisEnum.yAxis, AxisOrderEnum.Lower);
+                        for (iy = iy0; iy < yNum; iy++)
+                        {
+                            blanked[GetVerticIndex(ix, iy, iz)] = true;
+                            SetBlankGrid(ix, iy, iz);
+                        }
+                    }//else keep lower
+                }
+            }              
+
+            ////calculate  x,y intersections
+            ///Y
+            ///|b4-----
+            ///|      |
+            ///O------b1>X
+            ///b0
+
+            bool b0, b1;
+            long id0;
+            double l1, l2;
+            for (iz = 0; iz < zNum - 1; iz++)
+            {
+                for (ix = 0; ix < xNum - 1; ix++)
+                {                    
+                    for (iy = 0; iy < yNum - 1; iy++)
+                    {
+                        id0 = GetVerticIndex(ix, iy, iz);
+                        b0 = blanked[id0];
+                        
+                        // intersection on x axis
+                        b1 = blanked[GetVerticIndex(ix + 1, iy, iz)];
+                        if ( b0 != b1 ) //surface cross it
+                        {
+                            p = GetGridCoord(ix, iy, iz);
+                            p1 = GetGridCoord(ix+1, iy, iz);
+                            vz =  data.GetGridValue(p.X, p.Y);
+                            vz1 = data.GetGridValue(p1.X,p1.Y);
+
+                            l1 = vz - p.Z;
+                            l2 = vz1 - p.Z;
+                            if (l1 < 0) l1 = -l1;
+                            if (l2 < 0) l2 = -l2;
+                            double xstep = GetXStep(ix, iy, iz);
+                            vx = p.X + xstep * l1 / (l1 + l2);
+                            //0----vy---->1
+                            if (b0) SetBlankValue(id0, vx, AxisEnum.xAxis, AxisOrderEnum.Upper);
+                            else SetBlankValue(id0, vx, AxisEnum.xAxis, AxisOrderEnum.Lower);
+                        }
+
+                        // intersection on z axis
+                        b1 = blanked[GetVerticIndex(ix, iy, iz+1)];
+                        if (b0 != b1) //surface cross it
+                        {
+                            p = GetGridCoord(ix, iy, iz);
+                            p1 = GetGridCoord(ix, iy, iz+1);
+                            vz = data.GetGridValue(p.X, p.Y);
+                            vz1 = data.GetGridValue(p1.X, p1.Y);
+
+                            l1 = vz - p.Z;
+                            l2 = vz1 - p.Z;
+                            if (l1 < 0) l1 = -l1;
+                            if (l2 < 0) l2 = -l2;
+                            double zstep = GetZStep(ix, iy, iz);
+                            vz = p.Y + zstep * l1 / (l1 + l2);
+                            //0----vy---->1
+                            if (b0) SetBlankValue(id0, vz, AxisEnum.zAxis, AxisOrderEnum.Upper);
+                            else SetBlankValue(id0, vz, AxisEnum.zAxis, AxisOrderEnum.Lower);
                         }
 
                     }//for (iz = 0; iz < zNum - 1; iz++)
@@ -1897,29 +2494,19 @@ namespace DataCollection
                 }
             }//for (int r = 1; r < zNum; r++)
             return 0;
-        }
-        //grid data
-        public float[] pGridData = null;
-        public double m_blankvalue = C3DData.m_BlankedValue;
-
-        //show state of each unit, 0-don't show,1-show,2-blend
-        public byte[] pgridShowTable;
-        public Int16[] pColorIndexTable;
-
-        public List<UInt32XYZ> pShowIndexArray = new List<UInt32XYZ>();
-        public List<CTriangle3f> pTriangleArray = new List<CTriangle3f>();
-       
+        }       
+    
         public override void Clear()
         {
             base.Clear();
             pShowIndexArray.Clear();
             pTriangleArray.Clear();
-            pGridData = null;
+            pGridData = null;            
             pgridShowTable = null;
             pColorIndexTable = null;
             ColorScale = new CColorScale();           
         }
-        private void Init()
+        public void Init()
         {
             xNum = yNum = zNum = 0;
             minx = miny = minz = minv = 0.0;
@@ -1950,7 +2537,7 @@ namespace DataCollection
         {
             Init();
         }
-        public C3DGridData(int nx, int ny, int nz)
+        public C3DGridData(int nx, int ny, int nz, float initval = float.NaN)
         {
             Init();
             xNum = nx;
@@ -1958,6 +2545,10 @@ namespace DataCollection
             zNum = nz;
             xyNum = xNum * yNum;
             pGridData = new float[nx * ny * nz];
+            for( int i = 0;i<pGridData.Length;i++)
+            {
+                pGridData[i] = initval;
+            }
         }
         public void ClearShowBuffer()
         {
@@ -2031,10 +2622,12 @@ namespace DataCollection
         }
         public ColorRGBA GetColor(double v)
         {
+            if (ShowAsStratum) ColorScale.IsSmooth = false;
             return new ColorRGBA(ColorScale.GetColor(v));
         }
         public int GetColorIndex(double v)
         {
+            if (ShowAsStratum) ColorScale.IsSmooth = false;
             return ColorScale.GetColorIndex(v);
         }
         public int GetColorIndex(Int32XYZ xyz)
@@ -2219,132 +2812,65 @@ namespace DataCollection
         }
         public double GetGridValue(int ix, int iy, int iz)
         {
-            return pGridData[GetVerticIndex(ix, iy, iz)];
+            return GetGridValue(GetVerticIndex(ix, iy, iz));
         }
         public void SetGridValue(int ix, int iy, int iz,double val)
         {
             pGridData[GetVerticIndex(ix, iy, iz)] = (float)val;
         }
-        public double GetGridValue(double x, double y, double z, bool interpolation = true, bool normalized = false)
+
+        public double GetGridValue( double x, double y, double z, 
+                                    bool interpolation = true, 
+                                    bool normalized = false)
         {
             //check is in blank area
             //if ( IsInBlankArea(x, y, z) ) return m_blankvalue;
 
             double v = 0;
-            if (!interpolation) v = GetGridValueWithOutInterpolation(x, y, z);
-            else v = GetGridValueWithInterpolation(x, y, z);
+            if ( !interpolation ) v = GetGridValueWithOutInterpolation(x, y, z);
+            else v = GetGridValueWithInterpolation(x, y, z, 0);
+            
+            if( v < minv ) v = minv;
+            if( v > maxv ) v = maxv;
+
             if (normalized)
             {
                 v = NormalizeValue(v);
             }
             return v;
         }
-        /// <summary>
-        /// 在网格边上进行插值 x 
-        /// </summary>
-        /// <param name="ix">网格单元ix</param>
-        /// <param name="iy">网格单元iy</param>
-        /// <param name="iz">网格单元iz</param>
-        /// <param name="x"></param>
-        /// <returns></returns>
-        public double GetXEdgeGridValue(int ix, int iy, int iz, double x)
+        public bool IsGridIndexValid(int ix,int iy,int iz)
         {
-            if (ix >= xNum - 1) return GetGridValue(xNum - 1, iy, iz);
-            double x1 = minx + ix * xStep;
-            double v1 = GetGridValue(ix, iy, iz);
-            double v2 = GetGridValue(ix + 1, iy, iz);
-            return v1 + (v2 - v1) * (x - x1) / xStep;
+            if(ix <0 || iy <0 || iz <0)return false;
+            if(ix >= xNum ||  iy >= yNum || iz >= zNum) return false;
+            return true;
         }
-        public double GetYEdgeGridValue(int ix, int iy, int iz, double y)
+        public void GeometryLimited(ref int ix, ref int iy, ref int iz)
         {
-            if (iy >= yNum - 1) return GetGridValue(ix, yNum - 1, iz);
-            double y1 = miny + iy * yStep;
-            double v1 = GetGridValue(ix, iy, iz);
-            double v2 = GetGridValue(ix, iy + 1, iz);
-            return v1 + (v2 - v1) * (y - y1) / yStep;
+            if (ix < 0) ix = 0;
+            if (iy < 0) iy = 0;
+            if (iz < 0) iz = 0;
+            if (ix >= xNum ) ix = xNum - 1;
+            if (iy >= yNum ) iy = yNum - 1;
+            if (iz >= zNum ) iz = zNum - 1;
         }
-        public double GetZEdgeGridValue(int ix, int iy, int iz, double z)
+        public int GeometryLimited(int id,AxisEnum axis)
         {
-            //最右侧单元节点
-            if (iz >= zNum - 1) return GetGridValue(ix, iy, zNum - 1);
-            double z1 = minz + iz * zStep;
-            double v1 = GetGridValue(ix, iy, iz);
-            double v2 = GetGridValue(ix, iy, iz + 1);
-            return v1 + (v2 - v1) * (z - z1) / zStep;
-        }
+            if ( id < 0 ) return 0;
 
-        /// <summary>
-        /// 在六面体网格面中插值计算
-        /// </summary>
-        /// <param name="ix"></param>
-        /// <param name="iy"></param>
-        /// <param name="iz"></param>
-        /// <param name="x"></param>
-        /// <param name="y"></param>
-        /// <returns></returns>
-        public double GetXOYFaceGridValue(int ix, int iy, int iz, double x, double y)
-        {
-            if (ix >= xNum - 1 || iy >= yNum - 1)
-            {
-                throw new Exception("out of range.");
+            if (axis == AxisEnum.xAxis)
+            { 
+                if( id >= xNum ) return xNum-1;
             }
-            double y1 = miny + iy * yStep;
-            double v1 = GetXEdgeGridValue(ix, iy, iz, x);
-            double v2 = GetXEdgeGridValue(ix, iy + 1, iz, x);
-            return v1 + (v2 - v1) * (y - y1) / yStep;
-        }
-        public double GetXOZFaceGridValue(int ix, int iy, int iz, double x, double z)
-        {
-            if (ix >= xNum - 1 || iz >= zNum - 1)
+            else if (axis == AxisEnum.yAxis)
             {
-                throw new Exception("out of range.");
+                if (id >= yNum) return yNum - 1;
             }
-            double z1 = minz + iz * zStep;
-            double v1 = GetXEdgeGridValue(ix, iy, iz, x);
-            double v2 = GetXEdgeGridValue(ix, iy, iz + 1, x);
-            return v1 + (v2 - v1) * (z - z1) / zStep;
-        }
-        public double GetYOZFaceGridValue(int ix, int iy, int iz, double y, double z)
-        {
-            if (iz >= zNum - 1 || iy >= yNum - 1)
+            else //if (axis == AxisEnum.zAxis)
             {
-                throw new Exception("out of range.");
+                if (id >= zNum) return zNum - 1;
             }
-            double z1 = minz + iz * zStep;
-            double v1 = GetYEdgeGridValue(ix, iy, iz, y);
-            double v2 = GetYEdgeGridValue(ix, iy, iz + 1, y);
-            return v1 + (v2 - v1) * (z - z1) / zStep;
-        }
-        /// <summary>
-        /// 获取网格内任意位置的值，插值
-        /// </summary>
-        /// <param name="x"></param>
-        /// <param name="y"></param>
-        /// <param name="z"></param>
-        /// <returns></returns>
-        public double GetValueFromCubeGrid(double x, double y, double z)
-        {
-            int ix0 = (int)((x - minx) / xStep);
-            int iy0 = (int)((y - miny) / yStep);
-            int iz0 = (int)((z - minz) / zStep);
-            int ix1, ix2, iy1, iy2, iz1, iz2;
-
-            ix1 = ix2 = ix0;
-            if (minx + ix0 * xStep - x > 0 //不在网格节点上
-                 && ix0 < xNum - 1) //非最右侧网格
-                ix2 = ix1 + 1;
-
-            iy1 = iy2 = iy0;
-            if (miny + iy0 * yStep - y > 0 && iy0 < yNum - 1)
-                iy2 = iy1 + 1;
-
-            iz1 = iz2 = iz0;
-            if (minz + iz0 * zStep - z > 0 && iz0 < zNum - 1)
-                iz2 = iz1 + 1;
-
-            if (ix1 == ix2 && iy1 == iy2 && iz1 == iz2) return GetGridValue(ix0, iy0, iz0);
-
-            return 0;
+            return id;
         }
         public bool IsGridValid(int ix,int iy,int iz)
         {
@@ -2526,8 +3052,108 @@ namespace DataCollection
                     break;
                 }
             }
-
             return edge;
+        }
+
+        struct SearchBoundBox 
+        {
+            public int X1;
+            public int Y1;
+            public int Z1;
+            public int X2;
+            public int Y2;
+            public int Z2;
+            public SearchBoundBox(int x1,int y1,int z1,int x2,int y2,int z2)
+            {
+                X1 = x1;Y1 = y1; Z1 = z1;
+                X2 = x2;Y2 = y2; Z2 = z2;
+            }
+            public bool IsValid()
+            {
+                if (X1 >= X2 || Y1 >= Y2 || Z1 >= Z2) return false;
+                else return true;
+            }
+        }
+        void DoSearchOnBoundBox( SearchBoundBox box, ref List<Vector32>points,float invalid_value)
+        {
+            float val;
+            double x, y, z;
+            for (int iz = box.Z1; iz < box.Z2; iz++)
+            {
+                z = minz + iz * zStep;
+                for (int iy = box.Y1; iy < box.Y2; iy++)
+                {
+                    y = miny + iy * yStep;
+                    for (int ix = box.X1; ix < box.X2; ix++)
+                    {
+                        x = minx + ix * xStep;
+                        val = this[ix, iy, iz];
+                        if (val <= 0) continue;
+                        if (val == invalid_value) continue;
+                        if (IsBlankValue(val)) continue;
+                        points.Add(new Vector32(x, y, z, val));
+                    }//for (int ix = x1; ix < x2; ix++)
+                }//for (int iy = y1; iy < y2; iy++
+            }//for (int iz = z1; iz < z2; iz++)
+        }
+        public List<Vector32> SearchNearestPoints(int ix0,int iy0,int iz0,float invalid_value)
+        {
+            int rad, xrad,yrad,zrad;
+            int x1, x2, y1, y2, z1, z2;
+            int ox1=-1, ox2=-1, oy1=-1, oy2=-1, oz1=-1, oz2=-1;
+            int max_rad = xNum;
+            if (yNum > max_rad) max_rad = yNum;
+            if (zNum > max_rad) max_rad = zNum;
+            
+            List<Vector32>points = new List<Vector32>();
+            List<SearchBoundBox>boxes = new List<SearchBoundBox>();
+            SearchBoundBox box;
+            //最大步长
+            double xx = xStep;
+            if (yStep > xx) xx = yStep;
+            if (zStep > xx) xx = zStep;            
+           // for (rad = 1; rad < max_rad; rad++)
+            {
+                rad = max_rad / 5;
+                xrad = (int)(xx / xStep * rad + 0.5);
+                yrad = (int)(xx / yStep * rad + 0.5);
+                zrad = (int)(xx / zStep * rad + 0.5);
+                x1 = ix0 - xrad; x2 = ix0 + xrad;
+                y1 = iy0 - yrad; y2 = iy0 + yrad;
+                z1 = iz0 - zrad; z2 = iz0 + zrad;
+                GeometryLimited(ref x1, ref y1, ref z1);
+                GeometryLimited(ref x2, ref y2, ref z2);
+                DoSearchOnBoundBox(new SearchBoundBox(x1, y1, z1, x2, y2, z2), ref points, invalid_value);
+                //if (rad == 1)
+                //{
+                //    boxes.Add(new SearchBoundBox(x1, y1, z1, x2, y2, z2));
+                //}
+                //else
+                //{
+                //    box = new SearchBoundBox(x1, y1, z1, x2, y2, oz1);
+                //    if (box.IsValid()) boxes.Add(box);
+                //    box = new SearchBoundBox(x1, y1, oz2, x2, y2, z2);
+                //    if (box.IsValid()) boxes.Add(box);
+                //    box = new SearchBoundBox(x1, y1, oz1, x2, oy1, oz2);
+                //    if (box.IsValid()) boxes.Add(box);
+                //    box = new SearchBoundBox(x1, oy2, oz1, x2, y2, oz2);
+                //    if (box.IsValid()) boxes.Add(box);
+                //    box = new SearchBoundBox(x1, oy1, oz1, ox1, oy2, oz2);
+                //    if (box.IsValid()) boxes.Add(box);
+                //    box = new SearchBoundBox(ox2, oy1, oz1, x2, oy2, oz2);
+                //    if (box.IsValid()) boxes.Add(box);
+                //}
+                //foreach (SearchBoundBox b in boxes)
+                //{
+                //    DoSearchOnBoundBox(b, ref points, invalid_value);
+                //}
+                //boxes.Clear();
+                if (points.Count > 1) return points;
+                ox1 = x1; ox2 = x2;
+                oy1 = y1; oy2 = y2;
+                oz1 = z1; oz2 = z2;
+            }
+            return points;
         }
         /// <summary>
         /// 查找周围的值，有效且非背景值
@@ -2607,75 +3233,64 @@ namespace DataCollection
         //scale 0 - 1
         public double GetGridValueWithOutInterpolation(double x, double y, double z)
         {
-            int ix = (int)((x - minx + 0.01 * xStep) / xStep);
-            int iy = (int)((y - miny + 0.01 * yStep) / yStep);
-            int iz = (int)((z - minz + 0.01 * zStep) / zStep);
-            if (ix < 0) ix = 0;
-            if (iy < 0) iy = 0;
-            if (iz < 0) iz = 0;
-            if (ix >= xNum) ix = xNum - 1;
-            if (iy >= yNum) iy = yNum - 1;
-            if (iz >= zNum) iz = zNum - 1;
-            return GetGridValue(ix, iy, iz);
-        }
-
-        public double GetGridValueWithInterpolation(double x, double y, double z)
-        {
-            if ( x < minx || y < miny || z < minz || 
-                 x > maxx || y > maxy || z > maxz ) 
-                return m_blankvalue;
-
             int ix = (int)((x - minx) / xStep);
             int iy = (int)((y - miny) / yStep);
             int iz = (int)((z - minz) / zStep);
+            GeometryLimited(ref ix, ref iy, ref iz);
+            return GetGridValue(ix, iy, iz);
+        }       
 
-            //网格节点位置
-            double x1 = minx + ix * xStep;
-            double y1 = miny + iy * yStep;
-            double z1 = minz + iz * zStep;
+        /// <summary>
+        /// 从网格中获取任意点的值-有问题需要优化？？2024-3-29
+        /// </summary>
+        /// <param name="x"></param>
+        /// <param name="y"></param>
+        /// <param name="z"></param>
+        /// <param name="err">是否节点位置误差判断%步长</param>
+        /// <returns></returns>
+        public double GetGridValueWithInterpolation(double x, double y, double z, int searchingGridLength = 0)
+        {
+            if ( x < minx || y < miny || z < minz || 
+                 x > maxx || y > maxy || z > maxz ) 
+                return float.NaN;
+            
+            Vector32 p = new Vector32(x,y,z);
+            int ix0 = (int)((x - minx) / xStep);
+            int iy0 = (int)((y - miny) / yStep);
+            int iz0 = (int)((z - minz) / zStep);
+            int sn = searchingGridLength;
+            InterpolatorBase ip = null;
+            if (sn >= 1)
+            {
+                ip = new RBFInterpolationGlobal();
+                for (int iz = iz0 - sn; iz <= iz0 + sn && iz >= 0 && iz < zNum; iz++)
+                {
+                    for (int iy = iy0 - sn; iy <= iy0 + sn && iy >= 0 && iy < yNum; iy++)
+                    {
+                        for (int ix = ix0 - sn; ix <= ix0 + sn && ix >= 0 && ix < xNum; ix++)
+                        {
+                            p = GetGridCoord(ix, iy, iz);
+                            if (!IsBlanked(p.V)) ip.AddPoint(p);
+                        }
+                    }
+                }
+            }
+            else 
+            {
+                ip = new IdwInterpolatorGlobal();
+                for (int i = 0; i < 8; i++)
+                {
+                    p = GetVerticCoord(ix0, iy0, iz0, i);
+                    if (!IsBlanked(p.V)) ip.AddPoint(p);
+                }
+            }
 
-            bool bx = false, by = false, bz = false;
-
-            //在节点位置
-            if (x - x1 < xStep * 0.0001) bx = true;
-            if (y - y1 < yStep * 0.0001) by = true;
-            if (z - z1 < zStep * 0.0001) bz = true;
-
-            // if on the corner of the cube 在节点上
-            if (bx && by && bz) return GetGridValue(ix, iy, iz);
-
-            // if on the edge of the cube 在X边上
-            if (!bx && by && bz)
-            {
-                return GetXEdgeGridValue(ix, iy, iz, x);
-            }
-            if (!by && bx && bz)//在Y边上
-            {
-                return GetYEdgeGridValue(ix, iy, iz, y);
-            }
-            if (!bz && bx && by)//在Z边上
-            {
-                return GetZEdgeGridValue(ix, iy, iz, z);
-            }
-
-            // if on the faces of the cube 在面上
-            if (bx && !by && !bz)
-            {
-                return GetYOZFaceGridValue(ix, iy, iz, y, z);
-            }
-            if (by && !bx && !bz)
-            {
-                return GetXOZFaceGridValue(ix, iy, iz, x, z);
-            }
-            if (bz && !bx && !by)
-            {
-                return GetXOYFaceGridValue(ix, iy, iz, x, y);
-            }
-            //否则在网格内
-            double v1 = GetXOYFaceGridValue(ix, iy, iz, x, y);
-            double v2 = GetXOYFaceGridValue(ix, iy, iz + 1, x, y);
-            return v1 + (v2 - v1) * (z - z1) / zStep;
+            if (ip.pointCount < 1)return float.NaN;
+            double val = ip.GetInterpolatedValue(x, y, z);
+            ip.Clear();
+            return val;           
         }
+        
         public bool InitTables()
         {
             long all = xNum * yNum * zNum;            
@@ -2688,6 +3303,7 @@ namespace DataCollection
             }
 
             //create defaut color scale
+            if( ColorScale.Levels.Count < 1 )
             ColorScale = new CColorScale(minv, maxv);
             
             InitBlankTable();
@@ -2725,27 +3341,92 @@ namespace DataCollection
             xyNum = xNum * yNum;
         }
 
-        public bool SaveVersion10(BinaryWriter br)
+        bool SaveVersion10(BinaryWriter br)
         {
             float v;
             for (long i = 0; i < zNum * xyNum; i++)
             {
                 v = pGridData[i];
-                if (IsBlankedGrid(i)) v =(float)( minv - (maxv - minv) * 0.5 - 1);
-                br.Write(v); 
+                if (IsBlankedGrid(i)) v = float.NaN;
+                br.Write(v);
             }
             return true;
         }
-        public bool LoadVersion10(BinaryReader br)
+                
+        bool LoadVersion10BySampling(BinaryReader br, double scale, int nx, int ny, int nz)
         {
             //read data from stream
-            for (long i = 0; i < zNum * xyNum; i++)
-                pGridData[i] = br.ReadSingle();
-
+            if (pGridData == null) pGridData = new float[nx * ny * nz];            
+            for (long i = 0; i < pGridData.Length; i++) pGridData[i] = float.NaN;
+            long id;
+            int ix, iy, iz;            
+            for (long i = 0;i<xyzNum;i++)
+            {
+                float v = br.ReadSingle();
+                Int32XYZ xyz = GetIndices(i);
+                ix = (int)(xyz.x / scale);
+                iy = (int)(xyz.y / scale);
+                iz = (int)(xyz.z / scale);
+                if (ix >= nx) ix = nx - 1;
+                if (iy >= ny) iy = ny - 1;
+                if (iz >= nz) iz = nz - 1;
+                id = ix + iy * nx + iz * nx * ny;
+                if ( float.IsNaN(pGridData[id]) ) pGridData[id] = v;
+            }
+            return true;
+        }
+        public static byte[] FloatArrayToByteArray(float[] floatArr)
+        {
+            int intSize = sizeof(float) * floatArr.Length;
+            byte[] bytArr = new byte[intSize];
+            //申请一块非托管内存
+            IntPtr ptr = Marshal.AllocHGlobal(intSize);
+            //复制int数组到该内存块
+            Marshal.Copy(floatArr, 0, ptr, floatArr.Length);
+            //复制回byte数组
+            Marshal.Copy(ptr, bytArr, 0, bytArr.Length);
+            //释放申请的非托管内存
+            Marshal.FreeHGlobal(ptr);
+            return bytArr;
+        }
+        public float[] ByteArrayToFloatArray(byte[] source)
+        {
+            int len = source.Length / sizeof(float);
+            float[] dest = new float[len];
+            IntPtr srcArrayPtr = Marshal.UnsafeAddrOfPinnedArrayElement(source, 0);
+            Marshal.Copy(srcArrayPtr, dest, 0, dest.Length);
+            return dest;
+            //int len = source.Length / sizeof(float);
+            //float []dest = new float[len];
+            //for(int i=0;i<len;i++) 
+            //{
+            //    dest[i] = BitConverter.ToSingle(source,4*i);
+            //}
+            //return dest;
+        }
+        bool LoadVersion10(BinaryReader br)
+        {
+            //read data from stream
+            //if (pGridData == null) pGridData = new float[xNum*yNum*zNum];
+            //for (long i = 0; i < zNum * xyNum; i++)
+            //{ 
+            //    pGridData[i] = br.ReadSingle(); 
+            //    if( pGridData[i]==float.MaxValue ||
+            //        pGridData[i] == m_blankvalue ||
+            //        float.IsInfinity(pGridData[i]) )
+            //    {
+            //        pGridData[i] = float.NaN;
+            //    }
+            //}
+            pGridData = null;
+            byte[] bytes = br.ReadBytes(xNum * yNum * zNum * sizeof(float));
+            pGridData = ByteArrayToFloatArray(bytes);
+            bytes = null;
+            //UpdateRange();
             return true;
         }
 
-        public bool SaveVersion11(BinaryWriter br)
+        bool SaveVersion11(BinaryWriter br)
         {
             //read ColorScale
             ColorScale.WriteBinary(br);
@@ -2774,7 +3455,7 @@ namespace DataCollection
             return true;
         }
         //flag == "DSGE"
-        public bool LoadVersion11(BinaryReader br)
+        bool LoadVersion11(BinaryReader br)
         {
             //read ColorScale
             ColorScale.LoadBinary(br);
@@ -2818,7 +3499,7 @@ namespace DataCollection
             
             return true;
         }
-        public bool SaveVersion12(BinaryWriter br)//flag == "DSGF"
+        bool SaveVersion12(BinaryWriter br)//flag == "DSGF"
         {
             //pColorIndexTable
             int n = 0;
@@ -2840,7 +3521,6 @@ namespace DataCollection
                 br.Write(p.y);
                 br.Write(p.z);
             }
-
             //render method
             br.Write((int)meshMethod);
 
@@ -2854,10 +3534,17 @@ namespace DataCollection
             {
                 ret = m_MarchCubeExt.SaveBinary(br);
             }
-
+            //save overlay info 12.5
+            br.Write(enableOverlap);
+            br.Write(overlaps.Count);
+            for (int i = 0; i < overlaps.Count; i++)
+            {
+                br.Write((int)overlaps[i].channel);
+                if (!overlaps[i].Save(br)) return false;
+            }
             return ret;
         }
-        public bool LoadVersion12(BinaryReader br)//flag == "DSGF"
+        bool LoadVersion12(BinaryReader br)//flag == "DSGF"
         {            
             // if (!InitTables()) return false;
             //pColorIndexTable
@@ -2906,19 +3593,73 @@ namespace DataCollection
                 if( !m_MarchCubeExt.LoadBinary(br) ) return false;
             }
 
+            //load overlay info 12.5
+            enableOverlap = br.ReadBoolean();
+            int n = br.ReadInt32();
+            overlaps.Clear();
+            for (int i = 0; i < n; i++)
+            {
+                COverlayObject overlap;
+                OverlapChannel channel = (OverlapChannel)br.ReadInt32();
+                if (channel == OverlapChannel.Vector2D)
+                    overlap = new Arrow2DOverlayObject(0, 1);
+                else overlap = new COverlayObject(0);
+                if (!overlap.Load(br))
+                {
+                    errMessage = "Failed load overlaps. " + overlap.errMessage;
+                    return false;
+                }
+                overlaps.Add(overlap);
+            }
+
             return true;
         }
 
+        //bool SaveVersion13(BinaryWriter br)//flag == "DSGG"
+        //{
+        //    int length = 0;
+        //    if (pGridCoords != null) length = pGridCoords.Length;
+        //    br.Write(length);            
+        //    for(int i = 0; i < length; i++) 
+        //    {
+        //        Vector32 p = pGridCoords[i];
+        //        br.Write(p.X);
+        //        br.Write(p.Y);
+        //        br.Write(p.Z);
+        //    }
+        //    return true;
+        //}
+        //bool LoadVersion13(BinaryReader br)
+        //{
+        //    //return true;
+        //    int length = br.ReadInt32();
+        //    if ( length <= 0 ) return true;
+        //    if (pGridCoords != null)pGridCoords = null;
+        //    if (pGridCoords == null)pGridCoords = new Vector32[length];
+        //    float x, y, z,v;
+        //    for (int i = 0; i < length; i++)
+        //    {
+        //        x = br.ReadSingle();
+        //        y = br.ReadSingle();
+        //        z = br.ReadSingle();
+        //        v = pGridData[i];
+        //        pGridCoords[i] = new Vector32(x,y,z,v);
+        //    }
+        //    //UpdateGeometry();            
+        //    return true;
+        //}
+               
         //save to Geo3D Stream file
         public override bool SaveAs(BinaryWriter br)
         {
             try
             {               
-                Write3DGridHeader(br, 12);
+                Write3DGridHeader(br, 13);
                 SaveObjHeader(br);
                 SaveVersion10(br);
                 SaveVersion11(br);
                 SaveVersion12(br);                
+                //SaveVersion13(br);
                 return true;
             }
             catch (IOException e)
@@ -2928,14 +3669,17 @@ namespace DataCollection
             }
         }//Save3DGridData
         //save to 3dgrid file
-        public override bool SaveAs(string path)
+        public override bool SaveAs(string path,int version = 10)
         {
             try
             {
                 BinaryWriter br;
                 br = new BinaryWriter(new FileStream(path, FileMode.Create));
-                Write3DGridHeader(br, 10);
-                SaveVersion10(br);
+                Write3DGridHeader(br, version);
+                if (version >= 10) SaveVersion10(br);
+                if (version >= 11) SaveVersion11(br);
+                if (version >= 12) SaveVersion12(br);
+                //if (version >= 13) SaveVersion13(br);
                 br.Close();
                 return true;
             }
@@ -2946,7 +3690,60 @@ namespace DataCollection
             }
         }//SaveAs(BinaryWriter br)          
 
-        public bool LoadFrom10(BinaryReader br)
+        public override bool LoadObjHeader(BinaryReader br)
+        {
+            type = (ShapeEnum)br.ReadInt32();
+            int n = br.ReadInt32();
+            char[] header = new char[n];
+            header = br.ReadChars(n);
+            Name = new string(header);
+
+            Visible = br.ReadBoolean();
+            Blend = br.ReadBoolean();
+            Alpha = br.ReadSingle();
+            IsWireFrameMode = br.ReadBoolean();
+
+            minx = br.ReadDouble();
+            maxx = br.ReadDouble();
+            miny = br.ReadDouble();
+            maxy = br.ReadDouble();
+            minz = br.ReadDouble();
+            maxz = br.ReadDouble();
+            minv = br.ReadDouble();
+            maxv = br.ReadDouble();
+
+            float x = br.ReadSingle();
+            float y = br.ReadSingle();
+            float z = br.ReadSingle();
+            offset = new vec3(x, y, z);
+
+            x = br.ReadSingle();
+            y = br.ReadSingle();
+            z = br.ReadSingle();
+            scale = new vec3(x, y, z);
+
+            x = br.ReadSingle();
+            y = br.ReadSingle();
+            z = br.ReadSingle();
+            rotate = new vec3(x, y, z);
+
+            //added new
+            Longitude1 = br.ReadDouble();
+            Longitude2 = br.ReadDouble();
+            Latitude1 = br.ReadDouble();
+            Latitude2 = br.ReadDouble();
+            Elevation1 = br.ReadDouble();
+            Elevation2 = br.ReadDouble();
+            float version = br.ReadSingle(); //added 2022-3-9
+                                             //added new 2022-8
+            if (version > 1.0f)
+            {
+                textureStruct = new TextureStruct();
+                textureStruct.Load(br);
+            }
+            return true;
+        }
+        bool LoadFrom10(BinaryReader br)
         {
             try
             {  
@@ -2966,73 +3763,13 @@ namespace DataCollection
             }
             catch (IOException e)
             {
+                Clear();
                 errMessage = "Open file failed.\n" + e.Message;
                 return false;
             }
         }
-        public bool LoadFrom11(BinaryReader br)
-        {
-            try
-            {  
-                if (!LoadObjHeader(br))
-                {
-                    Clear();
-                    return false;
-                }
+        
 
-                if (!LoadVersion10(br))
-                {
-                    Clear();
-                    return false;
-                }
-                InitTables();
-                if (!LoadVersion11(br))
-                {
-                    Clear();
-                    return false;
-                }
-
-                return true;
-            }
-            catch (IOException e)
-            {
-                errMessage = "Open file failed.\n" + e.Message;
-                return false;
-            }
-        }
-        public bool LoadFrom12(BinaryReader br)
-        {
-            try
-            { 
-                if (!LoadObjHeader(br))
-                {
-                    Clear();
-                    return false;
-                }
-                if (!LoadVersion10(br))
-                {
-                    Clear();
-                    return false;
-                }
-                InitTables();
-                if (!LoadVersion11(br))
-                {
-                    Clear();
-                    return false;
-                }
-                if (!LoadVersion12(br))
-                {
-                    Clear();
-                    return false;
-                }
-                return true;
-            }
-            catch (IOException e)
-            {
-                errMessage = "Open file failed.\n" + e.Message;
-                return false;
-            }
-        }
         public override bool LoadFrom(BinaryReader br)
         {
             Clear();
@@ -3041,18 +3778,183 @@ namespace DataCollection
                 Clear();
                 return false;
             }
-            if (Version == 1.0f) return LoadFrom10(br);
-            else if (Version == 1.1f) return LoadFrom11(br);
-            else //if (version == 1.2f) 
-                return LoadFrom12(br);
+            bool ret = false;
+            if (Version >= 10) ret = LoadFrom10(br);            
+            if (Version >= 11) ret = LoadVersion11(br);
+            if (Version >= 12) ret = LoadVersion12(br);            
+            //if (Version >= 13)ret = LoadVersion13(br);            
+            return ret;
+        }//bool LoadFrom(BinaryReader br)       
+        /// <summary>
+        /// 将大网格数据采样保存到文件
+        /// </summary>
+        /// <param name="source"></param>
+        /// <param name="dest"></param>
+        /// <param name="nx">新采样网格NX</param>
+        /// <param name="ny">新采样网格NY</param>
+        /// <param name="nz">新采样网格NZ</param>
+        /// <returns></returns>
+        public bool SaveBigGridTo(string source, string dest,
+                                  int nx, int ny, int nz)
+        {
+            BinaryReader br = new BinaryReader(new FileStream(source, FileMode.Open));
+            if (!Read3DGridHeader(br))
+            {
+                br.Close();
+                return false;
+            }
+            br.Close();
+            return SaveBigGridTo(source,dest,nx,ny,nz,minx,miny,minz,maxx,maxy,maxz);
+        }
+        /// <summary>
+        /// 将大网格数据抽样保存到
+        /// </summary>
+        /// <param name="source">源数据文件</param>
+        /// <param name="dest">目标数据文件</param>
+        /// <param name="nx">x抽样网格数</param>
+        /// <param name="ny">y抽样网格数</param>
+        /// <param name="nz">z抽样网格数</param>
+        /// <param name="x1">抽样数据起始位置x1</param>
+        /// <param name="y1">抽样数据起始位置y1</param>
+        /// <param name="z1">抽样数据起始位置z1</param>
+        /// <param name="x2">抽样数据结束位置x2</param>
+        /// <param name="y2">抽样数据结束位置y2</param>
+        /// <param name="z2">抽样数据结束位置z2</param>
+        /// <returns></returns>
+        public bool SaveBigGridTo(string source, string dest,
+                                  int nx, int ny, int nz,
+                                  double x1, double y1, double z1,
+                                  double x2, double y2, double z2)
+        {
+            BinaryReader br = null;
+            try
+            {
+                br = new BinaryReader(new FileStream(source, FileMode.Open));                
+                if (!Read3DGridHeader(br))
+                {
+                    br.Close();
+                    return false;
+                }
 
-        }//bool LoadFrom(BinaryReader br)
+                xStep = (maxx - minx) / (xNum - 1);
+                yStep = (maxy - miny) / (yNum - 1);
+                zStep = (maxz - minz) / (zNum - 1);
+                int ix1 = (int)((x1 - minx) / xStep + 0.1);
+                int ix2 = (int)((x2 - minx) / xStep + 0.1);
+                int iy1 = (int)((y1 - miny) / yStep + 0.1);
+                int iy2 = (int)((y2 - miny) / yStep + 0.1);
+                int iz1 = (int)((z1 - minz) / zStep + 0.1);
+                int iz2 = (int)((z2 - minz) / zStep + 0.1);
+                GeometryLimited(ref ix1, ref iy1, ref iz1);
+                GeometryLimited(ref ix2, ref iy2, ref iz2);
 
+                C3DGridData data = new C3DGridData(nx, ny, nz);                
+                float[] grid = new float[xNum * yNum];//一个Z平面数据
+                
+                //定位到Z平面位置
+                if (iz1 > 0) br.BaseStream.Seek(iz1 * xNum * yNum * sizeof(float),
+                                                SeekOrigin.Current );
+                
+                int ix0, iy0, iz0, ix, iy, iz;
+                for (iz = iz1; iz <= iz2; iz++ )
+                {
+                    byte[] buf = br.ReadBytes(xNum * yNum * sizeof(float));
+                    Buffer.BlockCopy(buf, 0, grid, 0, buf.Length);
+                    buf = null;                    
+                    iz0 = (int)( (double)(iz - iz1) / (iz2 - iz1) * (nz-1) + 0.1);
+                    if (iz0 >= nz) iz0 = nz - 1;
+                    for (iy0 = 0; iy0 < ny; iy0++)
+                    {
+                        iy = (int)(iy1 + (double)iy0 / (ny - 1) * (iy2 - iy1) + 0.1);
+                        if (iy >= iy2) iy = iy2;
+                        for (ix0 = 0; ix0 < nx; ix0++)
+                        {
+                            ix = (int)( ix1 + (double)ix0 / (nx - 1) * (ix2 - ix1) + 0.1 );
+                            if (ix >= ix2) ix = ix2;                            
+                            data[ix0, iy0, iz0] = grid[ix + iy * xNum];
+                        }
+                    }                   
+                }
+                grid = null;
+                br.Close();
+                data.ResetDataRange(x1, x2, y1, y2, z1, z2, minv, maxv);
+                data.SaveAs(dest);                
+                data.Clear();
+                return true;
+            }
+            catch (IOException e)
+            {
+                if (br != null) br.Close();
+                errMessage = "Open file failed.\n" + e.Message;
+                return false;
+            }
+
+        }
+        /// <summary>
+        /// 读取大数据网格
+        /// </summary>
+        /// <param name="path"></param>
+        /// <param name="sampleScale"> 抽样比例 > 1 </param>
+        /// <returns></returns>
+        public bool LoadFromBigGrid(string path, double sampleScale = 1.0)
+        {
+            BinaryReader br = null;
+            try
+            {               
+                br = new BinaryReader(new FileStream(path, FileMode.Open));
+                Name = path;
+
+                if (!Read3DGridHeader(br))
+                {
+                    br.Close();
+                    Clear();
+                    return false;
+                }
+                
+                int nx = (int)(xNum / sampleScale);
+                int ny = (int)(yNum / sampleScale);
+                int nz = (int)(zNum / sampleScale);
+                if (nx < 2) nx = 2;
+                if (ny < 2) ny = 2;
+                if (nz < 2) nz = 2;
+                pGridData = new float[nx * ny * nz];
+
+                bool ret = false;
+                if (Version >= 10) ret = LoadVersion10BySampling(br, sampleScale,nx, ny,nz);
+                if (!ret)
+                {
+                    Clear();
+                    br.Close();
+                    return false;
+                }
+                
+                xNum = nx;
+                yNum = ny;
+                zNum = nz;
+                xyNum = xNum * yNum;
+                UpdateRange();
+
+                br.Close();
+                InitTables();
+                return true;
+            }
+            catch (IOException e)
+            {
+                if (br != null) br.Close();
+                errMessage = "Open file failed.\n" + e.Message;
+                return false;
+            }
+
+        }
+        //bool Load3DGridData(string path)
+        
         public override bool LoadFrom(string path)
         {
             BinaryReader br = null;
             try
             {
+               // Stopwatch stopwatch = new Stopwatch();
+               // stopwatch.Start();
                 br = new BinaryReader(new FileStream(path, FileMode.Open));
                 Name = path;
 
@@ -3064,28 +3966,20 @@ namespace DataCollection
                 }
 
                 bool ret = false;
-                if (version == 10) ret = LoadVersion10(br);
-                else if (version == 11) ret = LoadVersion10(br);
-                else if (version == 12) ret = LoadVersion12(br);
-                else
-                {
-                    Clear();
-                    errMessage = "not a valid 3D grid file.";
-                    br.Close();
-                    return false;
-                }
-
+                if (Version >= 10) ret = LoadVersion10(br);
+                if (Version >= 11) ret = LoadVersion11(br);
+                if (Version >= 12) { ret = LoadVersion12(br); }
+               // if (Version >= 13) ret = LoadVersion13(br);
                 if (!ret)
                 {
                     Clear();
                     br.Close();
                     return false;
-                }
-                
+                }                
                 br.Close();
-
+               // stopwatch.Stop();
+              //  double els = stopwatch.Elapsed.TotalMilliseconds;
                 InitTables();
-
                 return true;
             }
             catch (IOException e)
@@ -3097,23 +3991,22 @@ namespace DataCollection
 
         }//bool Load3DGridData(string path)
 
-        /// <summary>
-        /// Read Object Header
-        /// </summary>
-        /// <param name="br"></param>
-        /// <returns></returns>
-        public bool Read3DGridHeader(BinaryReader br)
+        public bool Read3DGridHeader(string path )
         {
+            BinaryReader br = new BinaryReader(new FileStream(path, FileMode.Open));
+
             string tag = new string(br.ReadChars(4));
             string header1 = "DSGD";//Version tag = "DSGD" 1.0
             string header2 = "DSGE";//Version tag = "DSGE" 1.1
             string header3 = "DSGF";//Version tag = "DSGF" 1.2
+            string header4 = "DSGG";//Version tag = "DSGF" 1.3
+            Version = 0;
+            if (tag == header1) Version = 10;
+            else if (tag == header2) Version = 11;
+            else if (tag == header3) Version = 12;
+            else if (tag == header4) Version = 13;
 
-            version = 0;
-            if (tag == header1) version = 10;
-            if (tag == header2) version = 11;
-            if (tag == header3) version = 12;
-            if (version < 1)
+            if (Version < 10)
             {
                 errMessage = "not a correct file format.";
                 Clear();
@@ -3142,34 +4035,102 @@ namespace DataCollection
             {
                 Clear();
                 errMessage = "Invalid data header.";
+                //  return false;
+            }            
+            
+            br.Close();
+            return true;
+        }
+       
+        /// <summary>
+        /// Read Object Header
+        /// </summary>
+        /// <param name="br"></param>
+        /// <returns></returns>
+        public bool Read3DGridHeader(BinaryReader br)
+        {
+            string tag = new string(br.ReadChars(4));
+            string header1 = "DSGD";//Version tag = "DSGD" 1.0
+            string header2 = "DSGE";//Version tag = "DSGE" 1.1
+            string header3 = "DSGF";//Version tag = "DSGF" 1.2
+            string header4 = "DSGG";//Version tag = "DSGF" 1.3
+            Version = 0;
+            if (tag == header1) Version = 10;
+            else if (tag == header2) Version = 11;
+            else if (tag == header3) Version = 12;
+            else if (tag == header4) Version = 13;
+
+            if (Version < 10)
+            {
+                errMessage = "not a correct file format.";
+                Clear();
                 return false;
             }
+
+            xNum = br.ReadInt32();
+            yNum = br.ReadInt32();
+            zNum = br.ReadInt32();
+            minx = br.ReadDouble();
+            maxx = br.ReadDouble();
+            miny = br.ReadDouble();
+            maxy = br.ReadDouble();
+            minz = br.ReadDouble();
+            maxz = br.ReadDouble();
+            minv = br.ReadDouble();
+            maxv = br.ReadDouble();
+
+            if ((xNum <= 0) || (yNum <= 0) || (zNum <= 0) ||
+                double.IsNaN(minv) || double.IsNaN(maxv) ||
+                double.IsNaN(minx) || double.IsNaN(maxx) ||
+                double.IsNaN(miny) || double.IsNaN(maxy) ||
+                double.IsNaN(minz) || double.IsNaN(maxz) ||
+                 (minx >= maxx) || (miny >= maxy) ||
+                 (minz >= maxz) || (minv >= maxv))
+            {
+                Clear();
+                errMessage = "Invalid data header.";
+              //  return false;
+            }
+
+            //if (C3DData.DataVersion >= 1.26f&& version>=12)
+            //{
+            //    EnableGeoreference = br.ReadBoolean();
+            //    Corner1.X = br.ReadDouble();
+            //    Corner1.Y = br.ReadDouble();
+            //    Corner1.Z = br.ReadDouble();
+            //    Corner2.X = br.ReadDouble();
+            //    Corner2.Y = br.ReadDouble();
+            //    Corner2.Z = br.ReadDouble();
+            //}
+
+
             xyNum = xNum * yNum;
             xStep = (maxx - minx) / (xNum - 1);
             yStep = (maxy - miny) / (yNum - 1);
             zStep = (maxz - minz) / (zNum - 1);            
 
-            ColorScale.SetValueRange(minv, maxv);
-            pGridData = new float[xyNum * zNum];  
-
+            ColorScale.SetValueRange(minv, maxv);           
+            
             return true;
         }
-        public bool Write3DGridHeader(BinaryWriter br, int _version = 12)
+        public bool Write3DGridHeader(BinaryWriter br, int _version)
         {
             try 
             {                
                 string header1 = "DSGD";//Version tag = "DSGD" 1.0
                 string header2 = "DSGE";//Version tag = "DSGE" 1.1
-                string header3 = "DSGF";//Version tag = "DSGF" 1.2     
-                if(_version == 11) br.Write(header2.ToCharArray());
+                string header3 = "DSGF";//Version tag = "DSGF" 1.2
+                string header4 = "DSGG";//Version tag = "DSGG" 1.30f                                        
+                if (_version == 11) br.Write(header2.ToCharArray());
                 else if (_version == 12) br.Write(header3.ToCharArray());
+                else if (_version == 13) br.Write(header4.ToCharArray());
                 else  br.Write(header1.ToCharArray());
                 
-                xyNum = xNum * yNum;                
+                xyNum = xNum * yNum;
 
                 br.Write(xNum);
                 br.Write(yNum);
-                br.Write(zNum);                
+                br.Write(zNum);
                 br.Write(minx);
                 br.Write(maxx);
                 br.Write(miny);
@@ -3178,7 +4139,17 @@ namespace DataCollection
                 br.Write(maxz);
                 br.Write(minv);
                 br.Write(maxv);
-                
+
+                //if( C3DData.Version >=1.26f )
+                //{
+                //    br.Write(EnableGeoreference);
+                //    br.Write(Corner1.X);
+                //    br.Write(Corner1.Y);
+                //    br.Write(Corner1.Z);
+                //    br.Write(Corner2.X);
+                //    br.Write(Corner2.Y);
+                //    br.Write(Corner2.Z);
+                //}
                 return true;
             }
             catch(Exception e)
@@ -3199,14 +4170,14 @@ namespace DataCollection
         /// <returns>叠加网格数</returns>
         static public int LayerOverlaped(C3DGridData data1, C3DGridData data2, int method =0, bool reset = false, double layervalue = 0)
         {
-            long length = data1.pGridData.Length;
-            if (data2.pGridData.Length != length) return 0; //网格不一致
+            long length = data1.Length;
+            if (data2.Length != length) return 0; //网格不一致
             int count = 0;
             float v1, v2, v;
             for (long id = 0; id < length; id++)
             {
-                v1 = data1.pGridData[id];
-                v2 = data2.pGridData[id];
+                v1 = data1[id];
+                v2 = data2[id];
                 if ( data2.IsBlankValue(v2) ) continue;
 
                 if (reset) v2 = (float)layervalue; //地层值重置
@@ -3218,7 +4189,7 @@ namespace DataCollection
                     else v = (v1 + v2) / 2;
                 }
 
-                data1.pGridData[id] = v;
+                data1[id] = v;
                 count++;
 
                 //update data range
@@ -3259,7 +4230,7 @@ namespace DataCollection
                 if ( data2.IsBlankValue(v2) ) continue; //invalid value
 
                 //grid position at data2
-                p2 = data2.GetGridCoord(id2);
+                p2 = data2.GetGridCoord(id2).toVector64();
                 
                 if (reset) v2 = (float)layervalue; //地层值重置
 
@@ -3278,7 +4249,7 @@ namespace DataCollection
                             else z = p2.z + iz * data1.zStep;
 
                             //grid index at data1
-                            id1 = data1.GetVerticIndexByPosition(x,y,z);
+                            id1 = data1.GetVerticIndex(data1.GetVerticIndexByPosition(x, y, z));
 
                             //data2 excceed data1 range
                             if ( !data1.IsGridValid( id1 ) ) continue;
@@ -3336,8 +4307,7 @@ namespace DataCollection
                 TriangleObj obj = m_MarchCubeExt.pISOSurfaceExt.toTriangleObj();
 
                 if (ply.Length > 0) filename = ply;
-                else filename = path + "\\" + obj.Name + ".ply";
-
+              
                 obj.SaveAsPLY(filename);
                 obj.Clear();
 
@@ -3544,6 +4514,12 @@ namespace DataCollection
             ColorScale.SetValueRange(minv, maxv);
             data = null;
         }
+        public void ResetGridData(float value)
+        {
+            if (pGridData == null) return;
+            for (int i = 0; i < pGridData.Length; i++)
+                pGridData[i] = value;
+        }
         public void ResetDataRange(double x1, double x2, double y1, double y2, double z1, double z2, double v1, double v2)
         {
             minx = x1;
@@ -3617,7 +4593,7 @@ namespace DataCollection
                         v2 = p2DSlicers[iz2].GetGridValue(ix, iy);
                         v = v1 + (v2 - v1) * dz / zStep;
                         id = ix + iy * nx1 + iz * nx1 * ny1;
-                        d0.pGridData[id] = (float)v;
+                        d0[id] = (float)v;
                     }
             }
             p2DSlicers.Clear();
@@ -3657,6 +4633,7 @@ namespace DataCollection
             int icolor = 0;
             UInt32 ix, iy, iz;
             long id;
+            float alpha = 0;
             for (iz = 0; iz < zNum; iz++)
                 for (iy = 0; iy < yNum; iy++)
                     for (ix = 0; ix < xNum; ix++)
@@ -3675,7 +4652,13 @@ namespace DataCollection
 
                         icolor = pColorIndexTable[id];
                         is_show = ColorScale[icolor].Visible;
-                        if (is_show) pgridShowTable[id] = 1;
+                        alpha = ColorScale[icolor].A;
+
+                        if (is_show)
+                        {
+                            if (alpha == 1f) pgridShowTable[id] = 1;
+                            else pgridShowTable[id] = 2;//透明色
+                        }                        
                         else pgridShowTable[id] = 0;
                     }
             UpdateOptimisedShowArray();
@@ -3835,6 +4818,21 @@ namespace DataCollection
                 CreateTriangle(xyz);
             }
         }//public void UpdateTriangleFromShowArray()
+
+        public void CreateMarchingCubeTriangleExt(List<PointF>closedValues)
+        {
+            InitTables();
+            m_MarchCubeExt.Clear();
+            m_MarchCubeExt.SetData(this);
+            m_MarchCubeExt.ClearClosedValues();
+            for(int i=0;i<closedValues.Count;i++) 
+            {
+                m_MarchCubeExt.AddClosedValue(closedValues[i].X, closedValues[i].Y);
+            }
+            
+            m_MarchCubeExt.DoSearchEdges();
+        }
+
         public void CreateMarchingCubeTriangleExt()
         {
             m_MarchCubeExt.Clear();
@@ -3919,6 +4917,76 @@ namespace DataCollection
             line = "# --Isosurface extracted from " + Name;
             wr.WriteLine(line);
             return iso.toTriangleObj().ExportVRML(wr);
+        }
+
+        //updated Mar 25 2023--add multiple properties support
+        public bool IsIntersected(vec2 p1, vec2 p2)
+        {
+            if (p1.y < p2.x || p2.y < p1.x) return false;
+            else return true;
+        }
+        
+        public vec2 MergeVisibleValues(vec2 p1,vec2 p2)
+        {
+            float v1 = Math.Min(p1.x, p2.x);
+            float v2 = Math.Max(p1.y, p2.y);
+            return new vec2(v1,v2);
+        }
+
+        public void MergeVisibleValues()
+        {
+            if (visibleValues.Count < 2) return;
+
+            bool[] merged = new bool[visibleValues.Count];
+            for (int i = 0; i < merged.Length; i++) merged[i] = false;
+            vec2 p0,p;            
+            for (int i = 0; i < visibleValues.Count; i++)
+            {
+                p0 = visibleValues[i];                
+                for (int j = i+1; j < visibleValues.Count; j++)
+                {
+                    if ( merged[j] ) continue;
+                    p = visibleValues[j];
+                    if (IsIntersected(p0, p))
+                    { 
+                        p0 = MergeVisibleValues(p0, p);
+                        merged[j] = true;
+                    }
+                }
+                visibleValues[i] = p0;
+            }
+            List<vec2> values = new List<vec2>();
+            for (int i = 0; i < visibleValues.Count; i++)
+            {
+                if (!merged[i]) values.Add(visibleValues[i]);
+            }
+            visibleValues.Clear();
+            visibleValues = values;
+        }
+
+        public void UpdateByVisibleValues()
+        {
+            if ( visibleValues.Count < 1 ) return;
+            float v;
+            for (long i = 0; i < pGridData.Length; i++)
+            {
+                v = pGridData[i];
+                pBlankTable[i] = true;
+                pgridShowTable[i]= 0;
+                if (IsBlankValue(v)) continue;
+                if (!IsValidV(v)) continue;                
+                if( IsVisibleValues(v)) pBlankTable[i] = false;
+                pgridShowTable[i]= 1;
+            }
+        }
+        bool IsVisibleValues(double v)
+        {
+            foreach(vec2 p in visibleValues)
+            {
+                if (v >= p.x && v <= p.y) 
+                    return true;
+            }
+            return false;
         }
     }
 }

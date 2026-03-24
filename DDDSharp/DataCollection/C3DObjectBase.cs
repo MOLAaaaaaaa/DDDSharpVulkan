@@ -108,6 +108,8 @@ namespace DataCollection
             RenderMode = rendermode;
         }
     }
+
+    [TypeConverter(typeof(CategoriesSortedByClassDefinitionConverter))]
     public class C3DObjectBase
     {
         public C3DObjectBase Parent = null;
@@ -117,7 +119,44 @@ namespace DataCollection
         public vec3 offset = new vec3(0,0,0);
         public vec3 rotate = new vec3(0, 0, 0);
         public vec3 scale = new vec3(1, 1, 1);
-        public int itemKey = -1; //用于建立数据字典
+        public int itemKey = -1; //用于建立数据字典   
+
+        //生成对象键值（识别唯一码）
+        public ulong mainKey = C3DData.CreateRandomKey(10);
+        ulong CreateMainKey(int len = 10)
+        {
+            Random rand = new Random(DateTime.Now.Millisecond);
+            string ss = "1";
+            for (int i=0;i<len;i++)
+            {
+                ss +=rand.Next(10);
+            }
+            return ulong.Parse(ss);
+        }
+        public C3DObjectBase()
+        {            
+        }
+        /// <summary>
+        /// 切割地形
+        /// </summary>
+        /// <param name="mesh">地形对象</param>
+        /// <returns>false失败，errMessage</returns>
+        public virtual bool TopographyBlank(CMesh mesh)
+        {
+            return true;
+        }
+        public Bitmap ResizeImage(Bitmap bmp, int newWidth, int newHeight)
+        {
+            // 获取这个图片的宽和高
+            float width = bmp.Width;
+            float height = bmp.Height;
+            Bitmap newbmp = new Bitmap(newWidth, newHeight);
+            Graphics g = Graphics.FromImage(newbmp);
+            g.DrawImage(bmp, 0, 0, newWidth, newHeight);
+            g.Dispose();
+            return newbmp;
+        }
+
         public virtual void DoOffset(double offx,double offy,double offz)
         {
             offset.x += (float)offx;
@@ -365,37 +404,58 @@ namespace DataCollection
         public double maxy = 0.0;
         public double maxz = 0.0;
         public double maxv = 0.0;
-       
-        [CategoryAttribute("Geometries"), DisplayNameAttribute("X Minimum"),Browsable(false)]
+        [CategoryAttribute("Geometries"), DisplayNameAttribute("XYZ Ranges"), Browsable(true)]
+        public virtual string RangeString 
+        { 
+            get 
+            {
+                string ss = "X[" + Minx.ToString() + ","+Maxx.ToString() + "], ";
+                ss+= "Y[" + Miny.ToString() + "," + Maxy.ToString() + "], ";
+                ss += "Z[" + Minz.ToString() + "," + Maxz.ToString() + "]";
+                return ss;
+            } 
+            set 
+            {
+                string[] ss = value.Split(new char[] {',','\t',' ', 'X','Y','Z','[',']' },StringSplitOptions.RemoveEmptyEntries);
+                if (ss.Length > 0) double.TryParse(ss[0], out minx);
+                if (ss.Length > 1) double.TryParse(ss[1], out maxx);
+                if (ss.Length > 2) double.TryParse(ss[2], out miny);
+                if (ss.Length > 3) double.TryParse(ss[3], out maxy);
+                if (ss.Length > 4) double.TryParse(ss[4], out minz);
+                if (ss.Length > 5) double.TryParse(ss[5], out maxz);                
+            } 
+        }
+
+        [CategoryAttribute("Geometries"), DisplayNameAttribute("X Minimum"),Browsable(true)]
         public virtual double Minx { get { return minx; } set { minx = value; } }
 
-        [CategoryAttribute("Geometries"), DisplayNameAttribute("X Maximum"), Browsable(false)]
+        [CategoryAttribute("Geometries"), DisplayNameAttribute("X Maximum"), Browsable(true)]
         public virtual double Maxx { get { return maxx; } set { maxx = value; } }
 
         [CategoryAttribute("Geometries"), DisplayNameAttribute("X Length"), Browsable(false)]
         public virtual double XWidth{ get { return Maxx - Minx; } }
 
-        [CategoryAttribute("Geometries"), DisplayNameAttribute("Y Minimum"), Browsable(false)]
+        [CategoryAttribute("Geometries"), DisplayNameAttribute("Y Minimum"), Browsable(true)]
         public virtual double Miny { get { return miny; } set { miny = value; } }
 
-        [CategoryAttribute("Geometries"), DisplayNameAttribute("Y Maximum"), Browsable(false)]
+        [CategoryAttribute("Geometries"), DisplayNameAttribute("Y Maximum"), Browsable(true)]
         public virtual double Maxy { get { return maxy; } set { maxy = value; } }
 
         [CategoryAttribute("Geometries"), DisplayNameAttribute("Y Length"), Browsable(false)]
         public virtual double YWidth { get { return Maxy - Miny; } }
 
-        [CategoryAttribute("Geometries"), DisplayNameAttribute("Z Minimum"), Browsable(false)]
+        [CategoryAttribute("Geometries"), DisplayNameAttribute("Z Minimum"), Browsable(true)]
         public virtual double Minz { get { return minz; } set { minz = value; } }
 
-        [CategoryAttribute("Geometries"), DisplayNameAttribute("Z Maximum"), Browsable(false)]
+        [CategoryAttribute("Geometries"), DisplayNameAttribute("Z Maximum"), Browsable(true)]
         public virtual double Maxz { get { return maxz; } set { maxz = value; } }
 
         [CategoryAttribute("Geometries"), DisplayNameAttribute("Z Length"), Browsable(false)]
         public virtual double ZWidth { get { return Maxz - Minz; } }
 
-        [CategoryAttribute("Geometries"), DisplayNameAttribute("V Minimum"), Browsable(false)]
+        [CategoryAttribute("Geometries"), DisplayNameAttribute("V Minimum"), Browsable(true)]
         public virtual double Minv { get { return minv; } set { minv = value; } }
-        [CategoryAttribute("Geometries"), DisplayNameAttribute("V Maximum"), Browsable(false)]
+        [CategoryAttribute("Geometries"), DisplayNameAttribute("V Maximum"), Browsable(true)]
         public virtual double Maxv { get { return maxv; } set { maxv = value; } }
 
         [CategoryAttribute("Geometries"), DisplayNameAttribute("V Length"), Browsable(false)]
@@ -535,34 +595,40 @@ namespace DataCollection
             if (maxx != minx) x = (float)((p.x - minx) / (maxx - minx));
             if (maxy != miny) y = (float)((p.y - miny) / (maxy - miny));
         }
-        public virtual vec2 GetTextureCoord(Vector32 p)
+        public virtual vec2 GetTextureCoord(Vector32 p, planEnum plan = planEnum.XOY)
         {
             vec2 tex = new vec2();
-            GetTextureCoord(p,out tex.x,out tex.y);
+            GetTextureCoord(p,out tex.x,out tex.y,plan);
             return tex;
         }
-        public virtual void GetTextureCoord(Vector32 p, out float x, out float y)
+
+        public virtual void GetTextureCoord(Vector32 p, 
+                                            out float x, 
+                                            out float y, 
+                                            planEnum plan = planEnum.XOY)
         {
             if (IsEarthMapped) { GetEarthTextureCoord(p, out x, out y); return; }
             x = y = -1;
             int ret1 = 0;
             int ret2 = 1;
-            double xx = maxx - minx;
-            double yy = maxy - miny;
-            double zz = maxz - minz;
-            if (xx >= yy && xx >= zz)
+            
+            double xx = Maxx - Minx;
+            double yy = Maxy - Miny;
+            double zz = Maxz - Minz;
+
+            if (xx >= yy && xx >= zz) //XX is long edge
             {
                 ret1 = 0;
                 ret2 = 1;
                 if (zz >= yy) ret2 = 2;
             }
-            else if (yy >= xx && yy >= zz)
+            else if (yy >= xx && yy >= zz) //YY is long edge
             {
                 ret1 = 1;
                 ret2 = 0;
                 if (zz >= xx) ret2 = 2;
             }
-            else if (zz >= xx && zz >= yy)
+            else if (zz >= xx && zz >= yy)//ZZ is long edge
             {
                 ret1 = 2;
                 ret2 = 0;
@@ -603,10 +669,142 @@ namespace DataCollection
         //convert points according to tranform,scale,offset
         public virtual bool IsInRange(double x,double y,double z)
         {
-            if (x < minx || x > maxx) return false;
-            if (y < miny || y > maxy) return false;
-            if (z < minz || z > maxz) return false;
+            if (x < Minx || x > Maxx) return false;
+            if (y < Miny || y > Maxy) return false;
+            if (z < Minz || z > Maxz) return false;
             return true;
+        }
+        /// <summary>
+        /// 点到物体的距离--包围盒距离
+        /// </summary>
+        /// <param name="p0"></param>
+        /// <returns></returns>
+        public virtual double GetNearestDistance(Vector64 p0)
+        {
+            double mindist = 1e30,dist;
+            Vector64 p1 = new Vector64(Minx, Miny, Minz);
+            Vector64 p2 = new Vector64(Maxx, Miny, Minz);
+            Vector64 p3 = new Vector64(Maxx, Maxy, Minz);
+            Vector64 p4 = new Vector64(Minx, Maxy, Minz);
+            dist = p0.Distance(p1);
+            if(mindist >dist)mindist = dist;
+            dist = p0.Distance(p2);
+            if (mindist > dist) mindist = dist;
+            dist = p0.Distance(p3);
+            if (mindist > dist) mindist = dist;
+            dist = p0.Distance(p4);
+            if (mindist > dist) mindist = dist;
+
+            dist = p0.Distance((p1 + p2) / 2);
+            if (mindist > dist) mindist = dist;
+            dist = p0.Distance((p2 + p3) / 2);
+            if (mindist > dist) mindist = dist;
+            dist = p0.Distance((p3 + p4) / 2);
+            if (mindist > dist) mindist = dist;
+            dist = p0.Distance((p1 + p4) / 2);
+            if (mindist > dist) mindist = dist;
+
+            p1 = new Vector64(Minx, Miny, Maxz);
+            p2 = new Vector64(Maxx, Miny, Maxz);
+            p3 = new Vector64(Maxx, Maxy, Maxz);
+            p4 = new Vector64(Minx, Maxy, Maxz);
+            dist = p0.Distance(p1);
+            if (mindist > dist) mindist = dist;
+            dist = p0.Distance(p2);
+            if (mindist > dist) mindist = dist;
+            dist = p0.Distance(p3);
+            if (mindist > dist) mindist = dist;
+            dist = p0.Distance(p4);
+            if (mindist > dist) mindist = dist;
+
+            dist = p0.Distance((p1 + p2) / 2);
+            if (mindist > dist) mindist = dist;
+            dist = p0.Distance((p2 + p3) / 2);
+            if (mindist > dist) mindist = dist;
+            dist = p0.Distance((p3 + p4) / 2);
+            if (mindist > dist) mindist = dist;
+            dist = p0.Distance((p1 + p4) / 2);
+            if (mindist > dist) mindist = dist;
+
+            return mindist;
+        }
+        /// <summary>
+        /// 按包围盒计算最近距离
+        /// </summary>
+        /// <param name="p0"></param>
+        /// <returns></returns>
+        public virtual double GetNearestDistanceWrapped(Vector64 p0)
+        {
+            double mindist = 1e30, dist;
+            Vector64 p1 = new Vector64(Minx, Miny, Minz);
+            Vector64 p2 = new Vector64(Maxx, Miny, Minz);
+            Vector64 p3 = new Vector64(Maxx, Maxy, Minz);
+            Vector64 p4 = new Vector64(Minx, Maxy, Minz);
+            dist = p0.Distance(p1);
+            if (mindist > dist) mindist = dist;
+            dist = p0.Distance(p2);
+            if (mindist > dist) mindist = dist;
+            dist = p0.Distance(p3);
+            if (mindist > dist) mindist = dist;
+            dist = p0.Distance(p4);
+            if (mindist > dist) mindist = dist;
+
+            dist = p0.Distance((p1 + p2) / 2);
+            if (mindist > dist) mindist = dist;
+            dist = p0.Distance((p2 + p3) / 2);
+            if (mindist > dist) mindist = dist;
+            dist = p0.Distance((p3 + p4) / 2);
+            if (mindist > dist) mindist = dist;
+            dist = p0.Distance((p1 + p4) / 2);
+            if (mindist > dist) mindist = dist;
+
+            Vector64 p5 = new Vector64(Minx, Miny, Maxz);
+            Vector64 p6 = new Vector64(Maxx, Miny, Maxz);
+            Vector64 p7 = new Vector64(Maxx, Maxy, Maxz);
+            Vector64 p8 = new Vector64(Minx, Maxy, Maxz);
+
+            dist = p0.Distance(p5);
+            if (mindist > dist) mindist = dist;
+            dist = p0.Distance(p6);
+            if (mindist > dist) mindist = dist;
+            dist = p0.Distance(p7);
+            if (mindist > dist) mindist = dist;
+            dist = p0.Distance(p8);
+            if (mindist > dist) mindist = dist;
+
+            dist = p0.Distance((p5 + p6) / 2);
+            if (mindist > dist) mindist = dist;
+            dist = p0.Distance((p6 + p7) / 2);
+            if (mindist > dist) mindist = dist;
+            dist = p0.Distance((p7 + p8) / 2);
+            if (mindist > dist) mindist = dist;
+            dist = p0.Distance((p5 + p8) / 2);
+            if (mindist > dist) mindist = dist;
+
+            Vector64 down = ((p1 + p2) / 2 + (p3 + p4) / 2) / 2;
+            dist = p0.Distance(down);
+            if (mindist > dist) mindist = dist;
+            Vector64 up = ((p5 + p6) / 2 + (p7 + p8) / 2) / 2;
+            dist = p0.Distance(up);
+            if (mindist > dist) mindist = dist;
+
+            Vector64 left = ((p1 + p4) / 2 + (p5 + p8) / 2) / 2;
+            dist = p0.Distance(left);
+            if (mindist > dist) mindist = dist;
+
+            Vector64 right = ((p2 + p3) / 2 + (p6 + p7) / 2) / 2;
+            dist = p0.Distance(right);
+            if (mindist > dist) mindist = dist;
+
+            Vector64 front = ((p1 + p2) / 2 + (p5 + p6) / 2) / 2;
+            dist = p0.Distance(front);
+            if (mindist > dist) mindist = dist;
+
+            Vector64 back = ((p3 + p4) / 2 + (p7 + p8) / 2) / 2;
+            dist = p0.Distance(back);
+            if (mindist > dist) mindist = dist;
+
+            return mindist;
         }
         public virtual void Normalize() { }
         public virtual void ScaledToRange(double x1, double y1, double z1, double x2, double y2, double z2) { }
@@ -652,8 +850,14 @@ namespace DataCollection
             Latitude2 = obj1.Latitude2;
             Elevation1 = obj1.Elevation1;
             Elevation2 = obj1.Elevation2;
+            
+            //added 2024-11-1
+            mainKey = obj1.mainKey;
+            itemKey = obj1.itemKey;
+            //RenderingBuffers = new List<long>(obj1.RenderingBuffers);
+            //UpdateRenderBuffers = new List<RenderBufferStruct>(obj1.UpdateRenderBuffers);            
         }
-        public virtual bool SaveAs(string path) { return true; }
+        public virtual bool SaveAs(string path,int version = 0) { return true; }
         public virtual bool LoadFrom(string path) { return true; }
         public virtual bool SaveAs(BinaryWriter br) { return true; }
         public virtual bool LoadFrom(BinaryReader br) { return true; }
@@ -855,12 +1059,12 @@ namespace DataCollection
             Latitude2 = br.ReadDouble();
             Elevation1 = br.ReadDouble();
             Elevation2 = br.ReadDouble();
-            Version = br.ReadSingle(); //added 2022-3-9
+            float version = br.ReadSingle(); //added 2022-3-9
             //added new
-            if (Version > 1.0f)
+            if (version > 1.0f)
             {
                 textureStruct = new TextureStruct();
-                textureStruct.Load(br,Version);
+                textureStruct.Load(br, version);
             }
             return true;
         }
@@ -1123,22 +1327,28 @@ namespace DataCollection
             }
             return false;
         }
-
+        public virtual bool IsValueValidate(double val)
+        {
+            if ( double.IsNaN(val) ) return false;
+            else return true;
+        }
+        public virtual bool IsValueValidate(float val)
+        {
+            if (val == float.NaN) return false;
+            else return true;
+        }
+        
         /// <summary>
         /// 判断值val是否是有效值
         /// </summary>
         /// <param name="val"></param>
         /// <param name="err"></param>
         /// <returns></returns>
-        public virtual bool IsBlankValue(double val, double err = 1.0E-3)
+        public virtual bool IsBlankValue(double val, double err = 1.0E-6)
         {
+            if (!IsValueValidate(val)) return true;
             return C3DData.IsBlankValue(val, err);
-        }
-
-        public C3DObjectBase()
-        {
-           
-        }
+        }        
         public virtual bool CalculateNormals(Vector32[] normals, List<Vector32> points, List<Int32XYZ> indices)
         {
             for (int i = 0; i < normals.Length; i++)
@@ -1240,6 +1450,7 @@ namespace DataCollection
     /// <summary>
     /// 3D Object Base 隐藏属性
     /// </summary>
+    [TypeConverter(typeof(CategoriesSortedByClassDefinitionConverter))]
     public class C3DObjectBaseHide : C3DObjectBase
     {
         [CategoryAttribute("Display"), DisplayNameAttribute("Name"), Browsable(false)]

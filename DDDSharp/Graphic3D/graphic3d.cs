@@ -725,6 +725,7 @@ namespace Graphics3D
         public bool enableScale = true;
         public bool enableRotate = true;
         public int maxTrianglesNum = 2000000;
+        static public int maxTextureImageSize = 4096;
         public bool InverseBitmap = false;//图像字节反序RGBA to ABGR
         public CTexture MyTexture = new CTexture();
 
@@ -955,9 +956,11 @@ namespace Graphics3D
         /// <param name="direct">字体顶端单位方向向量</param>        
         public virtual void DrawString( string text, Font font, Color color, 
                                         Vector64 p1, Vector64 p2, Vector64 direct, 
-                                        Color transparentColor,
+                                        Color transparentColor,                                        
                                         TextHorizontalAlignment horAlignment = TextHorizontalAlignment.Left,
-                                        TextVerticalAlignment verAlignment = TextVerticalAlignment.Center )
+                                        TextVerticalAlignment verAlignment = TextVerticalAlignment.Center,
+                                        bool horizontalFlip = false,
+                                        bool verticalFlip = false)
         {
             
         }
@@ -972,9 +975,11 @@ namespace Graphics3D
         /// <param name="direct">字体顶端单位方向向量</param>
         /// <param name="up">字体正方向向量</param>
         public virtual void DrawString(string text, Font font, Color color,float size,
-                                        Vector64 p1, Vector64 direct, Vector64 up,                                      
+                                        Vector64 p1, Vector64 direct, Vector64 up,                                        
                                         TextHorizontalAlignment horAlignment = TextHorizontalAlignment.Left,
-                                        TextVerticalAlignment verAlignment = TextVerticalAlignment.Center)
+                                        TextVerticalAlignment verAlignment = TextVerticalAlignment.Center,
+                                        bool horizontalFlip = false,
+                                        bool verticalFlip = false)
         {
 
         }
@@ -1194,10 +1199,17 @@ namespace Graphics3D
                 {
                     info[i] = new GraphicDeviceInfo();
                     info[i].Name = mo.Properties["NAME"].Value.ToString();
-                    info[i].MemorySize = ulong.Parse(mo.Properties["AdapterRAM"].Value.ToString()) / mb;
-                    info[i].InstalledDisplayDrivers = mo.Properties["InstalledDisplayDrivers"].Value.ToString();
-                    info[i].DriverVersion = mo.Properties["DriverVersion"].Value.ToString();
+
+                    if (mo.Properties["AdapterRAM"].Value == null) info[i].MemorySize = 0;
+                    else info[i].MemorySize = ulong.Parse(mo.Properties["AdapterRAM"].Value.ToString()) / mb;
+
+                    if (mo.Properties["InstalledDisplayDrivers"].Value == null) info[i].InstalledDisplayDrivers = "None";
+                    else info[i].InstalledDisplayDrivers = mo.Properties["InstalledDisplayDrivers"].Value.ToString();
+
+                    if (mo.Properties["DriverVersion"].Value == null) info[i].DriverVersion = "None";
+                    else info[i].DriverVersion = mo.Properties["DriverVersion"].Value.ToString();
                     i++;
+
                 }
                 return info; 
             }
@@ -1687,7 +1699,7 @@ namespace Graphics3D
         public Bitmap textureBitmap = null;
         public DataCollection.TextureMagFilter textureMode = DataCollection.TextureMagFilter.GL_LINEAR;
         public bool bEnableTexture = false;       
-        public virtual int GetMax2DTextureImageSize() { return 1024; }
+        public virtual int GetMax2DTextureImageSize() { return maxTextureImageSize; }
         public virtual void EnableTexture(bool _enable = true) 
         {
             bEnableTexture = _enable;
@@ -1959,18 +1971,36 @@ namespace Graphics3D
             }
             return bmp;
         }
-        public virtual int BindTexture(Image img, TextureMagFilter mode = TextureMagFilter.GL_LINEAR)
-        {
-            textureBitmap = new Bitmap(img);
-            textureMode = mode;
-            return 1;
-        }
+        
         public virtual int BindTexture(Bitmap bmp, TextureMagFilter mode = TextureMagFilter.GL_LINEAR)
         {
             textureBitmap = bmp;
             textureMode = mode;
             return 1;
+        }        
+        static  public Bitmap ResizeImage(Bitmap bmp, int newWidth,int newHeight)
+        {
+            // 获取这个图片的宽和高
+            Bitmap newbmp = new Bitmap(newWidth, newHeight);
+            Graphics g = Graphics.FromImage(newbmp);
+            g.DrawImage(bmp,0,0,newWidth,newHeight);
+            g.Dispose();            
+            return newbmp;
         }
+
+        static public Bitmap TrimImage(Bitmap bmp, Rectangle rect)
+        {
+            // 获取这个图片的宽和高
+            Rectangle srcRect = rect;
+            Rectangle dstRest = new Rectangle(0,0,rect.Width,rect.Height);
+            Bitmap newbmp = new Bitmap(rect.Width, rect.Height);
+            Graphics g = Graphics.FromImage(newbmp);
+            g.DrawImage(bmp, dstRest,srcRect,GraphicsUnit.Pixel);
+            g.Dispose();
+            bmp.Dispose();
+            return newbmp;
+        }
+
         public virtual int BindTexture(byte[] texBytes, int width, int height, DataCollection.TextureMagFilter mode = DataCollection.TextureMagFilter.GL_LINEAR)
         {
             return 1;

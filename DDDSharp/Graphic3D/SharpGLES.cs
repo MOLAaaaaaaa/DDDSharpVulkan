@@ -297,7 +297,9 @@ namespace Graphics3D
                                          Vector64 start, Vector64 end, Vector64 direct,
                                          Color transparent,
                                          TextHorizontalAlignment horAlignment = TextHorizontalAlignment.Left,
-                                        TextVerticalAlignment verAlignment = TextVerticalAlignment.Center)
+                                        TextVerticalAlignment verAlignment = TextVerticalAlignment.Center,
+                                        bool horizontalFlip = false,
+                                        bool verticalFlip = false)
         {
             if (program < 1) return;
 
@@ -305,7 +307,12 @@ namespace Graphics3D
 
             BitmapString bm = new BitmapString(text, font, color,transparent);
             EnableTexture(true);
-            BindTexture(bm.Draw());
+
+            Bitmap bmp = bm.Draw();
+            if (horizontalFlip) bmp.RotateFlip(RotateFlipType.Rotate180FlipX);
+            if (verticalFlip) bmp.RotateFlip(RotateFlipType.Rotate180FlipY);
+
+            BindTexture(bmp);
 
             double width = start.Distance(end);
             double height = width * textureBitmap.Height / textureBitmap.Width;

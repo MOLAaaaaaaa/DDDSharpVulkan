@@ -45,11 +45,15 @@
             this.comboBox1 = new System.Windows.Forms.ComboBox();
             this.VolumeTextBox = new System.Windows.Forms.TextBox();
             this.VolumeButton = new System.Windows.Forms.Button();
+            this.groupBox4 = new System.Windows.Forms.GroupBox();
+            this.ISOValueExtactButton = new System.Windows.Forms.Button();
+            this.PropertiesValuesButton = new System.Windows.Forms.Button();
             ((System.ComponentModel.ISupportInitialize)(this.dataGridView1)).BeginInit();
             this.groupBox1.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.ColorBarBox)).BeginInit();
             this.groupBox2.SuspendLayout();
             this.groupBox3.SuspendLayout();
+            this.groupBox4.SuspendLayout();
             this.SuspendLayout();
             // 
             // SaveButton
@@ -160,7 +164,6 @@
             this.ColorBarBox.Size = new System.Drawing.Size(258, 28);
             this.ColorBarBox.TabIndex = 9;
             this.ColorBarBox.TabStop = false;
-            this.ColorBarBox.Click += new System.EventHandler(this.ColorBarBox_Click);
             this.ColorBarBox.DoubleClick += new System.EventHandler(this.ColorBarBox_DoubleClick);
             // 
             // SelectAllButton
@@ -245,11 +248,44 @@
             this.VolumeButton.UseVisualStyleBackColor = true;
             this.VolumeButton.Click += new System.EventHandler(this.VolumeButton_Click);
             // 
+            // groupBox4
+            // 
+            this.groupBox4.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left) 
+            | System.Windows.Forms.AnchorStyles.Right)));
+            this.groupBox4.Controls.Add(this.ISOValueExtactButton);
+            this.groupBox4.Controls.Add(this.PropertiesValuesButton);
+            this.groupBox4.Location = new System.Drawing.Point(5, 599);
+            this.groupBox4.Name = "groupBox4";
+            this.groupBox4.Size = new System.Drawing.Size(258, 66);
+            this.groupBox4.TabIndex = 13;
+            this.groupBox4.TabStop = false;
+            this.groupBox4.Text = "Multiple Properties ISO Surfaces";
+            // 
+            // ISOValueExtactButton
+            // 
+            this.ISOValueExtactButton.Location = new System.Drawing.Point(128, 25);
+            this.ISOValueExtactButton.Name = "ISOValueExtactButton";
+            this.ISOValueExtactButton.Size = new System.Drawing.Size(108, 28);
+            this.ISOValueExtactButton.TabIndex = 8;
+            this.ISOValueExtactButton.Text = "Extract";
+            this.ISOValueExtactButton.UseVisualStyleBackColor = true;
+            // 
+            // PropertiesValuesButton
+            // 
+            this.PropertiesValuesButton.Location = new System.Drawing.Point(3, 25);
+            this.PropertiesValuesButton.Name = "PropertiesValuesButton";
+            this.PropertiesValuesButton.Size = new System.Drawing.Size(108, 28);
+            this.PropertiesValuesButton.TabIndex = 7;
+            this.PropertiesValuesButton.Text = "Properties";
+            this.PropertiesValuesButton.UseVisualStyleBackColor = true;
+            this.PropertiesValuesButton.Click += new System.EventHandler(this.ClosedValuesButton_Click);
+            // 
             // C3DGridDataPropertyForm
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(8F, 17F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(266, 597);
+            this.ClientSize = new System.Drawing.Size(266, 661);
+            this.Controls.Add(this.groupBox4);
             this.Controls.Add(this.groupBox3);
             this.Controls.Add(this.groupBox2);
             this.Controls.Add(this.ColorBarBox);
@@ -270,6 +306,7 @@
             this.groupBox2.ResumeLayout(false);
             this.groupBox3.ResumeLayout(false);
             this.groupBox3.PerformLayout();
+            this.groupBox4.ResumeLayout(false);
             this.ResumeLayout(false);
 
         }
@@ -293,5 +330,8 @@
         private System.Windows.Forms.TextBox VolumeTextBox;
         private System.Windows.Forms.Button VolumeButton;
         private System.Windows.Forms.ComboBox comboBox1;
+        private System.Windows.Forms.GroupBox groupBox4;
+        private System.Windows.Forms.Button ISOValueExtactButton;
+        private System.Windows.Forms.Button PropertiesValuesButton;
     }
 }

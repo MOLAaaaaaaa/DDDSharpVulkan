@@ -389,7 +389,7 @@ namespace DDDSharp
                 workDisposed = false;
                 checkProgress = true;
 
-                if (ipmethod.method == InterpolationMethod.DirectGridding)
+                if (ipmethod.method == InterpolationMethod.GriddedInterpolation)
                 {
                     data.pGridData = ipmethod.DirectGridding(nx, ny, nz);
                 }
@@ -401,11 +401,11 @@ namespace DDDSharp
                     {
                         if (ipmethod.method == InterpolationMethod.RadicalBasisFunction)
                         {
-                            int np = ipmethod.RemoveDuplicated(0.0001);
-                            if (np > 0)
-                            {
-                                UpdateDataInfo();
-                            }
+                            //int np = ipmethod.RemoveDuplicated();
+                            //if (np > 0)
+                            //{
+                            //    UpdateDataInfo();
+                            //}
                         }
                     }
 
@@ -413,7 +413,7 @@ namespace DDDSharp
                         data.pGridData = ipmethod.GetInterpolatedValue(nx, ny, nz, selectedDevices.ToArray());//GPU version
                     else data.pGridData = ipmethod.GetInterpolatedValue(nx, ny, nz, null); //CPU version
 
-                    data.UpdateDataRange();
+                    data.UpdateRange();
                 }
 
                 percentage = 0;
@@ -432,8 +432,6 @@ namespace DDDSharp
                 data = null;
                 return;
             }
-
-
 
             if (data.SaveAs(textOutputFile.Text))
             {

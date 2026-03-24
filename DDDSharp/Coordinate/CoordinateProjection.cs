@@ -27,11 +27,11 @@ namespace DataCollection.Projection
     }
     public enum EnumProjectionCoordinate
     {
-        Beijing54 = 0,
-        Xian90 = 1,
-        CGCS2000 = 2,
+        CGCS2000 = 0,
+        Xian80 = 1,
+        Beijing54 = 2,
     }
-    public abstract class ProjectionConversion2 : IProjectionConversion2
+    public class ProjectionConversion2 
     {
         protected decimal a = 6378137M;           //2000椭球长半轴
         protected decimal b = 6356752.3141M;      //2000椭球短半轴
@@ -112,8 +112,11 @@ namespace DataCollection.Projection
         }
 
         //高斯反算方法  OK   (x,y)=>(B,L)
-        public virtual void GetBLFromXY(decimal x, decimal y, ref decimal B, ref decimal L)
+        public virtual void GetBLFromXY(double _x, double _y, ref double B, ref double L)
         {
+            decimal x = Convert.ToDecimal(_x);
+            decimal y = Convert.ToDecimal(_y);
+
             //去掉大数和东移500公里
             decimal y1 = y - 500000.0M;
             if (this.IsBigNumber == true)
@@ -179,16 +182,29 @@ namespace DataCollection.Projection
             decimal t_B = Bf * p - (p * t / (2 * Mf) * y * y_N) * (1 - (5 + 3 * t2 + yy - 9 * yy * t2) * y_N2 + (61 + 90 * t2 + 45 * t4) * y_N4 / 360);
             decimal t_L = (p / cosBf) * y_N * (1 - (1 + 2 * t2 + yy) * y_N2 / 6 + (5 + 28 * t2 + 24 * t4 + 6 * yy + 8 * yy * t2) * y_N4 / 120);
             //
-            L = t_L + l0;
+            decimal _L = t_L + l0;
             //
-            B = t_B / 3600;   //转为度
-            L = L / 3600;   //转为度
+            decimal _B = t_B / 3600;   //转为度
+            _L = _L / 3600;   //转为度
+            L = Convert.ToDouble(_L);
+            B = Convert.ToDouble(_B);
                             //--the--end--
         }
 
         //高斯正算方法 (B,L)=>(x,y)
-        public virtual void GetXYFromBL(decimal B, decimal L, ref decimal x, ref decimal y)
+        public virtual Vector64 GetXYFromBL(double B, double L) 
         {
+            decimal x = 0, y = 0;
+            GetXYFromBL(B, L,ref x, ref y);
+            double _x = Convert.ToDouble(x);
+            double _y = Convert.ToDouble(y);
+            return (new Vector64(_x, _y, 0));
+        }
+
+        public virtual void GetXYFromBL(double _B, double _L, ref decimal x, ref decimal y)
+        {
+            decimal B = Convert.ToDecimal(_B);
+            decimal L = Convert.ToDecimal(_L);
             //计算临时值
             decimal e4 = pow(e2, 2); // e2 * e2;
             decimal e6 = pow(e2, 3); //e4 * e2;
@@ -236,8 +252,8 @@ namespace DataCollection.Projection
             //计度平面坐标值x,y
             x = xx + N * t * cosB2 * l2_p2 * (0.5M + (5 - t2 + 9 * y2 + 4 * y4) * cosB2 * l2_p2 / 24 + (61 - 58 * t2 + t4) * cosB4 * l4_p4 / 720);
             y = N * cosB * l_p * (1 + (1 - t2 + y2) * cosB2 * l2_p2 / 6 + (5 - 18 * t2 + t4 + 14 * y2 - 58 * y2 * t2) * cosB4 * l4_p4 / 120);
-            //
-            if (IsBigNumber == true)  //转为高斯投影是大数投影吗？即Zone 35带数  （小数投影为CM_105E)
+            //转为高斯投影是大数投影吗？即Zone 35带数  （小数投影为CM_105E)
+            if (IsBigNumber == true)  
             {
                 y = y + (this.L0 / (int)this.Strip) * 1000000M;
             }
@@ -251,7 +267,7 @@ namespace DataCollection.Projection
     /// vp:hsg
     /// create date:2015-12
     /// </summary>
-    public class GSCoordConvertionClass_2000 : ProjectionConversion2, IProjectionConversion2
+    public class GSCoordConvertionClass_2000 : ProjectionConversion2
     {
         public GSCoordConvertionClass_2000()
         {
@@ -272,7 +288,7 @@ namespace DataCollection.Projection
     /// vp:hsg
     /// create date:2015-12
     /// </summary>
-    public class GSCoordConvertionClass_Xian80 : ProjectionConversion2, IProjectionConversion2
+    public class GSCoordConvertionClass_Xian80 : ProjectionConversion2
     {
         public GSCoordConvertionClass_Xian80()
         {
@@ -289,22 +305,29 @@ namespace DataCollection.Projection
     }
     public class CoordinateTesting 
     {
-        static void Test(string[] args)
+        public static void Test(string[] args)
         {
-            decimal x = 0;
-            decimal y = 0;
-            decimal B = 0;
-            decimal L = 0;
+            double x = 0;
+            double y = 0;
+            double B = 0;
+            double L = 0;
 
             GSCoordConvertionClass_2000 cc = new GSCoordConvertionClass_2000();
-            cc.IsBigNumber = true;
+            cc.IsBigNumber = false;
             cc.Strip = EnumProjectionStrip.Strip3;
-            cc.L0 = 105;
+            cc.L0 = 102;
+
+            //B = 25.999M;
+            //L = 101.156M;
+            //cc.GetXYFromBL(B, L, ref x, ref y);
+
             //
             //---------------------------------
             //反算 OK
-            x = 4016159.7706M;
-            y = 35358852.807M;
+            //x = 4016159.7706M;
+            //y = 35358852.807M;
+            x = 2944572.208f;
+            y = 498713.06f;
             cc.GetBLFromXY(x, y, ref B, ref L);
             //
             B = Math.Round(B, 8);
@@ -314,8 +337,8 @@ namespace DataCollection.Projection
             //正算
             //B = 36.155619734M;
             //L = 105.254854607M;
-            cc.GetXYFromBL(B, L, ref x, ref y);
-            System.Console.WriteLine("B,L=(" + B + "," + L + ")=>X,Y=(" + x + "," + y + "");
+            Vector64 p = cc.GetXYFromBL(B, L);
+            System.Console.WriteLine("B,L=(" + B + "," + L + ")=>X,Y=(" + p.X + "," + p.Y + "");
             //
             System.Console.Read();
         }

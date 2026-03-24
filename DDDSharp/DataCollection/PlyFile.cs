@@ -278,7 +278,7 @@ namespace DataCollection
             return obj;
         }
         
-        public override bool SaveAs(string path)
+        public override bool SaveAs(string path,int version = 0)
         {
             if (vertno < 3 || faceno < 3)
             {

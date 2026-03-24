@@ -20,6 +20,7 @@ using MathNet.Numerics.LinearAlgebra;
 using AviFile;
 using System.Threading;
 using ScriptInterpreter;
+using WeifenLuo.WinFormsUI.Docking;
 
 namespace DDDSharp
 {
@@ -42,15 +43,19 @@ namespace DDDSharp
         private Point mouseStartDrag;
         private static bool isLeftDrag = false;
         private static bool isRightDrag = false;
-        private static bool isMiddleDrag = false;
-        private float zoomSpeed = 1.0f;
+        private static bool isMiddleDrag = false;        
         private bool IsControlKeyDown = false;
-
+        private bool IsAltKeyDown = false;
+        float av = 45;
         List<C3DObjectBase> pObjects = new List<C3DObjectBase>();
 
         C3DObjectBase arrowObject = new C3DObjectBase();
         C3DObjectBase outLinesObject = new C3DObjectBase();
         C3DObjectBase outLinesOfSelectedObject = new C3DObjectBase();
+        C3DObjectBase axisXObject = new C3DObjectBase();
+        C3DObjectBase axisYObject = new C3DObjectBase();
+        C3DObjectBase axisZObject = new C3DObjectBase();
+
         C3DObjectBase lightposObject = new C3DObjectBase();
 
         #endregion ArcBall Control        
@@ -58,9 +63,6 @@ namespace DDDSharp
         public DDDForm()
         {
             InitializeComponent();
-            this.glControl1.ContextCreated += new System.EventHandler<OpenGL.GlControlEventArgs>(this.glContextCreated);
-            this.glControl1.Render += new System.EventHandler<OpenGL.GlControlEventArgs>(this.glRender);
-            this.glControl1.ContextUpdate += new System.EventHandler<OpenGL.GlControlEventArgs>(this.glUpdate);
             KeyPreview = true;
 
             this.HandleCreated += DDDForm_HandleCreated;
@@ -190,17 +192,11 @@ namespace DDDSharp
                 this.MouseWheel += new System.Windows.Forms.MouseEventHandler(this.DoMouseWheel);
                 this.SizeChanged += new System.EventHandler(this.DoSizeChanged);
                 this.Paint += new System.Windows.Forms.PaintEventHandler(this.DoPaint);
-                this.glControl1.Visible = false;
+     
             }
             else if (graphic.engine == gEngine.opengl)
             {
-                this.glControl1.MouseWheel += new System.Windows.Forms.MouseEventHandler(this.DoMouseWheel);
                 this.SizeChanged += new System.EventHandler(this.DoSizeChanged);
-                this.glControl1.MouseMove += new System.Windows.Forms.MouseEventHandler(this.DoMouseMove);
-                this.glControl1.MouseDown += new System.Windows.Forms.MouseEventHandler(this.DoMouseDown);
-                this.glControl1.MouseUp += new System.Windows.Forms.MouseEventHandler(this.DoMouseUp);
-                //this.Paint += new System.Windows.Forms.PaintEventHandler(this.DoPaint);
-                this.glControl1.Visible = true;
             }
         }
         private void glRender(object sender, GlControlEventArgs e)
@@ -224,7 +220,7 @@ namespace DDDSharp
                     return;
                 }
                 CreateEvents();
-                this.glControl1.Visible = true;
+               
                 //this.glControl1.Paint += new System.Windows.Forms.PaintEventHandler(this.DoPaint);
                 C3DData.graphics3D = graphic;
                
@@ -235,8 +231,7 @@ namespace DDDSharp
             }
             else
             {
-                this.glControl1.Width = this.glControl1.Height = 0;
-                this.glControl1.Visible = false;
+                
             }
         }
 
@@ -284,7 +279,10 @@ namespace DDDSharp
             }
 
             //if (graphic == null || !graphic.initialized) return;
+            CDataModel.CalculateModelSize();
 
+            InitAxis();
+            
             DrawObjects();
 
             SetStyle(ControlStyles.UserPaint, true);
@@ -328,6 +326,7 @@ namespace DDDSharp
         }
         public void InitMatrix()
         {
+            InitArcBall();
             if (graphic.engine == gEngine.vulkan) InitMatrixVulkan();
             else InitMatrixOpenGL();
         }
@@ -425,7 +424,10 @@ namespace DDDSharp
         //对象绘制
         public void DrawObject(C3DObjectBase obj)
         {
-            try
+            if ( !CDataModel.IsInModelRange(obj.Minx, obj.Miny, 
+                                            obj.Minz, obj.Maxx, 
+                                            obj.Maxy, obj.Maxz)) return;
+          //  try
             {
                 if (obj.type == ShapeEnum.Grid3D)
                 {
@@ -469,7 +471,7 @@ namespace DDDSharp
                 }
                 else if (obj.type == ShapeEnum.Polygon2D)
                 {
-                    DrawPolygon2DObj((Polygon2D)obj);
+                    DrawPolygon2DObj((Polygon2D)obj, null);
                 }
                 else if (obj.type == ShapeEnum.Polygon2Ds)
                 {
@@ -488,9 +490,9 @@ namespace DDDSharp
                     DrawSlicer((CSlicer)obj);
                 }
             }
-            catch (Exception ex)
+          //  catch (Exception ex)
             {
-                AddToMessage(ex.Message);
+            //    AddToMessage(ex.Message);
             }
         }
         bool CompareShapesType(ShapeEnum type1, ShapeEnum type2)
@@ -596,35 +598,40 @@ namespace DDDSharp
             this.Cursor = Cursors.WaitCursor;
 
             List<C3DObjectBase> objects = C3DData.GetObjects();
+            
+            graphic.ClearModelKeyBuffers();//不包括含有子对象的对象
 
-            //C3DObjectBase obj;
-            if (objects.Count > 0)
-            {
-                //List<int> lists = SortObjects();
-                //foreach (int i in lists)
-                //{
-                //    obj = objects[i];
-                //    graphic.ClearModelKeyBuffers();//不包括含有子对象的对象
-                //    DrawObject(obj); // 对象可能含有子对象
-                //    obj.AddRenderingBuffer(graphic.objectModelKeyBuffers);//不包括含有子对象的对象
-                //}//foreach( int i in lists )
-                //lists.Clear();
-                foreach(C3DObjectBase obj in objects)
+            foreach (C3DObjectBase obj in objects)//先绘制不透明物体
+            {   
+                if ( obj.Alpha == 1f)
                 {
-                    graphic.ClearModelKeyBuffers();//不包括含有子对象的对象
+                    DrawObject(obj); // 对象可能含有子对象
+                    obj.AddRenderingBuffer(graphic.objectModelKeyBuffers);//不包括含有子对象的对象
+                }
+            }         
+            foreach (C3DObjectBase obj in objects)//最后绘制透明物体
+            {
+                if ( obj.Alpha < 1f )
+                {
                     DrawObject(obj); // 对象可能含有子对象
                     obj.AddRenderingBuffer(graphic.objectModelKeyBuffers);//不包括含有子对象的对象
                 }
             }
-
             lightposObject.Visible = C3DData.bShowLightPositions;
             outLinesObject.Visible = C3DData.bShowOuterBox;
             arrowObject.Visible = C3DData.bShowDirectionArrow;
             DrawLightsPosition(lightposObject);
+
             DrawOutLines(outLinesObject);
             DrawDirectionArrow(arrowObject);
             
-            DrawSelectedOutLines();
+            UpdateAxisofRangeUpdated();
+            
+            DrawXAxis(CDataModel.xAxisRuler);
+            DrawYAxis(CDataModel.yAxisRuler);
+            DrawZAxis(CDataModel.zAxisRuler);
+
+            DrawSelectedOutLines();           
 
             this.Cursor = DefaultCursor;
 
@@ -663,10 +670,484 @@ namespace DDDSharp
             double zs = CDataModel.m_Model.ZWidth / CDataModel.m_Model.MaxLength;
 
             double outlineExtScale = 1.1;
+            xs = xs * outlineExtScale;
+            ys = ys * outlineExtScale;
+            zs = zs * outlineExtScale;
 
-            graphic.DrawBoxOutline(0, 0, 0, (float)(xs * outlineExtScale), (float)(ys * outlineExtScale), (float)(zs * outlineExtScale));
+            graphic.DrawBoxOutline(-xs/2, -ys / 2, -zs / 2, xs, ys, zs );
 
             obj.AddRenderingBuffer(graphic.objectModelKeyBuffers);
+        }
+
+        void InitAxis()
+        {
+            //Axis Arrow
+
+            CDataModel.xArrow3D.labelColor = Color.Red;
+            CDataModel.xArrow3D.HeaderColor = Color.Blue;
+            CDataModel.xArrow3D.LineColor = Color.Red;
+            
+            CDataModel.yArrow3D.labelColor = Color.Green;
+            CDataModel.yArrow3D.HeaderColor = Color.Blue;
+            CDataModel.yArrow3D.LineColor = Color.Green;
+
+            CDataModel.zArrow3D.labelColor = Color.Blue;
+            CDataModel.zArrow3D.HeaderColor = Color.Blue;
+            CDataModel.zArrow3D.LineColor = Color.Blue;
+
+            CDataModel.xGeoArrow3D.labelColor = Color.Red;
+            CDataModel.xGeoArrow3D.HeaderColor = Color.Blue;
+            CDataModel.xGeoArrow3D.LineColor = Color.Red;
+
+            CDataModel.yGeoArrow3D.labelColor = Color.Green;
+            CDataModel.yGeoArrow3D.HeaderColor = Color.Blue;
+            CDataModel.yGeoArrow3D.LineColor = Color.Green;
+
+            CDataModel.zGeoArrow3D.labelColor = Color.Blue;
+            CDataModel.zGeoArrow3D.HeaderColor = Color.Blue;
+            CDataModel.zGeoArrow3D.LineColor = Color.Blue;
+
+            //ticks and label
+            CDataModel.xAxisRuler.SetMinumMaximum(CDataModel.m_Model.X1, CDataModel.m_Model.X2);
+            CDataModel.xAxisRuler.dockingEdge = AxisDockingEdge.Bottom;
+            CDataModel.xAxisRuler.labelColor = Color.Red;
+            CDataModel.xAxisRuler.labelSize = 0.2f;
+
+            CDataModel.yAxisRuler.SetMinumMaximum(CDataModel.m_Model.Y1, CDataModel.m_Model.Y2);
+            CDataModel.yAxisRuler.dockingEdge = AxisDockingEdge.Bottom;
+            CDataModel.yAxisRuler.labelColor = Color.Green;
+            CDataModel.yAxisRuler.labelSize = 0.22f;
+
+            CDataModel.zAxisRuler.SetMinumMaximum(CDataModel.m_Model.Z1, CDataModel.m_Model.Z2);
+            CDataModel.zAxisRuler.dockingEdge = AxisDockingEdge.FrontLeft;
+            CDataModel.zAxisRuler.labelColor = Color.Blue;
+            CDataModel.zAxisRuler.labelSize = 0.2f;
+        }
+        void DoRangeUpdated()
+        {
+            if ( CDataModel.rangeUpdated )
+            {
+                DrawOutLines(outLinesObject);
+                DrawDirectionArrow(arrowObject);
+                UpdateAxisofRangeUpdated();
+                DrawXAxis(CDataModel.xAxisRuler);
+                DrawYAxis(CDataModel.yAxisRuler);
+                DrawZAxis(CDataModel.zAxisRuler);
+                CDataModel.rangeUpdated = false;
+            }
+        }
+        void UpdateAxisofRangeUpdated()
+        {          
+            if (CDataModel.m_Model.X1 != CDataModel.xAxisRuler.Minimum ||
+                CDataModel.m_Model.X2 != CDataModel.xAxisRuler.Maximum )
+            {
+                CDataModel.xAxisRuler.SetMinumMaximum(CDataModel.m_Model.X1, CDataModel.m_Model.X2); 
+            }
+            if (CDataModel.m_Model.Y1 != CDataModel.yAxisRuler.Minimum ||
+                CDataModel.m_Model.Y2 != CDataModel.yAxisRuler.Maximum)
+            {
+                CDataModel.yAxisRuler.SetMinumMaximum(CDataModel.m_Model.Y1, CDataModel.m_Model.Y2);
+            }
+
+            if (CDataModel.m_Model.Z1 != CDataModel.zAxisRuler.Minimum ||
+                CDataModel.m_Model.Z2 != CDataModel.zAxisRuler.Maximum)
+            {
+                CDataModel.zAxisRuler.SetMinumMaximum(CDataModel.m_Model.Z1, CDataModel.m_Model.Z2);
+            }               
+            
+        }
+        
+        void DrawXAxis(Axis3DRuler axis)
+        {
+            ClearObjectDrawBuffer(axisXObject);
+            graphic.ClearModelKeyBuffers();
+
+            if (CDataModel.IsEarthMapVision) return;
+            if (!axis.Visible) return;
+            if (!axis.IsValid()) return;
+
+            double v1 = axis.StartValue;
+            double v2 = axis.EndValue;
+            float step = (float)axis.Step;
+
+            string text;
+            Vector64 p1 = new Vector64();
+
+            Vector64 direct = new Vector64(0, -1, 0);
+            Vector64 up = new Vector64(1, 0, 0);
+            if ( CDataModel.IsGeoCoordinateSystem )
+            {
+                direct = new Vector64(0, 1, 0);
+                up = new Vector64(1, 0, 0);
+            }
+
+            Font font = axis.labelFont;
+            Color color = axis.labelColor;
+            float size = axis.labelSize;
+
+            double xs = CDataModel.m_Model.XWidth / CDataModel.m_Model.MaxLength;
+            double ys = CDataModel.m_Model.YWidth / CDataModel.m_Model.MaxLength;
+            double zs = CDataModel.m_Model.ZWidth / CDataModel.m_Model.MaxLength;
+            double outlineExtScale = 1.1;
+            int k = 0;
+
+            Vertex3D vp1 = new Vertex3D();
+            Vertex3D vp2 = new Vertex3D();
+            vp1.color = ConvertColor(axis.tickColor);
+            vp2.color = vp1.color;
+
+            float shorttick = axis.shortTick;
+            float longtick = axis.longTick;
+
+            double ypos = ys * outlineExtScale / 2;
+            double zpos = zs * outlineExtScale / 2;
+            if( (axis.dockingEdge == AxisDockingEdge.Bottom && CDataModel.IsGeoCoordinateSystem ) ||
+                (axis.dockingEdge == AxisDockingEdge.Top && !CDataModel.IsGeoCoordinateSystem) )
+                zpos = zs * outlineExtScale / 2;
+
+
+            //平面内旋转角
+            Vector64 p2 = p1 + up;
+            p2 = p2.RotateOnAngle(axis.LabelRotateAngle, 2);
+            up = (p2 - p1).Normalize();
+            p2 = p1 + direct;
+            p2 = p2.RotateOnAngle(axis.LabelRotateAngle, 2);
+            direct = (p2 - p1).Normalize();
+            //倾角-UP不动
+            p2 = p1 + direct;
+            p2 = p2.RotateOnAngle(axis.PlaneAngle, 0);
+            direct = (p2 - p1).Normalize();
+
+            graphic.PushMatrix();
+            //draw ticks first
+            for ( double v = v1; v <= v2; v += step,k++ )
+            {
+                p1.X = v; p1.Y = p1.Z = 0;
+                p1 = CDataModel.ToModelVector(p1);
+                p1.Y = -ypos;
+                p1.Z = -zpos;
+                vp1.pos = new vec3( (float)p1.X, (float)p1.Y, (float)p1.Z);
+
+                double tick = axis.shortTick;
+                if (k % axis.minScale == 0) tick = axis.longTick;
+
+                p2 = p1 + direct * tick;
+                if ( (CDataModel.IsGeoCoordinateSystem && 
+                    axis.dockingPosition == AxisDockingPosition.Outer) ||
+                    ( !CDataModel.IsGeoCoordinateSystem &&
+                    axis.dockingPosition == AxisDockingPosition.Inner) )
+                    p2 = p1 - direct * tick;
+                
+                vp2.pos = new vec3((float)p2.X, (float)p2.Y, (float)p2.Z);
+                //显示大刻度&&是否显示小刻度
+                if (k % axis.minScale == 0 || (k % axis.minScale != 0 && axis.ShowTicks ) )
+                graphic.DrawLine(vp1, vp2,false);
+            }
+            graphic.PopMatrix();            
+
+            //draw string
+            TextHorizontalAlignment hAlign = TextHorizontalAlignment.Left;
+            TextVerticalAlignment vAlign = TextVerticalAlignment.Center;
+            if (  (CDataModel.IsGeoCoordinateSystem && 
+                  axis.dockingPosition == AxisDockingPosition.Outer) ||
+                  (!CDataModel.IsGeoCoordinateSystem && 
+                  axis.dockingPosition == AxisDockingPosition.Inner))
+                  hAlign = TextHorizontalAlignment.Right;
+            
+            graphic.PushMatrix();
+            step = (float)axis.Step * axis.minScale;
+            for (double v = v1; v <= v2; v += step)
+            {
+                p1.X = v; p1.Y = p1.Z = 0;
+                p1 = CDataModel.ToModelVector(p1);
+                p1.Y = -ypos;
+                p1.Z = -zpos;
+
+                p2 = p1 + direct * (longtick + 0.002);
+                if ((CDataModel.IsGeoCoordinateSystem &&
+                    axis.dockingPosition == AxisDockingPosition.Outer) ||
+                    (!CDataModel.IsGeoCoordinateSystem &&
+                    axis.dockingPosition == AxisDockingPosition.Inner))
+                    p2 = p1 - direct * (longtick + 0.002);                        
+
+                text = axis.FormatValue(v);
+                if (axis.IsUnitAttached && axis.secondTitle.Length > 0) 
+                    text = text + axis.secondTitle;
+
+                graphic.DrawString(text, font, color, size, p2, direct, up, hAlign, vAlign);
+
+                //
+                if( axis.secondTitle.Length > 0 && !axis.IsUnitAttached &&
+                    C3DData.IsZero(v-v2,step*0.001 ) )
+                {
+                    p1.X = 0.55; p1.Y = -ypos; p1.Z = -zpos;
+                    p2 = p1 + direct * (longtick + 0.002);
+                    if ((CDataModel.IsGeoCoordinateSystem &&
+                        axis.dockingPosition == AxisDockingPosition.Outer) ||
+                        (!CDataModel.IsGeoCoordinateSystem &&
+                        axis.dockingPosition == AxisDockingPosition.Inner))
+                        p2 = p1 - direct * (longtick + 0.002);
+
+                    text = axis.secondTitle;
+                    graphic.DrawString(text, axis.secondTitleFont, axis.secondTitleColor, axis.secondTitleSize, p2, direct, up, hAlign, vAlign);
+                }
+            }
+            graphic.PopMatrix();
+
+            axisXObject.AddRenderingBuffer(graphic.objectModelKeyBuffers);
+        }
+        void DrawYAxis(Axis3DRuler axis)
+        {
+            ClearObjectDrawBuffer(axisYObject);
+            graphic.ClearModelKeyBuffers();
+
+            if (!axis.Visible) return;
+            if (!axis.IsValid()) return;
+            if (CDataModel.IsEarthMapVision) return;
+
+            double v1 = axis.StartValue;
+            double v2 = axis.EndValue;
+            float step = (float)axis.Step;
+
+            string text;
+            Vector64 p1 = new Vector64();            
+            Vector64 direct = new Vector64(1, 0, 0);
+            Vector64 up = new Vector64(0, 1, 0);
+            if (CDataModel.IsGeoCoordinateSystem)
+            {
+                direct = new Vector64(-1, 0, 0);
+                up = new Vector64(0, 1, 0);
+            }
+            Font font = axis.labelFont;
+            Color color = axis.labelColor;
+            float size = axis.labelSize;
+
+            double xs = CDataModel.m_Model.XWidth / CDataModel.m_Model.MaxLength;
+            double ys = CDataModel.m_Model.YWidth / CDataModel.m_Model.MaxLength;
+            double zs = CDataModel.m_Model.ZWidth / CDataModel.m_Model.MaxLength;
+            double outlineExtScale = 1.1;
+            int k = 0;
+
+            Vertex3D vp1 = new Vertex3D();
+            Vertex3D vp2 = new Vertex3D();
+            vp1.color = ConvertColor(axis.tickColor);
+            vp2.color = vp1.color;
+
+            float shorttick = axis.shortTick;
+            float longtick = axis.longTick;
+            double xpos = xs * outlineExtScale / 2;
+            double ypos = ys * outlineExtScale / 2;
+            double zpos = zs * outlineExtScale / 2;
+
+            if ((axis.dockingEdge == AxisDockingEdge.Bottom && CDataModel.IsGeoCoordinateSystem) ||
+                (axis.dockingEdge == AxisDockingEdge.Top && !CDataModel.IsGeoCoordinateSystem))
+                zpos = zs * outlineExtScale / 2;
+
+            //平面内旋转角
+            Vector64 p2 = p1 + up;
+            p2 = p2.RotateOnAngle(axis.LabelRotateAngle, 2);
+            up = (p2 - p1).Normalize();
+            p2 = p1 + direct;
+            p2 = p2.RotateOnAngle(axis.LabelRotateAngle, 2);
+            direct = (p2 - p1).Normalize();
+            //倾角-UP不动
+            p2 = p1 + direct;
+            p2 = p2.RotateOnAngle(axis.PlaneAngle, 1);
+            direct = (p2 - p1).Normalize();
+
+            graphic.PushMatrix();
+            //draw ticks first
+            for (double v = v1; v <= v2; v += step, k++)
+            {
+                p1.Y = v; p1.X = p1.Z = 0;
+                p1 = CDataModel.ToModelVector(p1);
+                p1.X = -xpos;
+                p1.Z = -zpos;
+                vp1.pos = new vec3((float)p1.X, (float)p1.Y, (float)p1.Z);
+                
+                double tick = axis.shortTick;
+                if (k % axis.minScale == 0) tick = axis.longTick;
+                p2 = p1 + direct * tick;
+                if ( (CDataModel.IsGeoCoordinateSystem && axis.dockingPosition == AxisDockingPosition.Inner)||
+                    (!CDataModel.IsGeoCoordinateSystem && axis.dockingPosition == AxisDockingPosition.Outer) )
+                    p2 = p1 - direct * tick;
+                vp2.pos = new vec3((float)p2.X, (float)p2.Y, (float)p2.Z);
+
+                //显示大刻度&&是否显示小刻度
+                if (k % axis.minScale == 0 || (k % axis.minScale != 0 && axis.ShowTicks))
+                    graphic.DrawLine(vp1, vp2,false);
+            }
+            graphic.PopMatrix();
+
+            //draw string
+            TextHorizontalAlignment hAlign = TextHorizontalAlignment.Right;
+            TextVerticalAlignment vAlign = TextVerticalAlignment.Center;
+            if ( (CDataModel.IsGeoCoordinateSystem && axis.dockingPosition == AxisDockingPosition.Outer)
+                || (!CDataModel.IsGeoCoordinateSystem && axis.dockingPosition == AxisDockingPosition.Inner))
+                   hAlign = TextHorizontalAlignment.Left;
+
+            step = (float)axis.Step * axis.minScale;
+            graphic.PushMatrix();
+            for (double v = v1; v <= v2; v += step)
+            {
+                p1.Y = v; p1.X = p1.Z = 0;
+                p1 = CDataModel.ToModelVector(p1);
+                p1.X = -xpos;
+                p1.Z = -zpos;
+                
+                p2 = p1 + (longtick + 0.002) * direct;
+                if ((CDataModel.IsGeoCoordinateSystem && axis.dockingPosition == AxisDockingPosition.Inner) ||
+                    (!CDataModel.IsGeoCoordinateSystem && axis.dockingPosition == AxisDockingPosition.Outer))
+                    p2 = p1 - (longtick + 0.002) * direct;
+
+                text = axis.FormatValue(v);
+                if (axis.IsUnitAttached && axis.secondTitle.Length > 0)
+                    text = text + axis.secondTitle;
+
+                graphic.DrawString(text, font, color, size, p2, direct, up, hAlign, vAlign);
+
+                if (axis.secondTitle.Length > 0 && !axis.IsUnitAttached &&
+                    C3DData.IsZero(v - v2, step * 0.001))
+                {
+                    p1.X = -xpos; p1.Y = ypos; p1.Z = -zpos;
+                    p2 = p1 + direct * (longtick + 0.002);
+                    if ((CDataModel.IsGeoCoordinateSystem && axis.dockingPosition == AxisDockingPosition.Inner) ||
+                    (!CDataModel.IsGeoCoordinateSystem && axis.dockingPosition == AxisDockingPosition.Outer))
+                        p2 = p1 - (longtick + 0.002) * direct;
+
+                    text = axis.secondTitle;
+                    graphic.DrawString(text, axis.secondTitleFont, axis.secondTitleColor, axis.secondTitleSize, p2, direct, up, hAlign, vAlign);
+                }
+
+            }
+            graphic.PopMatrix();
+
+            axisYObject.AddRenderingBuffer(graphic.objectModelKeyBuffers);
+        }
+        void DrawZAxis(Axis3DRuler axis)
+        {
+            ClearObjectDrawBuffer(axisZObject);
+            graphic.ClearModelKeyBuffers();
+
+            if (!axis.Visible) return;
+            if (!axis.IsValid()) return;
+            if (CDataModel.IsEarthMapVision) return;            
+
+            double v1 = axis.StartValue;
+            double v2 = axis.EndValue;
+            float step = (float)axis.Step;
+
+            string text;
+
+            //docking outer 
+            Vector64 p1 = new Vector64();
+            Vector64 direct = new Vector64(1, 0, 0);
+            Vector64 up = new Vector64(0, 0, 1);            
+            if (CDataModel.IsGeoCoordinateSystem)
+            {
+                direct = new Vector64(0,1, 0);
+                up = new Vector64(0, 0, -1);
+            }
+            Font font = axis.labelFont;
+            Color color = axis.labelColor;
+            float size = axis.labelSize;
+
+            double xs = CDataModel.m_Model.XWidth / CDataModel.m_Model.MaxLength;
+            double ys = CDataModel.m_Model.YWidth / CDataModel.m_Model.MaxLength;
+            double zs = CDataModel.m_Model.ZWidth / CDataModel.m_Model.MaxLength;
+            double outlineExtScale = 1.1;
+            double xpos = xs * outlineExtScale / 2;
+            double ypos = ys * outlineExtScale / 2;
+            double zpos = zs * outlineExtScale / 2;
+            int k = 0;
+
+            Vertex3D vp1 = new Vertex3D();
+            Vertex3D vp2 = new Vertex3D();
+            vp1.color = ConvertColor(axis.tickColor);
+            vp2.color = vp1.color;
+
+            float shorttick = axis.shortTick;
+            float longtick = axis.longTick;
+
+            //平面内旋转角
+            int rot_axis = 1;
+            if (CDataModel.IsGeoCoordinateSystem) rot_axis = 0;
+            Vector64 p2 = p1 + up;
+            p2 = p2.RotateOnAngle(axis.LabelRotateAngle, rot_axis);
+            up = (p2 - p1).Normalize();
+            p2 = p1 + direct;
+            p2 = p2.RotateOnAngle(axis.LabelRotateAngle, rot_axis);
+            direct = (p2 - p1).Normalize();
+            //倾角-UP不动
+            p2 = p1 + direct;
+            p2 = p2.RotateOnAngle(axis.PlaneAngle, 2);
+            direct = (p2 - p1).Normalize();
+
+            graphic.PushMatrix();
+
+            //draw ticks first
+            for (double v = v1; v <= v2; v += step, k++)
+            {
+                p1.Z = v; p1.Y = p1.X = 0;
+                p1 = CDataModel.ToModelVector(p1);
+                p1.Y = -ypos;
+                p1.X = -xpos;
+                vp1.pos = new vec3((float)p1.X, (float)p1.Y, (float)p1.Z);
+                vp2 = vp1;
+                
+                float tick = shorttick;
+                if (k % axis.minScale == 0)tick =longtick;
+                
+                p2 = p1 + direct * tick;                
+                if ( axis.dockingPosition == AxisDockingPosition.Outer )
+                    p2 = p1 - direct * tick;
+                vp2.pos = new vec3((float)p2.X, (float)p2.Y, (float)p2.Z);
+
+                //显示大刻度&&是否显示小刻度
+                if (k % axis.minScale == 0 || (k % axis.minScale != 0 && axis.ShowTicks))
+                    graphic.DrawLine(vp1, vp2,false);
+            }
+            graphic.PopMatrix();
+
+            //draw string
+            TextHorizontalAlignment hAlign = TextHorizontalAlignment.Right;
+            TextVerticalAlignment vAlign = TextVerticalAlignment.Center;
+            if (axis.dockingPosition == AxisDockingPosition.Inner)
+                hAlign = TextHorizontalAlignment.Left;            
+
+            k = 0;
+            step = (float)axis.Step * axis.minScale;
+            graphic.PushMatrix();
+            for (double v = v1; v <= v2; v += step)
+            {
+                p1.Z = v; p1.Y = p1.X = 0;
+                p1 = CDataModel.ToModelVector(p1);
+                p1.X = -xpos;
+                p1.Y = -ypos;
+
+                p2 = p1 + (longtick + 0.002) * direct;
+                if (axis.dockingPosition == AxisDockingPosition.Outer)
+                    p2 = p1 - (longtick + 0.002) * direct;
+                          
+                text = axis.FormatValue(v);
+                if (axis.IsUnitAttached && axis.secondTitle.Length > 0)
+                    text = text + axis.secondTitle;
+
+                graphic.DrawString(text, font, color, size, p2, direct, up,hAlign, vAlign);
+
+                if (axis.secondTitle.Length > 0 && !axis.IsUnitAttached &&
+                    C3DData.IsZero(v - v2, step * 0.001))
+                {
+                    p1.X = -xpos; p1.Y = -ypos; p1.Z = zpos;
+                    p2 = p1 + (longtick + 0.002) * direct;
+                    if (axis.dockingPosition == AxisDockingPosition.Outer)
+                        p2 = p1 - (longtick + 0.002) * direct;                    
+                    graphic.DrawString(axis.secondTitle, axis.secondTitleFont, axis.secondTitleColor, 
+                        axis.secondTitleSize, p2, direct, up, hAlign, vAlign);
+                }
+            }
+            graphic.PopMatrix();
+            axisZObject.AddRenderingBuffer(graphic.objectModelKeyBuffers);
         }
 
         void DrawSelectedOutLines()
@@ -675,6 +1156,7 @@ namespace DDDSharp
             graphic.ClearModelKeyBuffers();
 
             if (!C3DData.bShowSelectedOuterBox) return;
+
             C3DObjectBase obj = C3DData.objSelected;
             if (obj == null) return;
 
@@ -703,23 +1185,15 @@ namespace DDDSharp
             p1 = CDataModel.ToModelVector(p1);
             p2 = obj.TransformedPoint(p2);
             p2 = toWorldVector(obj, p2);
-            p2 = CDataModel.ToModelVector(p2);
-
-            switch ( C3DData.objSelected.type )
-            {
-                case ShapeEnum.Borehole:
-
-                    break;
-            }
+            p2 = CDataModel.ToModelVector(p2);           
             dx = Math.Abs(p2.X - p1.X);
             dy = Math.Abs(p2.Y - p1.Y);
             dz = Math.Abs(p2.Z - p1.Z);
-
             if (dx == 0) dx = 0.01;
             if (dy == 0) dy = 0.01;
             if (dz == 0) dz = 0.01;
 
-            graphic.DrawBoxOutline(p0.X, p0.Y, p0.Z,dx,dy,dz);
+            graphic.DrawBoxOutline(p1.X, p1.Y, p1.Z,dx,dy,dz);
 
             graphic.PopMatrix();
 
@@ -772,7 +1246,229 @@ namespace DDDSharp
             //obj.ClearRenderingBuffers();
             obj.AddRenderingBuffer(graphic.objectModelKeyBuffers);
         }
+        void DrawXDirectionArrow(Axis3DArrow arrow)
+        {
+            if (!arrow.Visible) return; 
 
+            float size = arrow.labelSize;           
+            string text = arrow.AxisName;           
+            Font font = arrow.labelFont;
+
+            double xs = CDataModel.m_Model.XWidth / CDataModel.m_Model.MaxLength;
+            double ys = CDataModel.m_Model.YWidth / CDataModel.m_Model.MaxLength;
+            double zs = CDataModel.m_Model.ZWidth / CDataModel.m_Model.MaxLength;
+
+            double outlineScale = 1.1;
+            double xp = xs * outlineScale * 0.5 + arrow.LineLength;            
+
+            Vector32 centerStart = new Vector32(0, 0, 0);
+            Vector32 cornerStart = new Vector32(-xs * outlineScale / 2, -ys * outlineScale / 2, -zs * outlineScale / 2);
+            Vector32 xp1, xp2;
+            //箭头中心绘制
+            xp1 = xp2 = centerStart;
+            //箭头靠边绘制
+            if (!arrow.Center) xp1 = xp2 = cornerStart;            
+            xp2.X = (float)xp; //延长线
+           
+            graphic.PushMatrix();
+            graphic.SetColor(arrow.LineColor);
+            graphic.SetLineWidth(arrow.LineWidth);
+            graphic.SetLineStyle(gLineStyle.DashDot);
+            graphic.DrawLine(CreateVertex(xp1), CreateVertex(xp2));
+            graphic.PopMatrix();           
+
+            //Draw Arrow3D            
+            Cone ax = new Cone();
+            ax.Rad = arrow.ArrowRadiu;
+            ax.Height = arrow.ArrowHight;
+            ax.Start = new Vector32(0, 0, 0);
+            ax.Create();            
+
+            TriangleObj tri = ax.toTriangleObject();
+            tri.rotate = new vec3(0, -90, 0);
+            tri.offset = new vec3(xp2.X, xp2.Y, xp2.Z);
+            tri.color = ConvertColor(arrow.HeaderColor);
+            DrawTriangles(tri, true);
+           
+            double offx = 0, offy = 0, offz = 0;
+            if (text.Length > 0)
+            {
+                offx = arrow.ArrowHight / 2.0 + arrow.LabelOffset.X;
+                offy = arrow.LabelOffset.Y;
+                offz = arrow.LabelOffset.Z;
+
+                TextHorizontalAlignment hAlign = TextHorizontalAlignment.Left;
+                TextVerticalAlignment vAlign = TextVerticalAlignment.Center;
+                if (arrow.Alignment == ArrowTextAlignment.Vertical)
+                {
+                    hAlign = TextHorizontalAlignment.Center;
+                    vAlign = TextVerticalAlignment.Bottom;
+                }
+                Vector64 direct = new Vector64(1, 0, 0);//direction
+                Vector64 up = new Vector64(0, 1, 0);//upwards
+
+                if (CDataModel.IsGeoCoordinateSystem)
+                {
+                    if (arrow.Alignment == ArrowTextAlignment.Horizontal)
+                    {
+                        direct = new Vector64(1, 0, 0);
+                        up = new Vector64(0, -1, 0);
+                    }
+                    else if (arrow.Alignment == ArrowTextAlignment.Vertical)
+                    {
+                        direct = new Vector64(0, 1, 0);
+                        up = new Vector64(1, 0, 0);
+                    }
+                }
+                else if (arrow.Alignment == ArrowTextAlignment.Vertical)
+                {
+                    direct = new Vector64(0, -1, 0);
+                    up = new Vector64(1, 0, 0);
+                }
+                // upwards
+                // ^  top
+                // |  Hello -->direction
+                // |  bottom
+                graphic.DrawString(text, font, arrow.labelColor, size,
+                                     new Vector64(xp2.X + offx, xp2.Y + offy, xp2.Z + offz), //start
+                                     direct, //direction
+                                     up, //upwards
+                                     hAlign,
+                                     vAlign);
+            }            
+
+        }
+        void DrawYDirectionArrow(Axis3DArrow arrow)
+        {
+            if (!arrow.Visible) return; 
+
+            float size = arrow.labelSize;   
+            string text = arrow.AxisName;
+            Font font = arrow.labelFont;
+
+            double xs = CDataModel.m_Model.XWidth / CDataModel.m_Model.MaxLength;
+            double ys = CDataModel.m_Model.YWidth / CDataModel.m_Model.MaxLength;
+            double zs = CDataModel.m_Model.ZWidth / CDataModel.m_Model.MaxLength;
+
+            double outlineScale = 1.1;
+            double yp = ys * outlineScale * 0.5 + arrow.LineLength;
+
+            Vector32 centerStart = new Vector32(0, 0, 0);
+            Vector32 cornerStart = new Vector32(-xs * outlineScale / 2, -ys * outlineScale / 2, -zs * outlineScale / 2);
+            Vector32 yp1, yp2;
+            //箭头中心绘制            
+            yp1 = yp2 = centerStart;           
+            //箭头靠边绘制            
+            if (!arrow.Center) yp1 = yp2 = cornerStart; 
+            yp2.Y = (float)yp; //延长线           
+
+            graphic.PushMatrix();
+            graphic.SetColor(arrow.LineColor);
+            graphic.SetLineWidth(arrow.LineWidth);
+            graphic.SetLineStyle(gLineStyle.DashDot);
+            graphic.DrawLine(CreateVertex(yp1), CreateVertex(yp2));
+            graphic.PopMatrix();
+
+            //Draw Arrow3D            
+            Cone ay = new Cone();
+            ay.Rad = arrow.ArrowRadiu;
+            ay.Height = arrow.ArrowHight;
+            ay.Start = new Vector32(0, 0, 0);
+            ay.Create();
+
+            TriangleObj tri = ay.toTriangleObject();
+            tri.color = ConvertColor(arrow.HeaderColor);
+            tri.rotate = new vec3(90, 0, 0);
+            tri.offset = new vec3(yp2.X, yp2.Y, yp2.Z);
+            DrawTriangles(tri, true);
+
+            double offx = 0, offy = 0, offz = 0;
+            if (text.Length > 0)
+            {
+                offx = arrow.LabelOffset.X;
+                offy = arrow.ArrowHight / 2.0 + arrow.LabelOffset.Y;
+                offz = arrow.LabelOffset.Z;
+                if (CDataModel.IsGeoCoordinateSystem) //地质坐标系（Z向下）
+                    graphic.DrawString(text, font, arrow.labelColor, size,
+                                   new Vector64(yp2.X + offx, yp2.Y + offy, yp2.Z + offz),
+                                   new Vector64(0, 1, 0),
+                                   new Vector64(1, 0, 0),
+                                   TextHorizontalAlignment.Left,
+                                   TextVerticalAlignment.Center);
+                else graphic.DrawString(text, font, arrow.labelColor, size,
+                                   new Vector64(yp2.X + offx, yp2.Y + offy, yp2.Z + offz),
+                                   new Vector64(0, 1, 0),
+                                   new Vector64(-1, 0, 0),
+                                   TextHorizontalAlignment.Left,
+                                   TextVerticalAlignment.Center);
+            }
+
+        }
+        void DrawZDirectionArrow(Axis3DArrow arrow)
+        {
+            if (!arrow.Visible) return;
+
+            float size = arrow.labelSize;
+            string text = arrow.AxisName;
+            Font font = arrow.labelFont;
+
+            double xs = CDataModel.m_Model.XWidth / CDataModel.m_Model.MaxLength;
+            double ys = CDataModel.m_Model.YWidth / CDataModel.m_Model.MaxLength;
+            double zs = CDataModel.m_Model.ZWidth / CDataModel.m_Model.MaxLength;
+
+            double outlineScale = 1.1;
+            double zp = zs * outlineScale * 0.5 + arrow.LineLength;
+
+            Vector32 centerStart = new Vector32(0, 0, 0);
+            Vector32 cornerStart = new Vector32(-xs * outlineScale / 2, -ys * outlineScale / 2, -zs * outlineScale / 2);
+            Vector32 zp1, zp2;
+            //箭头中心绘制            
+            zp1 = zp2 = centerStart;
+            //箭头靠边绘制            
+            if (!arrow.Center) zp1 = zp2 = cornerStart;
+            zp2.Z = (float)zp; //延长线           
+
+            graphic.PushMatrix();
+            graphic.SetColor(arrow.LineColor);
+            graphic.SetLineWidth(arrow.LineWidth);
+            graphic.SetLineStyle(gLineStyle.DashDot);
+            graphic.DrawLine(CreateVertex(zp1), CreateVertex(zp2));
+            graphic.PopMatrix();
+
+            //Draw Arrow3D            
+            Cone az = new Cone();
+            az.Rad = arrow.ArrowRadiu;
+            az.Height = arrow.ArrowHight;
+            az.Start = new Vector32(0, 0, 0);
+            az.Create();
+
+            TriangleObj tri = az.toTriangleObject();
+            tri.color = ConvertColor(arrow.HeaderColor);
+            tri.rotate = new vec3(0, 180, 0);
+            tri.offset = new vec3(zp2.X, zp2.Y, zp2.Z);
+            DrawTriangles(tri, true);
+
+            double offx = 0, offy = 0, offz = 0;
+            if (text.Length > 0)
+            {
+                offx = arrow.LabelOffset.X;
+                offy = arrow.LabelOffset.Y;
+                offz = arrow.ArrowHight / 2.0 + arrow.LabelOffset.Z;
+                if (CDataModel.IsGeoCoordinateSystem) //地质坐标系（Z向下）
+                    graphic.DrawString(text, font, arrow.labelColor, size,
+                                   new Vector64(zp2.X + offx, zp2.Y + offy, zp2.Z + offz),
+                                   new Vector64(0, 0, 1),
+                                   new Vector64(0, 1, 0),
+                                   TextHorizontalAlignment.Left,
+                                   TextVerticalAlignment.Center);
+                else graphic.DrawString(text, font, arrow.labelColor, size,
+                                   new Vector64(zp2.X + offx, zp2.Y + offy, zp2.Z + offz),
+                                   new Vector64(1, 0, 0),
+                                   new Vector64(0, 0, 1),
+                                   TextHorizontalAlignment.Center,
+                                   TextVerticalAlignment.Bottom);
+            }
+        }
         void DrawDirectionArrow(C3DObjectBase obj)
         {
             //开关视图
@@ -783,144 +1479,36 @@ namespace DDDSharp
                 graphic.SetModelsVisibleByKeys(obj.RenderingBuffers, obj.Visible);
                 return;
             }
-
-            obj.Visible = C3DData.bShowDirectionArrow;
-            if (!obj.Visible) return;
-
+            
             //重绘
             ClearObjectDrawBuffer(obj);
             graphic.ClearModelKeyBuffers();
 
-            double xs = CDataModel.m_Model.XWidth / CDataModel.m_Model.MaxLength;
-            double ys = CDataModel.m_Model.YWidth / CDataModel.m_Model.MaxLength;
-            double zs = CDataModel.m_Model.ZWidth / CDataModel.m_Model.MaxLength;
-
-            double outlineExtScale = 1.2;
-            double arrowTextExt = 0.2;
-            double xp, yp, zp;
-
-            float size = CDataModel.axisFontScale1;
-            string xtext = CDataModel.xAxisText1;
-            string ytext = CDataModel.yAxisText1;
-            string ztext = CDataModel.zAxisText1;
-
+            obj.Visible = C3DData.bShowDirectionArrow;
+            if (!obj.Visible) return;            
+            
+            Axis3DArrow xArrow = CDataModel.xArrow3D;
+            Axis3DArrow yArrow = CDataModel.yArrow3D;
+            Axis3DArrow zArrow = CDataModel.zArrow3D;
             if (CDataModel.IsEarthMapVision)
             {
-                size = CDataModel.axisFontScale3;
-                xtext = CDataModel.xEarthAxisText;
-                ytext = CDataModel.yEarthAxisText;
-                ztext = CDataModel.zEarthAxisText;
+                xArrow = CDataModel.xEarthArrow3D;
+                yArrow = CDataModel.yEarthArrow3D;
+                zArrow = CDataModel.zEarthArrow3D;
             }
             else
             {
                 if (CDataModel.IsGeoCoordinateSystem)
                 {
-                    size = CDataModel.axisFontScale2;
-                    xtext = CDataModel.xAxisText2;
-                    ytext = CDataModel.yAxisText2;
-                    ztext = CDataModel.zAxisText2;
+                    xArrow = CDataModel.xGeoArrow3D;
+                    yArrow = CDataModel.yGeoArrow3D;
+                    zArrow = CDataModel.zGeoArrow3D;
                 }
             }
 
-            if (CDataModel.IsEarthMapVision) outlineExtScale = 0.8;
-
-            string fontname = SystemFonts.DefaultFont.Name;//"@宋体"; 
-            Font font = new Font(fontname, 256);
-            xp = xs * outlineExtScale * 0.5 + arrowTextExt;
-            yp = ys * outlineExtScale * 0.5 + arrowTextExt;
-            zp = zs * outlineExtScale * 0.5 + arrowTextExt;
-            
-            graphic.PushMatrix();
-
-            graphic.SetColor(Color.Red);
-            graphic.SetLineWidth(1.5);
-            graphic.SetLineStyle(gLineStyle.DashDot);
-
-            graphic.DrawLine(new Vertex3D(0, 0, 0), new Vertex3D((float)xp, 0, 0));
-            graphic.SetColor(Color.Green);
-            graphic.DrawLine(new Vertex3D(0, 0, 0), new Vertex3D(0, (float)yp, 0));
-            
-            graphic.SetColor(Color.Blue);
-            graphic.DrawLine(new Vertex3D(0, 0, 0), new Vertex3D(0, 0, (float)zp));
-            
-            graphic.PopMatrix();
-
-            //Draw Arrow3D
-            Arrow3D arrowx = new Arrow3D();
-            arrowx.Rad = 0.016;
-            arrowx.Height = arrowx.Rad*0.618*5;
-            arrowx.Start = new Vector32(0, 0, 0);
-            //arrowx.TopFace.Visible = false;
-            arrowx.Create();
-            
-            TriangleObj tri = arrowx.toTriangleObject();
-            tri.rotate = new vec3(0, -90, 0);
-            tri.offset = new vec3((float)xp, 0, 0);
-            tri.color = new vec4(1, 0, 0, 1);
-            DrawTriangles(tri, true);
-
-            tri.color = new vec4(0, 1, 0, 1);
-            tri.rotate = new vec3(90, 0, 0);
-            tri.offset = new vec3(0,(float)yp, 0);            
-            DrawTriangles(tri, true);
-
-            tri.color = new vec4(0, 0, 1, 1);
-            tri.rotate = new vec3(0, 180, 0);
-            tri.offset = new vec3(0,0,(float)zp);            
-            DrawTriangles(tri,true);
-
-            if (xtext.Length > 0)
-            {
-                // upwards
-                // ^  top
-                // |  Hello -->direction
-                // |  bottom
-                if (CDataModel.IsGeoCoordinateSystem) //地质坐标系（Z向下）
-                    graphic.DrawString(xtext, font, Color.Red, size,
-                                     new Vector64(xp, 0, 0), //start
-                                     new Vector64(1, 0, 0), //direction
-                                     new Vector64(0, -1, 0), //upwards
-                                     TextHorizontalAlignment.Left,
-                                     TextVerticalAlignment.Center);
-                else graphic.DrawString(xtext, font, Color.Red, size,
-                                       new Vector64(xp, 0, 0), //start
-                                       new Vector64(1, 0, 0), //direction
-                                       new Vector64(0, 1, 0), //upwards
-                                       TextHorizontalAlignment.Left,
-                                       TextVerticalAlignment.Center);
-            }
-            if (ytext.Length > 0)
-            {
-                if (CDataModel.IsGeoCoordinateSystem) //地质坐标系（Z向下）
-                    graphic.DrawString(ytext, font, Color.Green, size,
-                                   new Vector64(0, yp, 0),
-                                   new Vector64(0, 1, 0),
-                                   new Vector64(1, 0, 0),
-                                   TextHorizontalAlignment.Left,
-                                   TextVerticalAlignment.Center);
-                else graphic.DrawString(ytext, font, Color.Green, size,
-                                   new Vector64(0, yp, 0),
-                                   new Vector64(0, 1, 0),
-                                   new Vector64(-1, 0, 0),
-                                   TextHorizontalAlignment.Left,
-                                   TextVerticalAlignment.Center);
-            }
-            if (ztext.Length > 0)
-            {
-                if (CDataModel.IsGeoCoordinateSystem) //地质坐标系（Z向下）
-                    graphic.DrawString(ztext, font, Color.Blue, size,
-                                   new Vector64(0, 0, zp),
-                                   new Vector64(0, 0, 1),
-                                   new Vector64(0, 1, 0),
-                                   TextHorizontalAlignment.Left,
-                                   TextVerticalAlignment.Center);
-                else graphic.DrawString(ztext, font, Color.Blue, size,
-                                   new Vector64(0, 0, zp),
-                                   new Vector64(1, 0, 0),
-                                   new Vector64(0, 0, 1),
-                                   TextHorizontalAlignment.Center,
-                                   TextVerticalAlignment.Bottom);
-            }
+            DrawXDirectionArrow(xArrow);
+            DrawYDirectionArrow(yArrow);
+            DrawZDirectionArrow(zArrow);
 
             obj.AddRenderingBuffer(graphic.objectModelKeyBuffers);
         }
@@ -984,15 +1572,14 @@ namespace DDDSharp
             //{
             //    ResetBitmapAlpha(bmp, tex.Alpha );
             //}
+            if( tex.TransparentColors.Count > 0)
+            {
+                tex.MakeTransparent(bmp);
+            }
             return bmp;
         }
 
-        void BindTexture(Bitmap bmp)
-        {
-            if (bmp == null) return;
-            graphic.BindTexture(bmp);
-        }
-
+       
         void DrawEarthWireframe(double stepx = 1, double stepy = 1)
         {
             int nx = (int)(360 / stepx);
@@ -1089,6 +1676,7 @@ namespace DDDSharp
             graphic.EnableTexture(true);
 
             graphic.BindTexture(obj.textureImage);
+
             graphic.SetPolygonMode(gDrawMode.Fill);
 
             graphic.DrawTriangles(points, indices);
@@ -1193,6 +1781,7 @@ namespace DDDSharp
             {
                 graphic.EnableTexture(true);
                 graphic.BindTexture(bmp);
+                bmp.Dispose();
             }
 
             if (obj.IsWireFrameMode) graphic.SetPolygonMode(gDrawMode.Wireframe);
@@ -1310,6 +1899,7 @@ namespace DDDSharp
                 {
                     graphic.EnableTexture(true);
                     graphic.BindTexture(bmp);
+                    bmp.Dispose();
                 }
 
                 if (tri.IsWireFrameMode) graphic.SetPolygonMode(gDrawMode.Wireframe);
@@ -1344,7 +1934,12 @@ namespace DDDSharp
             ClearObjectDrawBuffer(obj);
             graphic.ClearModelKeyBuffers();//清空绘制区对象ID临时缓冲
 
-            if (obj.ShowMesh) DrawMeshGrid(obj);
+            if (obj.ShowMesh) 
+            {
+               // if (obj.Boundaries.Count > 0)
+                    DrawMeshGridWithBlanked(obj);
+               // else DrawMeshGrid(obj);
+            }
             if (obj.ShowContour) DrawMeshContourLines(obj);
             obj.ClearRenderingBuffers();
             obj.AddRenderingBuffer(graphic.objectModelKeyBuffers);//添加到对象缓冲
@@ -1352,8 +1947,7 @@ namespace DDDSharp
         public void DrawMeshGrid(CMesh obj)
         {
             if (obj.nRow < 2 || obj.nCol < 2) return;
-            if (obj.pData == null) return;
-
+            if (obj.pData == null) return;            
             Vertex3D[] points = null;
             int[] indices = null;
 
@@ -1384,34 +1978,44 @@ namespace DDDSharp
                 Bitmap bmp = LoadTexture(obj.textureStruct);
                 if (bmp == null) AddToMessage("load texture failed.\n" + obj.textureStruct.TextureFile);
                 else
-                {  
+                {                    
                     enableTexture = true;
                     graphic.EnableTexture(true);
                     graphic.BindTexture(bmp);
+                    bmp.Dispose();
                 }
             }
-
+            vec2 tex = new vec2();
             for (int i = 0; i < obj.nRow; i++)
             {
                 for (int j = 0; j < obj.nCol; j++)
                 {
                     p1 = obj.pData[i * obj.nCol + j];
-                    if (obj.EnableColorLevel) _color = ConvertColor(obj.GetColor(p1.v));
 
-                    if (obj.IsBlanked(p1)) _color.w = 0;
-                    else _color.w = obj.Alpha;
-                    
+                    if (double.IsNaN(p1.V) || obj.IsBlanked(p1)) _color.w = 0;
+                    else if (obj.EnableColorLevel) _color = ConvertColor(obj.GetColor(p1.v));
+                    else 
+                    {
+                        ConvertColor(obj.ObjColor);
+                        _color.w = obj.Alpha;
+                    }                   
+
+
                     if (obj.IsFlat) p1.Z = obj.ZOffset;
+
+                    if (enableTexture) tex = obj.GetTextureCoord(p1);
 
                     p1 = obj.TransformedPoint(p1);
                     p1 = toWorldVector(obj, p1);
                     p1 = CDataModel.ToModelVector(p1);
+
                     p = graphic.CreatePoint(p1);
                     p.color = _color; //object颜色
 
                     if (enableTexture)
                     {
-                        p.SetTexcoord((float)j / (float)obj.nCol, (float)i / (float)obj.nRow);
+                        p.SetTexcoord(tex);
+                        //p.SetTexcoord((float)j / (float)obj.nCol, (float)i / (float)obj.nRow);
                     }
                     points[i * obj.nCol + j] = p;
                 }
@@ -1429,12 +2033,19 @@ namespace DDDSharp
                     id2 = id1 + 1;
                     id3 = id1 + obj.nCol;
                     id4 = id2 + obj.nCol;
-                    indices[k++] = id1;
-                    indices[k++] = id2;
-                    indices[k++] = id3;
-                    indices[k++] = id4;
-                    indices[k++] = id3;
-                    indices[k++] = id2;
+
+                    if (points[id1].color.w > 0f && points[id2].color.w>0f && points[id3].color.w>0f)
+                    {
+                        indices[k++] = id1;
+                        indices[k++] = id2;
+                        indices[k++] = id3;
+                    }
+                    if (points[id2].color.w > 0f && points[id3].color.w > 0f && points[id4].color.w > 0f)
+                    {
+                        indices[k++] = id4;
+                        indices[k++] = id3;
+                        indices[k++] = id2;
+                    }
                 }
             }
 
@@ -1448,7 +2059,12 @@ namespace DDDSharp
             indices = null;
 
         }
-
+        public void DrawMeshGridWithBlanked(CMesh obj)
+        {
+            TriangleObj tri = obj.toBlankedTriangleObj();            
+            DrawTriangles(tri);
+            tri.Clear();
+        }
         #region CubeTest
         public int m_TestValue = 1;
         C3DGridData dataTest = new C3DGridData();
@@ -1613,24 +2229,66 @@ namespace DDDSharp
             ClearObjectDrawBuffer(obj);
             graphic.ClearModelKeyBuffers();//清空绘制区对象ID临时缓冲
             DrawLine(obj);
+            if ( (obj.Arrow.arrowStyle ==  ArrowStyle.Right|| 
+                  obj.Arrow.arrowStyle == ArrowStyle.Both) && 
+                  obj.points.Count > 2 )
+            {
+                Vector64 start = obj.points[obj.points.Count - 2];
+                Vector64 end = obj.points[obj.points.Count - 1];                
+                if (Math.Abs(obj.Arrow.drawExtentScale - 0) > 1e-8)
+                {  //前后各增加一个点，作为方向
+                    var calculator = new CurveExtensionCalculator();
+                    calculator.CalculateExtensionPoints(obj.points, out var linearFront, out var linearBack, obj.Arrow.drawExtentScale);
+                    start = obj.points[obj.points.Count - 1];
+                    end = linearBack;                    
+                }
+                DrawLineArrow(start,end,obj); 
+            }
+            if ( (obj.Arrow.arrowStyle == ArrowStyle.Left ||
+                  obj.Arrow.arrowStyle == ArrowStyle.Both) &&                
+                  obj.points.Count > 2)
+            {
+                Vector64 start = obj.points[1];
+                Vector64 end = obj.points[0];
+                if (Math.Abs(obj.Arrow.drawExtentScale - 0) > 1e-8)
+                {  //前后各增加一个点，作为方向
+                    var calculator = new CurveExtensionCalculator();
+                    calculator.CalculateExtensionPoints(obj.points, out var linearFront, out var linearBack, obj.Arrow.drawExtentScale);
+                    start = obj.points[0];
+                    end = linearFront;
+                }
+                DrawLineArrow(start, end, obj);
+            }
+            
             obj.ClearRenderingBuffers();
             obj.AddRenderingBuffer(graphic.objectModelKeyBuffers);//添加到对象缓冲
+        }
+
+        void DrawLineArrow(Vector64 start, Vector64 end, C3DLine obj)
+        {
+            obj.Arrow.Start = start;
+            obj.Arrow.End = end;
+            TriangleObj tri = obj.Arrow.GenerateSmoothArrow();
+            tri.color = ConvertColor(obj.Arrow.Color);
+            tri.color.w = obj.Alpha;
+            DrawTriangles(tri);
+            tri.Clear();  
         }
         private void DrawLine(C3DLine obj)
         {
             Vertex3D[] points = new Vertex3D[obj.points.Count];
             if (points == null) return;
             Vector32 p1;
-            vec4 _color = ConvertColor( obj.Color );
-            
+            vec4 _color = ConvertColor(obj.Color);
+
             for (int i = 0; i < points.Length; i++)
             {
                 p1 = obj.points[i];
                 p1 = obj.TransformedPoint(p1);
                 p1 = toWorldVector(obj, p1);
                 p1 = CDataModel.ToModelVector(p1);
-                points[i] = graphic.CreatePoint(p1);                
-                if ( obj.EnableColorLevel )
+                points[i] = graphic.CreatePoint(p1);
+                if (obj.EnableColorLevel)
                 {
                     _color = ConvertColor(obj.GetColor(p1.V));
                 }
@@ -1649,57 +2307,108 @@ namespace DDDSharp
 
             points = null;
 
-        }
-        /// <summary>
-        /// 绘制地层表面
-        /// </summary>
-        /// <param name="obj"></param>
-        /// <param name="points"></param>
-        /// <param name="row"></param>
-        /// <param name="col"></param>
-        void DrawGeoMeshesSurface(GeoMesh mesh, Vertex3D[] points,int row,int col, TextureStruct tex)
-        {           
-            int id, id1, id2, id3, id4;
+        }        
 
+        //绘制地层侧面
+        void DrawGeoMeshesFace(GeoLayerMeshes obj, GeoMesh top, GeoMesh bottom)
+        {
+            int count = top.Boundaries.Count;
+            if (count < 1) return;
             graphic.PushMatrix();
 
+            vec4 _color = new vec4();
+            List<Vertex3D> points = new List<Vertex3D>();
+            Vector64 p1, p2;
+            Vertex3D p;
+            for (int i=0;i< count;i++)
+            {
+                 p1 = top.Boundaries[i];
+                _color = ConvertColor(top.ObjColor);
+                if (top.EnableColorLevel)
+                {
+                    _color = ConvertColor(top.GetColor(p1.V));
+                }
+                p1 = obj.TransformedPoint(p1);
+                p1 = toWorldVector(obj, p1);
+                p1 = CDataModel.ToModelVector(p1);
+                p = graphic.CreatePoint(p1);
+                
+                _color.w = obj.Alpha;
+                p.SetColor(_color);
+                points.Add(p);
+
+                p2 = bottom.Boundaries[i];
+                _color = ConvertColor(bottom.ObjColor);
+                if (bottom.EnableColorLevel)
+                {
+                    _color = ConvertColor(bottom.GetColor(p2.V));
+                }
+
+                p2 = obj.TransformedPoint(p2);
+                p2 = toWorldVector(obj, p2);
+                p2 = CDataModel.ToModelVector(p2);
+                p = graphic.CreatePoint(p2);                
+                _color.w = obj.Alpha;
+                p.SetColor(_color);
+                points.Add(p);
+            }
+
             bool enableTexture = false;
+            TextureStruct tex = top.textureStruct;
             if (tex.IsValidate())
             {
                 Bitmap bmp = LoadTexture(tex);
                 if (bmp == null) AddToMessage("load texture failed.\n" + tex.TextureFile);
                 else
-                {                    
+                {
                     enableTexture = true;
                     graphic.EnableTexture(true);
                     graphic.BindTexture(bmp);
+                    bmp.Dispose();
                 }
             }
 
-            if (enableTexture)
+            if ( enableTexture )
             {
-                for (int i = 0; i < row; i++)
+                for(int i = 0; i < count; i++ )
                 {
-                    for (int j = 0; j < col; j++)
-                    {
-                        id = i * col + j;
-                        points[id].SetTexcoord((float)j / (float)col, (float)i / (float)row);
-                    }
+                    Vertex3D v1 = points[2 * i];
+                    Vertex3D v2 = points[2 * i+1];
+                    v1.SetTexcoord((float)i / (count - 1), 0);
+                    v2.SetTexcoord((float)i / (count - 1), 1);
+                    points[2 * i] = v1;
+                    points[2 * i+1] = v2;
                 }
             }
-            // Y
-            // | -3---4--- 
-            // | -1---2---
-            // O------------>X
+            
             List<int> indices = new List<int>();
-            for (int i = 0; i < row - 1; i++)
+            int k = 0;
+            int id1, id2, id3, id4;
+            for (int i = 0; i < count; i++)
             {
-                for (int j = 0; j < col - 1; j++)
+                id1 = 2 * i;
+                id2 = 2*i + 1;
+                if (i == count - 1)
                 {
-                    id1 = i * col + j;
-                    id2 = id1 + 1;
-                    id3 = id1 + col;
-                    id4 = id2 + col;
+                    id3 = 0;
+                    id4 = 1;
+                }
+                else
+                {
+                    id3 = id1 + 2;
+                    id4 = id1 + 3;
+                }
+                if (top.Clockwise == ClockDirection.Clockwise)
+                {
+                    indices.Add(id1);
+                    indices.Add(id3);
+                    indices.Add(id2);
+                    indices.Add(id2);
+                    indices.Add(id3);
+                    indices.Add(id4);
+                }
+                else
+                {
                     indices.Add(id1);
                     indices.Add(id2);
                     indices.Add(id3);
@@ -1708,70 +2417,15 @@ namespace DDDSharp
                     indices.Add(id2);
                 }
             }
-
-            if (mesh.IsWireFrameMode) graphic.SetPolygonMode(gDrawMode.Wireframe);
+            
+            if (top.IsWireFrameMode) graphic.SetPolygonMode(gDrawMode.Wireframe);
             else graphic.SetPolygonMode(gDrawMode.Fill);
 
-            graphic.DrawTriangle(points, indices.ToArray());//绘制地层表面
+            graphic.DrawTriangle(points.ToArray(),indices.ToArray());
             graphic.DisableTexture();
+
+            points.Clear();
             indices.Clear();
-
-            graphic.PopMatrix();
-
-        }
-
-        //绘制地层侧面
-
-        void DrawGeoMeshesFace(GeoMesh mesh, Vertex3D[] points, int count, TextureStruct tex)
-        {   
-            graphic.PushMatrix();
-
-            bool enableTexture = false;
-            
-            if (tex.IsValidate())
-            {
-                Bitmap bmp = LoadTexture(tex);
-                if (bmp == null) AddToMessage("load texture failed.\n" + tex.TextureFile);
-                else
-                {
-                    enableTexture = true;
-                    graphic.EnableTexture(true);
-                    graphic.BindTexture(bmp);
-                }
-            }
-
-            if ( enableTexture )
-            {
-                for(int i = 0; i < count; i++ )
-                {
-                    points[2 * i].SetTexcoord((float)i / (count - 1), 0);
-                    points[2 * i + 1].SetTexcoord((float)i / (count - 1), 1);
-                }
-            }
-            int[] indices = new int[count*6];
-            int k = 0;
-            int id1, id2, id3, id4;
-            for (int i = 0; i < count - 1; i++)
-            {
-                id1 = 2 * i;
-                id2 = id1 + 1;
-                id3 = id1 + 2;
-                id4 = id1 + 3;
-                indices[k++] = id1;
-                indices[k++] = id2;
-                indices[k++] = id3;
-                indices[k++] = id4;
-                indices[k++] = id3;
-                indices[k++] = id2;
-            }
-            
-            if (mesh.IsWireFrameMode) graphic.SetPolygonMode(gDrawMode.Wireframe);
-            else graphic.SetPolygonMode(gDrawMode.Fill);
-
-            graphic.DrawTriangle(points,indices);
-            graphic.DisableTexture();
-            
-            indices = null;
 
             graphic.PopMatrix();
 
@@ -1792,194 +2446,46 @@ namespace DDDSharp
             obj.AddRenderingBuffer(graphic.objectModelKeyBuffers);//添加到对象缓冲
         }
         private void DrawGeoMeshes(GeoLayerMeshes obj)
-        {  
-            int row = obj[0].nRow; //行和列一致
-            int col = obj[0].nCol;
-            
-            Vertex3D[][] points = new Vertex3D[obj.Count][];
-
-            Vector64 p1,p2,p3;
-            vec4 _color=new vec4(1,1,1,1);
-            _color.w = obj.Alpha;
-            Vertex3D p, v1, v2;
-            GeoMesh mesh;
-
-            //上/下扩展地层面
-            Vertex3D[] extFace = new Vertex3D[row*col];
-
-            //创建点数组points
-            for (int m = 0; m < obj.Count; m++)
+        {
+            //默认地层按从上到下排列
+            int row = obj.nRow; //行和列一致
+            int col = obj.nCol;
+            //绘制正面
+            for (int i = 0; i < obj.Count; i++)
             {
-                mesh = obj[m];
-                points[m] = new Vertex3D[row * col];
-                _color = ConvertColor(mesh.ObjColor);//地层颜色
-                for (int i = 0; i < row; i++)
+                CMesh mesh = obj[i];
+                if (mesh.ShowMesh)
                 {
-                    for (int j = 0; j < col; j++)
-                    {
-                        p1 = mesh.pData[i * col + j];
-                        if (mesh.EnableColorLevel) _color = ConvertColor(mesh.GetColor(p1.v));
-                        if (mesh.IsBlanked(p1)) _color.w = 0;
-                        else _color.w = mesh.Alpha;
-
-                        if ( m == 0 && !obj.IsTop )//底界面上延
-                        {
-                            p2 = p1;
-                            p2.Z = p2.Z + mesh.Depth;
-                            if (obj.IsFlatTop) p2.Z = mesh.maxz + mesh.Depth;
-
-                            p2 = obj.TransformedPoint(p2);
-                            p2 = toWorldVector(obj, p2);
-                            p2 = CDataModel.ToModelVector(p2);
-                            p = graphic.CreatePoint(p2);
-                            p.color = _color; //object颜色 
-                            extFace[i * col + j] = p;
-                        }
-                        else if (m == obj.Count - 1 && obj.IsTop)//顶界面下延
-                        {
-                            p3 = p1;
-                            p3.Z = p3.Z - mesh.Depth;
-                            if ( obj.IsFlatBottom ) p3.Z = mesh.minz - -mesh.Depth;
-
-                            p3 = obj.TransformedPoint(p3);
-                            p3 = toWorldVector(obj, p3);
-                            p3 = CDataModel.ToModelVector(p3);
-                            p = graphic.CreatePoint(p3);
-                            p.color = _color; //object颜色 
-                            extFace[i * col + j] = p;
-                        }
-                        
-                        if( m == obj.Count - 1 && !mesh.IsTop && obj.IsFlatBottom )//底界面
-                        {
-                            p1.Z = obj.minz;
-                        }
-                        if ( m == 0 && mesh.IsTop && obj.IsFlatTop)//顶界面
-                        {
-                            p1.Z = obj.maxz;
-                        }
-
-                        p1 = obj.TransformedPoint(p1);
-                        p1 = toWorldVector(obj, p1);
-                        p1 = CDataModel.ToModelVector(p1);
-                        p = graphic.CreatePoint(p1);
-                        p.color = _color; //object颜色 
-                        points[m][i * col + j] = p;
-                    }
+                    if (mesh.CoordIntersections.Count < 1) DrawMeshGrid(mesh);
+                    else DrawMeshGridWithBlanked(mesh);
                 }
-
-                bool draw = mesh.Visible && mesh.ShowSurface;
-                //根据上下地层关系决定是否绘制
-                if ( obj.IsTop && !draw )//顶界面，可能上一地层底界面
-                {
-                    if (m > 0 && obj[m - 1].IsFilled && obj[m - 1].Visible) draw = true;
-                }
-                else if ( !obj.IsTop && !draw)//底界面，可能下一地层顶界面
-                {
-                    if ( m < obj.Count - 1 && obj[m + 1].IsFilled && obj[m + 1].Visible) draw = true;
-                }
-
-                //绘制地层表面
-                if(draw) DrawGeoMeshesSurface(mesh, points[m], row, col, mesh.SurfaceTexture);
-
-            }//for( int m = 0; m < obj.Count; m++ )        
-
-            //-----------绘制侧面-Fill------------------------------ 
-            Vertex3D[] top, bottom;            
-            for ( int m = 0; m < obj.Count; m++ )
-            {
-                mesh = obj[m];
-                if ( !mesh.Visible || !mesh.IsFilled ) continue;
-
-                if ( obj.IsTop)//地层面为顶界面
-                {
-                    top = points[m];
-                    if (m == obj.Count - 1) bottom = extFace;
-                    else bottom = points[m + 1];
-                }
-                else//地层面为底界面
-                {
-                    if (m == 0) top = extFace;
-                    else top = points[m - 1];
-                    bottom = points[m];
-                }
-
-                if ( m == 0 && !obj.IsTop )//最上层底界面上延
-                    DrawGeoMeshesSurface(mesh, extFace, row, col,mesh.SurfaceTexture);
-
-                if (m == obj.Count - 1 && obj.IsTop) //最下层的顶界面下延
-                    DrawGeoMeshesSurface(mesh, extFace, row, col, mesh.SurfaceTexture);                
-
-                //前侧面XOZ
-                Vertex3D[] coords = new Vertex3D[2 * col];
-                for (int i = 0; i < col; i++)
-                {
-                    v1 = top[i];
-                    v2 = bottom[i];
-                    v1.color = v2.color = ConvertColor(mesh.Color);
-                    coords[2 * i] = v1;
-                    coords[2 * i + 1] = v2;
-                }
-
-                //侧面绘制
-                DrawGeoMeshesFace(mesh, coords,col ,mesh.SurroundingTexture);
-
-                //后侧面XOZ - 反序               
-                for (int i = 0; i < col; i++)
-                {
-                    v1 = top[ (row - 1) * col + col - 1 - i];
-                    v2 = bottom[(row - 1) * col + col - 1 - i];
-                    v1.color = v2.color = ConvertColor(mesh.Color);
-                    coords[2 * i] = v1;
-                    coords[2 * i + 1] = v2;
-                }
-                DrawGeoMeshesFace(mesh, coords, col, mesh.SurroundingTexture);
-
-                //右侧面YOZ
-                coords = null;
-                coords = new Vertex3D[2 * row];
-                for (int i = 0; i < row; i++)
-                {
-                    v1 = top[i * col + col - 1];
-                    v2 = bottom[i * col + col - 1];
-                    v1.color = v2.color = ConvertColor(mesh.Color);
-                    coords[2 * i] = v1;
-                    coords[2 * i + 1] = v2;
-                }
-                DrawGeoMeshesFace(mesh, coords, row, mesh.SurroundingTexture);
-
-                //左侧面YOZ-反序
-                coords = null;
-                coords = new Vertex3D[2 * row];
-                for (int i = 0; i < row; i++)
-                {
-                    v1 = top[(row - 1 - i) * col];
-                    v2 = bottom[(row - 1 - i) * col];
-                    v1.color = v2.color = ConvertColor(mesh.Color);
-                    coords[2 * i] = v1;
-                    coords[2 * i + 1] = v2;
-                }
-                DrawGeoMeshesFace(mesh, coords, row, mesh.SurroundingTexture);
-                coords = null;
+                if (mesh.ShowContour) DrawMeshContourLines(mesh);
             }
+            //绘制侧面
+            for (int i = 0; i < obj.Count - 1; i++)
+            {
+                GeoMesh top = obj[i];
+                GeoMesh bottom = obj[i + 1];
+                // DrawGeoMeshesFace(obj, top, bottom);
+                TriangleObj tri = top.toBlankedTriangleObj(bottom);
+                DrawTriangles(tri);
+                tri.Clear();
 
-            top = null;
-            bottom = null;
-            points = null;
-        }        
-
+            }//for( int m = 0; m < obj.Count; m++ )             
+        }
         private void Draw2DPolygonsObj(C2DPolygons obj, PolygonSlicer slicer = null)
         {
             if ( !obj.Visible ) return;
 
             ClearObjectDrawBuffer(obj);
-
+            
             PolygonSlicer slicer1 = slicer;
             if (slicer == null) slicer1 = (PolygonSlicer)obj.Parent;
             foreach (Polygon2D poly in obj.Polygons)
             {
                 if ( !poly.Visible ) continue;
                 if ( poly.points.Count < 2 ) continue;
-                DrawPolygon2DObj(poly);
+                DrawPolygon2DObj(poly, slicer);
                 poly.Parent = obj;
                 obj.AddRenderingBuffer(poly.RenderingBuffers);
 
@@ -1991,7 +2497,7 @@ namespace DDDSharp
 
             ClearObjectDrawBuffer(obj);
             
-            //DrawPolygonsBackImage(obj);            
+            DrawPolygonsBackImage(obj);
 
             Draw2DPolygonsObj(obj.polygons,obj);
             Draw2DPolygonsObj(obj.tracedGeoObjects,obj);
@@ -1999,11 +2505,13 @@ namespace DDDSharp
             obj.AddRenderingBuffer(obj.polygons.RenderingBuffers);
             obj.AddRenderingBuffer(obj.tracedGeoObjects.RenderingBuffers);
         }
+
         void DrawPolygonsBackImage(PolygonSlicer obj)
         {
             if (obj == null) return;
             if ( obj.backImages.Count < 1) return;
-            if (!obj.polygons.Visible) return;
+            if ( !obj.polygons.Visible ) return;
+            if ( !obj.ShowBackgroundImage ) return;
 
             double x1, y1, x2, y2;
             Vector64 p1;
@@ -2018,14 +2526,14 @@ namespace DDDSharp
             {
                 //0--x1,y1    1--x2,y1
                 //2--x1,y2    3--x2,y2
-                x1 = im.rect.x1;
-                y1 = im.rect.y1;
-                x2 = im.rect.x2;
-                y2 = im.rect.y2;                
+                x1 = im.rect.X1;
+                y1 = im.rect.Y1;
+                x2 = im.rect.X2;
+                y2 = im.rect.Y2;                
                 corners[0] = new Vector64(x1, y1, 0);
                 corners[1] = new Vector64(x2, y1, 0);
-                corners[2] = new Vector64(x1, y2, 0);
-                corners[3] = new Vector64(x2, y2, 0);
+                corners[2] = new Vector64(x2, y2, 0);
+                corners[3] = new Vector64(x1, y2, 0);
                 for (int i = 0;i < corners.Length; i++)
                 {
                     p1 = corners[i];
@@ -2036,31 +2544,47 @@ namespace DDDSharp
                     points[i] = CreateVertex(p1);
                     points[i].color = new vec4(1,1,1,1);
                 }
-                // 0,0   1,0
-                // 0,1   1,1
-                points[0].SetTexcoord(0, 0);
-                points[2].SetTexcoord(0, 1);
-                points[1].SetTexcoord(1, 0);                
-                points[3].SetTexcoord(1, 1);
+                // P3(0,1)   P2(1,1)
+                // P0(0,0)   P1(1,0)                
+                points[0].SetTexcoord(0, 1);
+                points[1].SetTexcoord(1, 1);
+                points[2].SetTexcoord(1, 0);                                
+                points[3].SetTexcoord(0, 0);
                 indices[0] = 0;
                 indices[1] = 1;
                 indices[2] = 2;
-                indices[3] = 3;
-                indices[4] = 2;
-                indices[5] = 1;
+                indices[3] = 2;
+                indices[4] = 3;
+                indices[5] = 0;
+
                 graphic.PushMatrix();
                 graphic.EnableTexture(true);
-                Bitmap bmp = new Bitmap(im.img);
-                graphic.BindTexture(bmp);
+                
+                Bitmap bmp = new Bitmap(im.bmp);
+
+                if (obj.textureStruct.Enable)
+                    obj.textureStruct.MakeTransparent(bmp);
+
+                graphic.BindTexture( bmp );
+                bmp.Dispose();
+
                 graphic.DrawTriangle(points,indices);               
                 graphic.PopMatrix();
                 graphic.EnableTexture(false);
             }
             
+            corners = null;
+            points = null;
+
             obj.AddRenderingBuffer(graphic.objectModelKeyBuffers);//添加到对象缓冲
 
         }
-        public void DrawPolygon2DObj(Polygon2D obj)
+        /// <summary>
+        /// //绘制2D Polygon
+        /// </summary>
+        /// <param name="obj">Polygon2d</param>
+        /// <param name="slicer">父节点--3D切片</param>
+        public void DrawPolygon2DObj(Polygon2D obj, PolygonSlicer slicer)
         {
             if (!obj.Visible) return;
             if (obj.points.Count < 2) return;
@@ -2068,14 +2592,14 @@ namespace DDDSharp
             ClearObjectDrawBuffer(obj);
             graphic.ClearModelKeyBuffers();//清空绘制区对象ID临时缓冲
             
-            DrawPolygon2DFilled(obj);
-            DrawPolygon2DOutLine(obj);
+            DrawPolygon2DFilled(obj,slicer);
+            DrawPolygon2DOutLine(obj,slicer);
 
             obj.ClearRenderingBuffers();
             obj.AddRenderingBuffer(graphic.objectModelKeyBuffers);//添加到对象缓冲
         }
 
-        private void DrawPolygon2DOutLine(Polygon2D obj)
+        private void DrawPolygon2DOutLine(Polygon2D obj, PolygonSlicer slicer)
         {
             if (!obj.Visible || obj.points.Count < 2) return;
 
@@ -2090,18 +2614,13 @@ namespace DDDSharp
 
             if (obj.IsClosed) points = new Vertex3D[obj.points.Count + 1];
             else points = new Vertex3D[obj.points.Count];
-            
-            PolygonSlicer slicer = null;
-            if (obj.Parent != null && obj.Parent.Parent != null )
-                slicer = (PolygonSlicer)obj.Parent.Parent;
 
             int i = 0;
             foreach (Vector32 p in obj.points)
             {
-                p1 = p;
-                if(slicer != null ) p1 = slicer.toTracedPoint(p.toVector64());              
-              
+                p1 = p;                
                 p1 = obj.TransformedPoint(p1);
+                if (slicer != null) p1 = slicer.toTracedPoint(p.toVector64());
                 p1 = toWorldVector(obj, p1);
                 p1 = CDataModel.ToModelVector(p1);
                 points[i] = graphic.CreatePoint(p1);
@@ -2123,45 +2642,45 @@ namespace DDDSharp
             points = null;
         }
         //三角剖分的问题-3D多边形需要先投影成2D多边形
-        private void DrawPolygon2DFilled(Polygon2D obj)
+        private void DrawPolygon2DFilled(Polygon2D obj, PolygonSlicer slicer = null)
         {
-            if ( obj.IsClosed && obj.IsFill )
+            if (!obj.IsClosed || !obj.IsFill) return;
+            bool IsPoly2D = obj.IsPoly2D;
+
+            Vector32 p1;
+            //if ( obj.RenderMode == RenderingUpdateMode.Redraw ||
+            //     (slicer != null && slicer.RenderMode == RenderingUpdateMode.Redraw) )
+
+            if (obj.NetTopologySuiteTriangulate(true) == null) 
             {
-                bool IsPoly2D = obj.IsPoly2D;
-                
-                PolygonSlicer slicer = null;                
-                if (obj.Parent != null && obj.Parent.Parent != null)
-                    slicer = obj.Parent.Parent as PolygonSlicer;                
-                
-                Vector32 p1;
-                if ( obj.RenderMode == RenderingUpdateMode.Redraw ||
-                     (obj.Parent != null && obj.Parent.RenderMode == RenderingUpdateMode.Redraw) ||
-                     (slicer != null && slicer.RenderMode == RenderingUpdateMode.Redraw) ||
-                     obj.triangledObject == null)
-                { 
-                    obj.Triangulate(true);
-                    for (int k = 0; k < obj.triangledObject.points.Count; k++)
-                    {
-                        p1 = obj.triangledObject.points[k];
-                        if (slicer != null && IsPoly2D)
-                        { 
-                            p1 = slicer.toTracedPoint(p1.toVector64()); 
-                        }
-                        obj.triangledObject.points[k] = p1;
-                    }
-                    obj.triangledObject.UpdateRange();
-                }
-
-                obj.triangledObject.color = ConvertColor(obj.fillColor);
-                obj.triangledObject.uniformColor = obj.fillColor;
-                obj.triangledObject.IsUniformColor = true;
-                obj.triangledObject.IsWireFrameMode = obj.IsWireFrameMode;
-                obj.triangledObject.Alpha = obj.Alpha;
-                obj.triangledObject.textureStruct = obj.textureStruct;
-
-                DrawTriangles(obj.triangledObject);
+                AddToMessage("Triangulating failed of "+ obj.Name + "--" + obj.errMessage);
+                return; 
             }
+
+            for (int k = 0; k < obj.triangledObject.points.Count; k++)
+            {
+                p1 = obj.triangledObject.points[k];
+                if (slicer != null && IsPoly2D)
+                {
+                    p1 = slicer.toTracedPoint(p1.toVector64());
+                }
+                obj.triangledObject.points[k] = p1;
+            }
+            obj.triangledObject.UpdateRange();
+
+            obj.triangledObject.color = ConvertColor(obj.fillColor);
+            obj.triangledObject.uniformColor = obj.fillColor;
+            obj.triangledObject.IsUniformColor = true;
+            obj.triangledObject.IsWireFrameMode = obj.IsWireFrameMode;
+            obj.triangledObject.Alpha = obj.Alpha;
+            obj.triangledObject.textureStruct = obj.textureStruct;
+            obj.triangledObject.offset = obj.offset;
+            obj.triangledObject.scale = obj.scale;
+            obj.triangledObject.rotate = obj.rotate;
+
+            DrawTriangles(obj.triangledObject);
         }
+
         void DrawArrowSymbles(ScatteredPoints obj)
         {
             if (obj.Symbol != SymbolEnum.Arrow) return;
@@ -2274,6 +2793,7 @@ namespace DDDSharp
                 {                   
                     graphic.EnableTexture(true);
                     graphic.BindTexture(bmp);
+                    bmp.Dispose();
                 }                
             }            
 
@@ -2334,7 +2854,7 @@ namespace DDDSharp
                 }
                 
                 tri.ScaledToRange(x1, y1, z1, x2, y2, z2);
-                tri.scale.z = -1;
+                //tri.scale.z = -1;
                 tri.DoTransform();
 
                 tri.IsUniformColor = true;
@@ -2413,6 +2933,7 @@ namespace DDDSharp
                 //  p1 = toWorldVector(obj, p1);
                 //  p1 = CDataModel.ToModelVector(p1);
                 text = obj.Labels[i];
+                if( obj.RenderMode == RenderingUpdateMode.Redraw )text.Create();
                 if (obj.IsUniformStyle) 
                 { 
                     text.textStyle = obj.textStyle.Copy();
@@ -2576,7 +3097,7 @@ namespace DDDSharp
 
             if (obj.ShowCylinder) // 显示柱体
             {
-                DrawBoreHoleCylinder(obj);
+               DrawBoreHoleCylinder(obj);
             }
             
             obj.ClearRenderingBuffers();
@@ -2652,6 +3173,7 @@ namespace DDDSharp
                 { 
                     graphic.EnableTexture(true);
                     graphic.BindTexture(bmp);
+                    bmp.Dispose();
                     texture = true;
                 }                
             }
@@ -2782,6 +3304,7 @@ namespace DDDSharp
                 {                    
                     graphic.EnableTexture(true);
                     graphic.BindTexture(bmp);
+                    bmp.Dispose();
                     texture = true;
                 }                         
             }
@@ -2812,7 +3335,7 @@ namespace DDDSharp
                         // texY = 1 - (float)i / (obj.nRow - 1);                        
                         //v.SetTexcoord(texX, texY);
                         v.SetTexcoord(obj.GetTextureCoord(j, i));
-                    }
+                    }                    
                     graphic.AddPoint(v);
                 }
             }
@@ -3010,7 +3533,9 @@ namespace DDDSharp
                 for (int j = 0; j < sf.pCoordArray.Count; j++)
                 {
                     FLOAT_POINT_EXT p1 = sf.pCoordArray[j];
+                    //Vector32 p2 = obj.toMatchedCoord(p1.x,p1.y,p1.z);//model matched added 2024-7
                     Vector32 p2 = obj.TransformedPoint(new Vector32(p1.x, p1.y, p1.z));
+                    //p2 = obj.toTracedPoint(p2.toVector64());
                     p2 = toWorldVector(obj, p2);
                     p2 = CDataModel.ToModelVector(p2);
 
@@ -3200,7 +3725,7 @@ namespace DDDSharp
             
             int nx, ny, nz, id;
             UInt32 ix, iy, iz;
-            double x, y, z, xs, ys, zs;
+            double x, y, z;
 
             ColorRGBA cc = new ColorRGBA(0, 0, 0);
             //need change nx,ny,nz order                
@@ -3208,19 +3733,13 @@ namespace DDDSharp
             ny = obj.yNum;
             nz = obj.zNum;
             int nb = 0;
+            if( obj.pBlankTable !=null )
             for (int i = 0; i < nx * ny * nz; i++)
             {
                 if (obj.pBlankTable[i]) nb++;
-            }
+            }            
 
-            //small box size
-            xs = (obj.maxx - obj.minx) / (nx - 1);
-            ys = (obj.maxy - obj.miny) / (ny - 1);
-            zs = (obj.maxz - obj.minz) / (nz - 1);
-
-            Vector32 p1;
             vec4 color;
-
             graphic.PushMatrix();
             {
                 graphic.DisableTexture();
@@ -3240,7 +3759,7 @@ namespace DDDSharp
                     //------------bug fixed by jian 2019.8.26 ------------
 
                     for (int j = 0; j < maxobjnum; j++)
-                    {
+                    {                        
                         ni = k * maxobjnum + j;
                         if (ni >= obj.pShowIndexArray.Count) break;
 
@@ -3248,19 +3767,24 @@ namespace DDDSharp
                         iy = obj.pShowIndexArray[ni].y;
                         iz = obj.pShowIndexArray[ni].z;
                         id = (int)(ix + iy * nx + iz * nx * ny);
+                        x = obj.minx + obj.xStep * ix;
+                        y = obj.miny + obj.yStep * iy;
+                        z = obj.minz + obj.zStep * iz;
+                        
+                        //if ( !IsInDrawingBox(x, y, z) ) continue;
 
                         // if (obj.pBlankTable[id]) continue;
                         //2021-8-9修改，颜色采用smooth方式
                         if (obj.EnableColorLevel)
                         {
-                            cc = obj.GetColor(obj.pGridData[id]);
+                            cc = obj.GetColor(obj[id]);
                             color = ConvertColor(cc);
-                            color.w = obj.Alpha;                            
+                            color.w = obj.Alpha * color.w;
                         }
                         else
                         {
                             color = ConvertColor(obj.ObjColor);
-                            color.w = obj.Alpha;
+                            color.w = obj.Alpha * color.w;
                         }
                         
                         if (obj.overlaps.Count > 0 && obj.enableOverlap)
@@ -3269,38 +3793,27 @@ namespace DDDSharp
                             {
                                 if (!over.Enable) continue;
                                 if( over.channel == OverlapChannel.Alpha)
-                                {
                                     color.w = over.data[id];
-                                }
                             }
                         }
                         
                         graphic.SetColor(color);
-                        x = obj.minx + xs * ix;
-                        y = obj.miny + ys * iy;
-                        z = obj.minz + zs * iz;
-
+                          
+                        
                         GridBox box = new GridBox();
-                        box.Create(x, y, z, xs, ys, zs);
-                        Vector32[] points = new Vector32[8];
-                        points[0] = new Vector32((float)(x - xs / 2), (float)(y - ys / 2), (float)(z - zs / 2));
-                        points[1] = new Vector32((float)(x + xs / 2), (float)(y - ys / 2), (float)(z - zs / 2));
-                        points[2] = new Vector32((float)(x + xs / 2), (float)(y + ys / 2), (float)(z - zs / 2));
-                        points[3] = new Vector32((float)(x - xs / 2), (float)(y + ys / 2), (float)(z - zs / 2));
-                        points[4] = new Vector32((float)(x - xs / 2), (float)(y - ys / 2), (float)(z + zs / 2));
-                        points[5] = new Vector32((float)(x + xs / 2), (float)(y - ys / 2), (float)(z + zs / 2));
-                        points[6] = new Vector32((float)(x + xs / 2), (float)(y + ys / 2), (float)(z + zs / 2));
-                        points[7] = new Vector32((float)(x - xs / 2), (float)(y + ys / 2), (float)(z + zs / 2));
+                        box.Create(x, y, z, obj.xStep, obj.yStep, obj.zStep);
+                        
                         for (int l = 0; l < 8; l++)
-                        {
-                            p1 = obj.TransformedPoint(points[l]);
+                        {                            
+                            var p = box.points[l];
+                            var p1 = new Vector64(p.x,p.y,p.z); 
+                            p1 = obj.TransformedPoint(p1);
+                            //p1 = obj.toMatchedCoord(p1);//model matched added 2024-7
+                            //p1 = obj.toTracedPoint(p1);
                             p1 = toWorldVector(obj, p1);
                             p1 = CDataModel.ToModelVector(p1);
                             box.points[l] = box.toPoint(p1);
                         }
-
-                        points = null;
-
                         //      |(y)
                         //      p3--------p2 
                         //      |         |
@@ -3309,12 +3822,34 @@ namespace DDDSharp
                         //   | /      | / 
                         // p4|/-------p5--->east 
                         //   / (z)
-                        box.faces[0] = !obj.IsNeedShow(ix, iy + 1, iz);   //up
-                        box.faces[1] = !obj.IsNeedShow(ix, iy - 1, iz);   //down
-                        box.faces[2] = !obj.IsNeedShow(ix - 1, iy, iz); //left
-                        box.faces[3] = !obj.IsNeedShow(ix + 1, iy, iz); //right
-                        box.faces[4] = !obj.IsNeedShow(ix, iy, iz + 1);   //front
-                        box.faces[5] = !obj.IsNeedShow(ix, iy, iz - 1);     //back                                                
+                        bool border1 = false;
+                        bool border2 = false;
+                        bool border5 = false;
+                        if (ix >= obj.xNum - 1)
+                        {
+                            box.FacesEnabled(false);
+                            box.FacesEnabled(2, true);
+                            border2 = true;
+                        }
+                        if (iy >= obj.yNum - 1)
+                        {
+                            box.FacesEnabled(false);
+                            box.FacesEnabled(1, true);
+                            border1 = true;
+                        }
+                        if (iz >= obj.zNum - 1)
+                        {
+                            box.FacesEnabled(false);
+                            box.FacesEnabled(5, true);
+                            border5 = true;
+                        }
+
+                        if (box.faces[0]) box.faces[0] = !obj.IsNeedShow(ix, iy + 1, iz); //up
+                        if (box.faces[1] && !border1) box.faces[1] = !obj.IsNeedShow(ix, iy - 1, iz); //down
+                        if (box.faces[2] && !border2) box.faces[2] = !obj.IsNeedShow(ix - 1, iy, iz); //left
+                        if (box.faces[3]) box.faces[3] = !obj.IsNeedShow(ix + 1, iy, iz); //right
+                        if (box.faces[4]) box.faces[4] = !obj.IsNeedShow(ix, iy, iz + 1); //front
+                        if (box.faces[5] && !border5) box.faces[5] = !obj.IsNeedShow(ix, iy, iz - 1); //back
 
                         graphic.BoxMemory(box);
 
@@ -3656,7 +4191,7 @@ namespace DDDSharp
             if ( graphic.initialized)
             {
                 try
-                {
+                {                    
                     DrawObjects();
                     UpdateView();
                 }
@@ -3677,16 +4212,16 @@ namespace DDDSharp
             bool refreshAll = arg.refreshAll;
 
             //对象类型，0 -C3DObjectBase对象，1虚线框，2坐标轴箭头，3Lights位置, 4选择物体虚线框
-            int type = arg.ObjType;
+            UpdateDrawTypeEnum type = arg.updateType;
             C3DObjectBase obj = arg.Obj;
 
-            if( refreshAll && obj == null && type == 0 )
+            if( refreshAll )
             {
-                UpdateDraw();
+                UpdateDraw();                
             }
             else
             {
-                if (type == 0 && obj != null)
+                if (type == UpdateDrawTypeEnum.UpdateObject && obj != null)
                 {
                     UpdateDraw(obj);
                 }
@@ -3694,21 +4229,27 @@ namespace DDDSharp
                 {
                    // UpdateView();
                 }
-                else if (type == 1)
+                else if (type == UpdateDrawTypeEnum.UpdateOutline)
                 {
-                    DrawOutLines(outLinesObject);
+                    DrawOutLines(outLinesObject);                    
                 }
-                else if (type == 2)
+                else if (type == UpdateDrawTypeEnum.Update3DArrow)
                 {
                     DrawDirectionArrow(arrowObject);
                 }
-                else if (type == 3)
+                else if (type == UpdateDrawTypeEnum.Update3DLights)
                 {
                     DrawLightsPosition(lightposObject);
                 }
-                else if (type == 4)
+                else if (type == UpdateDrawTypeEnum.UpdateSelectedBox)
                 {
                     DrawSelectedOutLines();
+                }
+                else if (type == UpdateDrawTypeEnum.UpdateAxisLabel)
+                {
+                    DrawXAxis(CDataModel.xAxisRuler);
+                    DrawYAxis(CDataModel.yAxisRuler);
+                    DrawZAxis(CDataModel.zAxisRuler);
                 }
             }
             UpdateView();
@@ -3725,18 +4266,32 @@ namespace DDDSharp
                 obj.ClearRenderingBuffers();
             }
 
+            axisXObject.ClearRenderingBuffers();
+            axisYObject.ClearRenderingBuffers();
+            axisZObject.ClearRenderingBuffers();
             lightposObject.ClearRenderingBuffers();
             arrowObject.ClearRenderingBuffers();
             outLinesObject.ClearRenderingBuffers();
         }
         public void ClearObjectDrawBuffer(C3DObjectBase obj)
         {
-            if (obj.RenderingBuffers.Count > 0)
+            if (obj.type == ShapeEnum.PolygonSlicer)
             {
-                graphic.ClearModelsByKeys(obj.RenderingBuffers);
-                //graphic.ClearModelKeyBuffers();
-                obj.ClearRenderingBuffers();
+                PolygonSlicer slicer = obj as PolygonSlicer;
+                graphic.ClearModelsByKeys(slicer.tracedGeoObjects.RenderingBuffers);
+                graphic.ClearModelsByKeys(slicer.polygons.RenderingBuffers);
+                graphic.ClearModelsByKeys(slicer.RenderingBuffers);                
+                slicer.ClearRenderingBuffers();
             }
+            else
+            {
+                if (obj.RenderingBuffers.Count > 0)
+                {
+                    graphic.ClearModelsByKeys(obj.RenderingBuffers);
+                    //graphic.ClearModelKeyBuffers();
+                    obj.ClearRenderingBuffers();
+                }
+            }            
         }
         public void ClearObjectDrawBuffers(List<C3DObjectBase>objects)
         {
@@ -3765,6 +4320,7 @@ namespace DDDSharp
                 graphic.ClearModelKeyBuffers();
                 DrawObject(obj);                
                 obj.AddRenderingBuffer(graphic.objectModelKeyBuffers);
+                DoRangeUpdated();                
             }
 
             obj.RenderMode = RenderingUpdateMode.None;
@@ -3780,7 +4336,7 @@ namespace DDDSharp
             {
                 if (graphic.engine == gEngine.opengl)
                 {
-                    glControl1.Invalidate();
+                  
                 }
                 else graphic.UpdateDraw();                
             }            
@@ -3837,7 +4393,7 @@ namespace DDDSharp
                             x = minx + i * stepx;
 
                             id = i + j * nx + k * nx * ny;
-                            v = data.pGridData[id];
+                            v = data[id];
 
                             if (!data.IsBlankValue(v))
                                 ip.AddPoint(x, y, z, v);
@@ -3899,12 +4455,12 @@ namespace DDDSharp
                         if (i == 0)
                         {
                             id1 = j * nx + k * nx * ny;
-                            data1.pGridData[id] = data.pGridData[id1];
+                            data1[id] = data[id1];
                         }
                         else if (i == nx1 - 1)
                         {
                             id1 = nx-1 + j * nx + k * nx * ny;
-                            data1.pGridData[id] = data.pGridData[id1];
+                            data1[id] = data[id1];
                         }
                         else
                         {
@@ -3915,13 +4471,13 @@ namespace DDDSharp
                             x2 = minx + ix2 * stepx;
 
                             id1 = ix1 + j * nx + k * nx * ny;
-                            v1 = data.pGridData[id1];
+                            v1 = data[id1];
 
                             id2 = ix2 + j * nx + k * nx * ny;
-                            v2 = data.pGridData[id2];
+                            v2 = data[id2];
 
                             v = v1 + (v2 - v1) * (x - x1) / (x2 - x1);
-                            data1.pGridData[id] = (float)v;
+                            data1[id] = (float)v;
                         }
                     }
                 }
@@ -4107,7 +4663,7 @@ namespace DDDSharp
         }
         public C3DGridData ResampleGrid(C3DGridData data, int nx1, int ny1, int nz1)
         {            
-            data.m_blankvalue = data.pGridData[0];
+            data.m_blankvalue = data[0];
 
             int nx = data.xNum;
             int ny = data.yNum;
@@ -4230,8 +4786,10 @@ namespace DDDSharp
         
         
         private void DoSizeChanged(object sender, EventArgs e)
-        {
-           
+        {           
+
+            if( Width <5 || Height <5 ) return; //window is too small,stop rendering
+
             if (!this.IsHandleCreated) return;
                        
             if (this.OldHandle != this.Handle)
@@ -4242,10 +4800,7 @@ namespace DDDSharp
             if (graphic == null) return;            
             //if (!graphic.initialized) return;
             if (graphic.engine == gEngine.opengl)
-            {
-                glControl1.Location = new Point(0,0);
-                glControl1.Width = Width;
-                glControl1.Height = Height;                
+            {                       
                 graphic.onWindowResized(Width, Height);
                 arcBall.setBounds(Width, Height);
                 UpdateView();
@@ -4260,8 +4815,10 @@ namespace DDDSharp
         private void DoMouseDown(object sender, MouseEventArgs e)
         {
             bMouseDown = true;
-            //arcball 
-            isLeftDrag = true;            
+            isLeftDrag = isRightDrag = isMiddleDrag = false;
+            if (e.Button == MouseButtons.Left) isLeftDrag = true;
+            else if (e.Button == MouseButtons.Right) isRightDrag = true;
+            else if (e.Button == MouseButtons.Middle) isMiddleDrag = true;
 
             this.startDrag(new Point(e.X, e.Y));
         }
@@ -4294,11 +4851,11 @@ namespace DDDSharp
             UpdateView();
         }
 
-        float av = 45;
         private void DoMouseWheel(object sender, MouseEventArgs e)
         {
-            if (IsControlKeyDown) zoomSpeed = 0.01f;
-            else zoomSpeed = 1;
+            float zoomSpeed = C3DData.zoomSpeed;
+            if (IsAltKeyDown) zoomSpeed = C3DData.zoomFastSpeed;
+            else if (IsControlKeyDown) zoomSpeed = C3DData.zoomSlowSpeed;
 
             float step = Math.Abs( e.Delta * 0.001f * zoomSpeed);
             //step = 2;
@@ -4311,7 +4868,7 @@ namespace DDDSharp
             }
             else  // move up-down
             {
-                if (av > step)
+               // if (av > step)
                 {
                     av -= step;
                     //graphic.Perspective(av,0.01f, 100f);
@@ -4390,13 +4947,13 @@ namespace DDDSharp
                     ThisTransformation.Pan = new Vector3f(0, 0, 0);
                     ThisTransformation.Scale = 1.0f;
                     ThisTransformation.Rotation = ThisQuat;
-                    ThisTransformation.MatrixMultiply(ThisTransformation, LastTransformation);
-                    lock (matrixLock)
-                    {
-                        // Set Last Static Rotation To Last Dynamic One
-                        LastTransformation.set_Renamed(ThisTransformation);
-                        //LastTransformation = ThisTransformation.Copy();
-                    }                    
+                    ThisTransformation.MatrixMultiply(ThisTransformation, LastTransformation);                                     
+                }
+                lock (matrixLock)
+                {
+                    // Set Last Static Rotation To Last Dynamic One
+                    LastTransformation.set_Renamed(ThisTransformation);
+                    //LastTransformation = ThisTransformation.Copy();
                 }
             }
         }
@@ -4461,16 +5018,19 @@ namespace DDDSharp
              //   MoveBackward(0.001f);
             }
             IsControlKeyDown = e.Control;
+            IsAltKeyDown = e.Alt;            
         }
 
         private void DDDForm_KeyUp(object sender, KeyEventArgs e)
         {
             IsControlKeyDown = e.Control;
+            IsAltKeyDown = e.Alt;
         }
 
         private void DDDForm_PreviewKeyDown(object sender, PreviewKeyDownEventArgs e)
         {
             IsControlKeyDown = e.Control;
+            IsAltKeyDown = e.Alt;
         }
     }
 }

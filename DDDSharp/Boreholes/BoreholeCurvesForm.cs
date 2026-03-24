@@ -187,7 +187,7 @@ namespace DDDSharp.Boreholes
             g.FillRectangle(Brushes.White, rect);            
             ruler.SetDrawRect(rect);
             ruler.SetMarine(50, 10, 10, 10);
-            ruler.leftRuler.Direction = AxisDirectionEnum.UpDown;
+            ruler.leftRuler.Direction = AxisDirectionEnum.DownUp;
             ruler.leftRuler.SetValuesRange(0,maxDepth);
             ruler.Draw(g);
             if( cv != null )cv.Draw(g, ruler.drawRect, 0, cv.maxDepth );

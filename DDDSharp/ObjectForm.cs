@@ -15,6 +15,12 @@ using DDDSharp.Gridding;
 using DDDSharp.Meshes;
 using DDDSharp.Boreholes;
 using DataCollection.DelaunayVoronoi;
+using static System.Windows.Forms.VisualStyles.VisualStyleElement;
+using DDDSharp.BoreholesModeling;
+using System.Threading;
+using DDDSharp.Analyze;
+using DDDSharp.Grid3DProperty;
+
 namespace DDDSharp
 {
     public partial class ObjectForm : DockingPaneExt
@@ -55,38 +61,7 @@ namespace DDDSharp
         }
         
         
-        /*
-        public void UpdateTree1()
-        {
-            /////this validation section//////////////
-            ///Validation
-            if (C3DData.DemoVersion)
-            {
-                if (!CheckVialidation()) return;
-            }
-            /////this is end validation section//////////////
-
-            this.Cursor = Cursors.WaitCursor;
-
-            treeView1.Nodes.Clear();
-
-            foreach (C3DObjectBase obj in C3DData.pObjects)
-            {
-                TreeNode node = CreateTreeNode(obj);
-                node.Checked = obj.Visible;
-                lastTreeNode = node;
-                treeView1.Nodes.Add(node);
-            }
-
-            C3DData.curSel = -1;
-            C3DData.curSubSel = -1;
-            C3DData.curSubSubSel = -1;
-            C3DData.objSelected = null;
-            propertyGrid1.SelectedObject = null;
-
-            this.Cursor = Cursors.Default;
-        }
-        */
+        
         public void CreateDataTrees()
         {
             if (C3DData.dataTrees.Count > 0) return;
@@ -112,9 +87,13 @@ namespace DDDSharp
                 TreeNode node1 = new TreeNode(data.Name);
                 node1.Checked = true;
                 node1.Tag = null;
-                
-                foreach(TreeStructData t in data.Items)
-                    node1.Nodes.Add( CreateTreeNode(t) );
+
+                foreach (TreeStructData t in data.Items)
+                {
+                    if (t == null) continue;
+                    TreeNode nd = CreateTreeNode(t);
+                    if (nd != null) node1.Nodes.Add(nd);
+                }
                 
                 return node1;
             }
@@ -128,6 +107,18 @@ namespace DDDSharp
                 return node1;
             } 
         }
+
+        int CreateRandIndex(int n = 10)
+        {
+            string ss = "";
+            Random rand = new Random(DateTime.Now.Millisecond);
+            for (int i = 0; i < n; i++)
+            { 
+               ss += rand.Next(10); 
+            }
+            return int.Parse(ss);
+        }
+
         /// <summary>
         /// 生成树形节点--fromC3DObjectBase对象
         /// </summary>
@@ -136,6 +127,8 @@ namespace DDDSharp
         //C3DObjectBase对象创建为TreeNode
         TreeNode CreateTreeNode(C3DObjectBase obj)
         {
+            if (obj == null) return null;
+
             string type = obj.type.ToString();
             string name = type + ":" + obj.Name;
 
@@ -175,7 +168,7 @@ namespace DDDSharp
                         node1.Nodes.Add(node2);
                         //地层数据
                         node2 = new TreeNode(bh.Stratums.Name);
-                        node2.Tag = bh.Stratums;
+                        node2.Tag = bh.Stratums;                        
                         bh.Stratums.Parent = bh;
                         node2.Checked = bh.Stratums.Visible;
                         if ( bh.Stratums.Count > 0)
@@ -303,6 +296,7 @@ namespace DDDSharp
                     node.Tag = (GeoMesh)obj;
                     break;
                 case ShapeEnum.PolygonSlicer:
+
                     PolygonSlicer slicer = (PolygonSlicer)obj;
                     //background
                     node1 = new TreeNode( slicer.polygons.Name );
@@ -319,6 +313,7 @@ namespace DDDSharp
                         node3.ImageIndex = 1;
                         node1.Nodes.Add(node3);
                     }
+                    
                     //geological
                     node2 = new TreeNode( slicer.tracedGeoObjects.Name );
                     node2.Tag = slicer.tracedGeoObjects;
@@ -553,19 +548,67 @@ namespace DDDSharp
                 {
                     int pos = pNode.Nodes.IndexOf(thisNode);
                     if (pos >= 0)
-                    {
+                    {                        
                         TreeNode curNode = CreateTreeNode(obj);
                         curNode.Text = thisNode.Text;
                         curNode.Checked = thisNode.Checked;
-                        pNode.Nodes[pos] = curNode;
-                        thisNode.Nodes.Clear();
+
+                        //pNode.Nodes[pos] = curNode;
+                        pNode.Nodes.Insert(pos,curNode);
+                        pNode.Nodes.RemoveAt(pos+1);
+
                         treeView1.SelectedNode = pNode.Nodes[pos];
                         treeView1.SelectedNode.Expand();
+
+                        thisNode.Nodes.Clear();
+                        thisNode.Remove();
+                        //treeToStruct();
                     }
                 }                
             }
 
             propertyGrid1.SelectedObject = obj;
+
+            this.Cursor = Cursors.Default;
+        }
+        int IndexInTreeNodes(TreeNode pNode,C3DObjectBase obj)
+        {
+            if (pNode == null) return -1;
+            for(int i=0;i<pNode.Nodes.Count;i++)
+            {
+                C3DObjectBase obj1 = (C3DObjectBase)pNode.Nodes[i].Tag;
+                if (obj1 == null) continue;
+                if (obj.mainKey == obj1.mainKey) return i;
+            }
+            return -1;
+        }
+
+        public void UpdateSelectedNode(C3DObjectBase obj)
+        {
+            if (treeView1.SelectedNode == null) return;
+
+            this.Cursor = Cursors.WaitCursor;
+            
+            TreeNode pNode = treeView1.SelectedNode.Parent;
+            if (pNode != null)
+            {
+                int pos = IndexInTreeNodes(pNode,C3DData.objSelected); //pNode.Nodes.IndexOf(treeView1.SelectedNode);
+                if ( pos >= 0 )
+                {
+                    TreeNode curNode = CreateTreeNode(obj);
+                    curNode.Text = treeView1.SelectedNode.Text;
+                    curNode.Checked = treeView1.SelectedNode.Checked;
+                    pNode.Nodes.Insert(pos, curNode);
+                    pNode.Nodes.RemoveAt(pos+1);                    
+
+                    //treeView1.SelectedNode.Nodes.Clear();
+                    treeView1.SelectedNode = curNode;
+                    treeView1.SelectedNode.Expand();
+
+                    C3DData.objSelected = obj;
+                    propertyGrid1.SelectedObject = C3DData.objSelected;
+                }
+            }           
 
             this.Cursor = Cursors.Default;
         }
@@ -657,9 +700,9 @@ namespace DDDSharp
         }
         //refreshAll - 重绘全部
         //对象类型，0 -C3DObjectBase对象，1虚线框，2坐标轴箭头，3Lights位置
-        void UpdateDraw(bool refreshAll, int type, C3DObjectBase obj = null) //update all object
+        void UpdateDraw(UpdateDrawTypeEnum type, C3DObjectBase obj = null, bool refreshAll = false) //update all object
         {
-            Program.m_MainForm.UpdateDraw(refreshAll,type,obj);
+            Program.m_MainForm.UpdateDraw(type, obj, refreshAll);
         }
         void UpdateDraw()//update all
         {
@@ -672,6 +715,10 @@ namespace DDDSharp
         void UpdateDraw(List<C3DObjectBase> objects)
         {
             Program.m_MainForm.UpdateDraw(objects);
+        }
+        void ClearDraw(C3DObjectBase obj)
+        {
+            Program.m_MainForm.ClearObjectDrawBuffer(obj);
         }
         private void ObjectForm_Load(object sender, EventArgs e)
         {
@@ -734,7 +781,7 @@ namespace DDDSharp
             }
             else if (type == ShapeEnum.Points)
             {
-                Program.m_MainForm.DockScattedPointsProperty();               
+              //  Program.m_MainForm.DockScattedPointsProperty();               
             }
             else if (type == ShapeEnum.Triangles)
             {
@@ -757,7 +804,7 @@ namespace DDDSharp
         private void treeView1_AfterSelect(object sender, TreeViewEventArgs e)
         {
             DoTreeSelected();
-            UpdateDraw(false,4,null);//绘制选择物体线框            
+            UpdateDraw(UpdateDrawTypeEnum.UpdateSelectedBox);//绘制选择物体线框            
         }
        
         private void propertyGrid1_PropertyValueChanged(object s, PropertyValueChangedEventArgs e)
@@ -1315,7 +1362,7 @@ namespace DDDSharp
                 {                    
                     this.Cursor = Cursors.WaitCursor;
 
-                    if (dlg.FilterIndex == 1 || dlg.FilterIndex == 3)//polygon slicer file .poly
+                    if (dlg.FilterIndex == 1)//polygon slicer file .poly
                     {
                         if ( obj.SaveAs(dlg.FileName) )
                             MessageBox.Show("data saved to file:" + dlg.FileName);
@@ -1329,7 +1376,20 @@ namespace DDDSharp
                         else
                             MessageBox.Show("failed to export data to file.\n" + obj.errMessage);
                     }
-                    
+                    else if (dlg.FilterIndex == 3)//.dat scatterred XYZ 
+                    {
+                        if (obj.ExportData(dlg.FileName))
+                            MessageBox.Show("data exported to file:" + dlg.FileName);
+                        else
+                            MessageBox.Show("failed to export data to file.\n" + obj.errMessage);
+                    }
+                    else if (dlg.FilterIndex == 4)//.ImageFiles
+                    {
+                        if (obj.ExportImage(dlg.FileName))
+                            MessageBox.Show("data exported to file:" + dlg.FileName);
+                        else
+                            MessageBox.Show("failed to export data to file.\n" + obj.errMessage);
+                    }
                     this.Cursor = DefaultCursor;
                 }
             }
@@ -1453,6 +1513,8 @@ namespace DDDSharp
                 case ShapeEnum.PolygonSlicer:
                     filter = Resource1.PoligonSlicerFileFormatFilter;
                     filter += "|" + Resource1.XYZVFileFormatFilter;
+                    filter += "|" + Resource1.PolygonSlicerPoly3DXYZ;
+                    filter += "|" + Resource1.ImageFilesFormatFilter;
                     filter += "|all files(*.*)|*.*";
                     DoPolygonSlicerExport((PolygonSlicer)obj, filter);
                     break;
@@ -1583,25 +1645,7 @@ namespace DDDSharp
         // polygonSlicer trace menu
         private void traceToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            /*
-            if (C3DData.curSel < 0) return;
-            PolygonSlicer obj = (PolygonSlicer)C3DData.objSelected;
-
-            TracePathDlg td = new TracePathDlg();
-            td.poly = obj.Copy();
-
-            if ( td.ShowDialog() == DialogResult.OK )
-            {
-                obj = td.poly.Copy();
-
-                obj.TraceGrid();
-
-                obj.TracePolygon();
-                C3DData.pObjects[C3DData.curSel] = obj;
-                C3DData.objSelected = obj;
-
-                Program.m_MainForm.m_DDDForm.UpdateDraw();
-            }*/
+            
         } 
 
         private void editorToolStripMenuItem_Click(object sender, EventArgs e)
@@ -2120,18 +2164,21 @@ namespace DDDSharp
         private void toolStripMenuItemEditor_Click(object sender, EventArgs e)
         {
             if (C3DData.objSelected == null) return;
-            if (C3DData.objSelected.type != ShapeEnum.PolygonSlicer) return;          
+            if (C3DData.objSelected.type != ShapeEnum.PolygonSlicer) return;
 
-            PolygonSlicer slicer = C3DData.objSelected as PolygonSlicer;
+            PolygonSlicer slicer = (PolygonSlicer)C3DData.objSelected;
             SlicerModelingForm sf = new SlicerModelingForm();
             sf.SetSlicer(slicer);
-
+            sf.Add3DObjects(C3DData.GetObjects());
             if (sf.ShowDialog() == DialogResult.OK)
             {
                 slicer = sf.slicer;
                 //C3DData.AddObject(slicer, false);
                 slicer.UpdateDrawMode();
-                UpdateTree(slicer);                
+                C3DData.ReplaceObjectInDictionary(C3DData.objSelected, slicer);
+                UpdateSelectedNode(slicer);
+               // C3DData.UpdateObjectInDiction(slicer);
+
                 UpdateDraw(slicer);
                 C3DData.IsDataModified = true;
             }
@@ -2151,10 +2198,42 @@ namespace DDDSharp
                     UpdateDraw(bh);
                 }
             }
-            else if (C3DData.objSelected.type == ShapeEnum.BoreholeAngles)
+            else if (C3DData.objSelected.type == ShapeEnum.Boreholes)
             {
+                CBoreholes boreholes = C3DData.objSelected as CBoreholes;
+                BoreholesInclinesEditor dlg = new BoreholesInclinesEditor(boreholes);
+                if (dlg.ShowDialog() != DialogResult.OK) return;
+                bool range_updated = false;
+                CBoreholes boreholes1 = dlg.boreholes;
+                for(int i=0;i<boreholes1.Count;i++)
+                {
+                    CBorehole bh1 = boreholes1[i];
+                    for(int j=0;j<boreholes.Count;j++)
+                    {
+                        CBorehole bh = boreholes[j];
+                        if(bh1.Name == bh.Name)
+                        {
+                            bh.boreholeAngles.Clear();
+                            bh.boreholeAngles.Angles = new List<BoreholeAnglesStruct>(bh1.boreholeAngles.Angles);
+                            bh.CreateBaseLine(CDataModel.IsGeoCoordinateSystem);
+                            bh.UpdateRange();
+                            range_updated = true;
+                            boreholes[j] = bh;
+                            break;
+                        }
+                    }
+                }
+                boreholes1.Clear();
+                if (range_updated) boreholes.UpdateRange();
+                UpdateTree(boreholes, 1);
+                boreholes.RenderMode = RenderingUpdateMode.Redraw;
+                UpdateDraw(boreholes);
+            }
+            else if (C3DData.objSelected.type == ShapeEnum.BoreholeAngles)
+            {                
                 BoreholeAngles angles = C3DData.objSelected as BoreholeAngles;
                 CBorehole bh = angles.Parent as CBorehole;
+
                 if (BoreholeInclineEditor(bh) )
                 {
                     UpdateTree(bh, 2);
@@ -2163,6 +2242,7 @@ namespace DDDSharp
                 }
             }
         }
+       
         bool BoreholeInclineEditor(CBorehole borehole)
         {
             BoreholeInclineForm dlg = new BoreholeInclineForm(borehole);
@@ -2341,6 +2421,511 @@ namespace DDDSharp
                 }
             }
             
+        }
+
+        private void 纵向一阶导数ToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            if (C3DData.objSelected.type == ShapeEnum.Mesh)
+            {
+                CMesh obj = C3DData.objSelected as CMesh;
+                
+                Cursor = Cursors.WaitCursor;
+                CMesh obj1 = obj.VerticalDerivating(1);
+                Cursor = Cursors.Default;
+                if (obj1 != null)
+                {
+                    C3DData.AddObject(obj1, false);
+                    AddToTree(C3DData.lastLoaded);
+                    C3DData.objSelected = C3DData.lastLoaded;
+                    UpdateDraw(C3DData.lastLoaded);
+                }
+            }
+        }
+
+        private void 横向一阶导数ToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            if (C3DData.objSelected.type == ShapeEnum.Mesh)
+            {
+                CMesh obj = C3DData.objSelected as CMesh;
+
+                Cursor = Cursors.WaitCursor;
+                CMesh obj1 = obj.HorizontalDerivating(1);
+                Cursor = Cursors.Default;
+                if (obj1 != null)
+                {
+                    C3DData.AddObject(obj1, false);
+                    AddToTree(C3DData.lastLoaded);
+                    C3DData.objSelected = C3DData.lastLoaded;
+                    UpdateDraw(C3DData.lastLoaded);
+                }
+            }
+        }
+
+        private void transformToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            if (C3DData.objSelected.type == ShapeEnum.Grid3D)
+            {
+                C3DGridData obj = C3DData.objSelected as C3DGridData;
+                Grid3DTransformForm dlg = new Grid3DTransformForm(obj);
+                
+                Cursor = Cursors.WaitCursor;
+                dlg.data = obj.Copy();
+                Cursor = Cursors.Default;
+                
+                if (dlg.ShowDialog() == DialogResult.OK && dlg.Modified)
+                {
+                    obj.Clear();                    
+                    C3DData.ReplaceObjectInDictionary(C3DData.objSelected, dlg.data);
+                    ClearDraw(C3DData.objSelected);
+
+                    obj = dlg.data;
+                    treeView1.SelectedNode.Tag = obj;
+                    //UpdateSelectedNode(obj);
+                    obj.UpdateDrawMode();
+                    
+                    C3DData.objSelected = obj;                    
+                    C3DData.IsDataModified = true;
+                    propertyGrid1.SelectedObject = obj;
+
+                    if (dlg.rangeUpdated)
+                    {
+                        if (C3DData.UpdateRange()) UpdateDraw();
+                        else UpdateDraw(C3DData.objSelected);
+                    }
+                    else UpdateDraw(C3DData.objSelected);
+                }
+            }
+        }
+
+        private void stratumsColorSchemeToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            GeoLayerEditor dlg = new GeoLayerEditor();
+            CBoreholes behoreholes = C3DData.objSelected as CBoreholes;
+            dlg.stratums.AddStratums(behoreholes);
+            if( dlg.ShowDialog() == DialogResult.OK) 
+            {
+                behoreholes.ApplyStrtumsColorScheme(dlg.stratums);
+                UpdateDraw(C3DData.objSelected);
+            }
+        }
+
+        BoreholesStratumInterpolation bmodel;
+        void CheckInterpolation()
+        {
+            if (bmodel == null) return;
+            double percent = 0;
+            while (bmodel.Start) 
+            {
+                if (bmodel.percentage > percent)
+                { 
+                    percent = bmodel.percentage;
+                    Program.m_MainForm.AddtoInfo( percent.ToString() + "%..."); 
+                }
+                Thread.Sleep(200);
+            }
+
+        }
+
+        void InterpolationThread(object obj)
+        {
+            CBoreholes boreholes = obj as CBoreholes;
+            bmodel = new BoreholesStratumInterpolation(boreholes);
+            List<TriangleObj> objs = bmodel.CreateLayers(50, 100, 100);//100,250,200
+        }
+
+        //从钻孔数据创建地层三维模型
+        C3DGridData CreateStratumsFromBoreholes(CBoreholes bhs)
+        {
+            //创建地层stratums数据，从钻孔中获取全部地层
+            StratumDatas stratums = new StratumDatas();
+            stratums.AddStratums(bhs);
+
+            
+            //创建地层三维网格
+            C3DGridData grid3d = new C3DGridData(100,100,100);
+            grid3d.ResetDataRange(bhs.Minx, bhs.Maxx,
+                                  bhs.Miny, bhs.Maxy, 
+                                  bhs.Minz, bhs.Maxz,
+                                  0, stratums.Count-1); //设置网格边界            
+
+            for (int iz = 0; iz < grid3d.zNum; iz++)
+            {
+                for (int iy = 0; iy < grid3d.yNum; iy++)
+                {
+                    for (int ix = 0; ix < grid3d.xNum; ix++)
+                    {
+                        double x = grid3d.Minx + ix * grid3d.xStep;
+                        double y = grid3d.Miny + iy * grid3d.yStep;
+                        double z = grid3d.Minz + iz * grid3d.zStep;
+                        grid3d[ix, iy, iz] = 确定该点地层属性(x,y,z,stratums,bhs); //???; 0 ~ stratums.Count
+                    }
+                }
+            }
+            
+            grid3d.ColorScale = stratums.CreateColorScale();
+            grid3d.InitTables();
+            return grid3d;
+        }
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="x"></param>
+        /// <param name="y"></param>
+        /// <param name="z"></param>
+        /// <param name="stratums">所有的地层</param>
+        /// <param name="bhs">所有的钻孔</param>
+        /// <returns></returns>
+        int 确定该点地层属性(double x,double y,double z, StratumDatas stratums,CBoreholes bhs)
+        {
+            //取每个地层的值
+            for(int i=0;i< stratums.Count;i++)
+            {
+                StratumData s = stratums[i]; //s 一个地层
+                //s.Name 地层名称                
+                //s.TopDepth 顶界面埋深
+                //s.Thickness厚度
+            }
+            //获取每个钻孔
+            for (int i = 0; i < bhs.Count; i++)
+            {
+                CBorehole bh = bhs[i]; //bh 一个钻孔
+                //bh.Position //钻孔坐标X,Y,Z
+                //bh.Stratums //钻孔的地层
+                for(int j=0;j< bh.Stratums.Count;j++)
+                {
+                    StratumData s = bh.Stratums[j]; //钻孔的地层
+                }
+            }
+
+            return 0;
+        }
+        private void stratumsModelingToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            if (C3DData.objSelected.type == ShapeEnum.Boreholes)
+            {
+                CBoreholes borholes = C3DData.objSelected as CBoreholes;
+                Cursor = Cursors.WaitCursor;
+
+                C3DGridData grid3d = CreateStratumsFromBoreholes(borholes);
+                
+                Cursor = Cursors.Default;
+                //Thread thread1 = new Thread(InterpolationThread);
+                //thread1.Start(obj);
+                //Thread.Sleep(1000);
+
+                //Thread thread2 = new Thread(CheckInterpolation);
+                //thread2.Start();
+                if (grid3d != null)
+                {
+                    C3DData.AddObject(grid3d);
+                    AddToTree(grid3d);
+                    UpdateDraw(grid3d);
+                }               
+                
+            }
+        }
+       
+        private void toSampledPointsToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            if (C3DData.objSelected.type == ShapeEnum.Boreholes)
+            {
+                CBoreholes boreholes = C3DData.objSelected as CBoreholes;
+                
+                var dlg = new SaveFileDialog();            
+                dlg.Filter = "钻孔坐标文件*.csv|*.csv";
+                dlg.Filter += "|" + "All Files(*.*)|*.*";
+                if (dlg.ShowDialog() != DialogResult.OK) return;
+
+                string path = Path.GetDirectoryName(dlg.FileName);
+
+                Cursor = Cursors.WaitCursor;
+                
+                StreamWriter br = new StreamWriter(new FileStream(dlg.FileName, FileMode.Create));
+                string line = "X,   Y,  Z,  VALUE";
+                br.WriteLine(line);
+                double x, y, z0,z,z1,z2, v;
+
+                //for (int i = 0; i < boreholes.Count; i++) 
+                //{
+                //    CBorehole bh = boreholes[i];
+                //    x = bh.Position.X; 
+                //    y = bh.Position.Y;
+                //    z0 = bh.Position.Z;
+
+                //    for(int j=0;j<bh.Stratums.Count;j++)
+                //    {
+                //        StratumData ls = bh.Stratums[j];
+                //        //if ( ls.Name.Contains("工业矿石") ) v = 1;
+                //        if ( ls.Name.Contains("铁矿") ) v = 1;
+                //        else v = 0;
+                //        z1 = z0 - ls.TopDepth;
+                //        z2 = z1 - ls.Thickness;
+                //        z = (z1 + z2) / 2;
+                //        Vector64 p1 = bh.GetPositionFromBaseline(z1);
+                //        Vector64 p2 = bh.GetPositionFromBaseline(z2 + 0.1);
+                //        p1.V = p2.V = v;
+                //        br.WriteLine(p1.toString(4));
+                //        br.WriteLine(p2.toString(4));
+                //        if(ls.Thickness > 50) 
+                //        {
+                //            p1 = bh.GetPositionFromBaseline(z);
+                //            p1.V = v;
+                //            br.WriteLine(p1.toString(4));
+                //        }
+                //    }
+                //}
+                float sampleStep = 50;
+                for (int i = 0; i < boreholes.Count; i++)
+                {
+                    CBorehole bh = boreholes[i];
+                    x = bh.Position.X;
+                    y = bh.Position.Y;
+                    z0 = bh.Position.Z;                
+                    Vector64 p1, p2;
+                    
+                    int lastsampled = 1;
+                    double lastz = z0;
+                    for (int j = 0; j < bh.Stratums.Count; j++)
+                    {
+                        StratumData ls = bh.Stratums[j];
+                        if (ls.Name.Contains("铁矿"))
+                        {
+                            z1 = z0 - ls.TopDepth;
+                            z2 = z1 - ls.Thickness;
+                            z = (z1 + z2) / 2;
+                            p1 = bh.GetPositionFromBaseline(z1 - 0.5);
+                            p2 = bh.GetPositionFromBaseline(z2 + 0.5);                            
+                            p1.V = p2.V = 1;
+                            br.WriteLine(p1.toString(4));
+                            br.WriteLine(p2.toString(4));
+                            lastz = z2;
+                            if ( ls.Thickness > sampleStep )
+                            {
+                                p1 = bh.GetPositionFromBaseline((z1+z2)/2);
+                                p1.V = 1;
+                                br.WriteLine(p1.toString(4));
+
+                                //for (z = z1 - sampleStep; z > z2; z -= sampleStep)
+                                //{
+                                //    p1 = bh.GetPositionFromBaseline(z);
+                                //    p1.V = 1;
+                                //    br.WriteLine(p1.toString(4));
+                                //    lastz = z;
+                                //}
+                            }
+                            lastsampled = 1;
+                        }
+                        else //非矿
+                        {
+                            z1 = z0 - ls.TopDepth;
+                            z2 = z1 - ls.Thickness;
+                            p1 = bh.GetPositionFromBaseline(z1-0.5);
+                            p2 = bh.GetPositionFromBaseline(z2+0.5);
+                            p1.V = p2.V = 0;
+                            br.WriteLine(p1.toString(4));
+                            br.WriteLine(p2.toString(4));
+                            if (ls.Thickness > sampleStep)
+                            {
+                                p1 = bh.GetPositionFromBaseline((z1 + z2) / 2);
+                                p1.V = 0;
+                                br.WriteLine(p1.toString(4));
+                            }
+                            //if (lastsampled == 1 || lastz - z1 > sampleStep)
+                            //{
+                            //    p1 = bh.GetPositionFromBaseline(z1);
+                            //    p2 = bh.GetPositionFromBaseline(z2);
+                            //    p1.V = p2.V = 0;
+                            //    br.WriteLine(p1.toString(4));
+                            //    br.WriteLine(p2.toString(4));
+                            //    lastz = z2;
+                            //    lastsampled = 0;
+                            //}
+                        }
+                    }
+                }
+
+                br.Close();
+
+                Cursor = Cursors.Default;
+
+                //if ( objs != null )
+                //{
+                //    for(int i=0;i< objs.Count; i++) 
+                //    {
+                //        C3DData.AddObject(objs[i]);
+                //        UpdateDraw(objs[i]);
+                //    }
+                //}
+            }
+        }
+
+        private void toSampledLayerBottomToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            if (C3DData.objSelected.type == ShapeEnum.Boreholes)
+            {
+                CBoreholes boreholes = C3DData.objSelected as CBoreholes;
+
+                var dlg = new SaveFileDialog();
+                dlg.Filter = "钻孔坐标文件*.csv|*.csv";
+                dlg.Filter += "|" + "All Files(*.*)|*.*";
+                if (dlg.ShowDialog() != DialogResult.OK) return;
+
+                string path = Path.GetDirectoryName(dlg.FileName);
+
+                Cursor = Cursors.WaitCursor;
+
+                StreamWriter br = new StreamWriter(new FileStream(dlg.FileName, FileMode.Create));
+                string line = "X,   Y,  Z";
+                br.WriteLine(line);
+                double x, y, z0, z, z1, z2, v;
+
+                for (int i = 0; i < boreholes.Count; i++)
+                {
+                    CBorehole bh = boreholes[i];
+                    x = bh.Position.X;
+                    y = bh.Position.Y;
+                    z0 = bh.Position.Z;
+
+                    for (int j = 0; j < bh.Stratums.Count; j++)
+                    {
+                        StratumData ls = bh.Stratums[j];
+                        if (ls.Name == "/")
+                        {
+                            z1 = z0 - ls.TopDepth;
+                            z2 = z1 - ls.Thickness;
+                            Vector64 p1 = bh.GetPositionFromBaseline(z1);
+                            Vector64 p2 = bh.GetPositionFromBaseline(z2 + 0.1);
+                            p1.V = p2.V = 1;
+                            br.WriteLine(p2.toString(3));
+                            break;
+                        }
+                    }
+                }
+
+                br.Close();
+
+                Cursor = Cursors.Default;
+
+                //if ( objs != null )
+                //{
+                //    for(int i=0;i< objs.Count; i++) 
+                //    {
+                //        C3DData.AddObject(objs[i]);
+                //        UpdateDraw(objs[i]);
+                //    }
+                //}
+            }
+        }
+
+        private void 叠加分析ToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            if (C3DData.objSelected.type != ShapeEnum.Grid3D) return;            
+            C3DGridData obj = C3DData.objSelected as C3DGridData;
+            List<C3DObjectBase> objs = C3DData.GetObjects();            
+            OverlayAnalyseForm dlg = new OverlayAnalyseForm(objs,obj);
+            if (dlg.ShowDialog() == DialogResult.OK)
+            {
+                C3DGridData data = dlg.data;
+                if (data != null && data.maxv > data.minv)
+                {
+                    data.Name = "叠加分析结果" + DateTime.Now.ToString("g");
+                    data.InitTables();
+                    bool range_updated = C3DData.AddObject(data);
+                    AddToTree(C3DData.lastLoaded);
+                    C3DData.objSelected = C3DData.lastLoaded;
+                    if (range_updated) UpdateDraw();
+                    else UpdateDraw(C3DData.lastLoaded);
+                }
+            }
+        }
+
+        private void samplingToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            CBoreholes behoreholes = C3DData.objSelected as CBoreholes;
+            BoreholesSampleForm dlg = new BoreholesSampleForm(behoreholes);
+            dlg.ShowDialog();
+        }
+
+        private void filterToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            C3DGridData grid = C3DData.objSelected as C3DGridData;
+            if (grid == null) return;
+            Cursor = Cursors.WaitCursor;
+            grid.DoFilter(4);            
+            Cursor = Cursors.Default;
+            UpdateDraw(C3DData.objSelected);
+        }
+
+        private void sampleToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            C3DGridData grid = C3DData.objSelected as C3DGridData;
+            if (grid == null) return;
+            Grid3DSampleForm dlg = new Grid3DSampleForm(grid);
+            dlg.ShowDialog();
+        }
+
+        private void transformToolStripMenuItem1_Click(object sender, EventArgs e)
+        {
+            CMesh mesh = C3DData.objSelected as CMesh;
+            if (mesh == null) return;
+            MeshTransform dlg = new MeshTransform(mesh);
+            if(dlg.ShowDialog() == DialogResult.OK)
+            {
+                if (dlg.Modified) 
+                {
+                    C3DData.ReplaceObjectInDictionary(C3DData.objSelected, dlg.mesh);
+                    ClearDraw(C3DData.objSelected);
+                    treeView1.SelectedNode.Tag = dlg.mesh;
+                    //UpdateSelectedNode(obj);
+                    dlg.mesh.UpdateDrawMode();
+
+                    C3DData.objSelected = dlg.mesh;
+                    C3DData.IsDataModified = true;
+                    propertyGrid1.SelectedObject = dlg.mesh;
+                    if (dlg.rangeUpdated)
+                    {
+                        if (C3DData.UpdateRange()) UpdateDraw();
+                        else UpdateDraw(C3DData.objSelected);
+                    }
+                    else UpdateDraw(C3DData.objSelected);
+                }
+            }
+        }
+
+        private void centreLineToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            TriangleObj obj = C3DData.objSelected as TriangleObj;
+            if (obj == null) return;
+            
+            C3DLine line = obj.to3DLine1(40);
+            line.Arrow.arrowStyle = ArrowStyle.Both;
+            line.Arrow.Color = Color.Red;
+
+            if (line.Count > 0) 
+            {
+                C3DData.AddObject(line, false);
+                AddToTree(C3DData.lastLoaded);
+                C3DData.objSelected = C3DData.lastLoaded;
+                UpdateDraw(C3DData.lastLoaded);
+            }           
+
+        }
+
+        private void GridOverlayToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            C3DGridData obj = C3DData.objSelected as C3DGridData;
+            if (obj == null) return;
+
+            Grid3DOverlayForm dlg = new Grid3DOverlayForm(obj);
+            if (dlg.ShowDialog() == DialogResult.OK) 
+            {
+                UpdateDraw(obj);
+            }
+        }
+
+        private void trimWithToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+
         }
 
         /////////////////////////////////////

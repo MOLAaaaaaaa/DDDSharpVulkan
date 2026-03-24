@@ -165,7 +165,7 @@ namespace DDDSharp
             double nullValue = 0;
             if (nullcheck)
             {
-                nullValue = ConvertData.toDouble(NullValueTextBox.Text);                
+                nullValue = double.Parse(NullValueTextBox.Text);                
             }
 
             string ss;
@@ -191,7 +191,7 @@ namespace DDDSharp
             bool title = false;
             for (int i = 0; i < n; i++)
             {
-                if ( !ConvertData.StringToFloat(str[i], out v) )
+                if ( !float.TryParse(str[i], out v) )
                 {
                     title = true;
                     break;
@@ -229,14 +229,14 @@ namespace DDDSharp
            
             if ( checkBoxX1.Checked )
             {
-                if ( ConvertData.StringToFloat(textBoxX1.Text,out x1 ) )
+                if ( float.TryParse(textBoxX1.Text,out x1 ) )
                 {
                     if (p.V < x1 ) return true;
                 }                
             }
             if (checkBoxX2.Checked)
             {
-                if (ConvertData.StringToFloat(textBoxX2.Text, out x2))
+                if (float.TryParse(textBoxX2.Text, out x2))
                 {
                     if (p.V > x2) return true;
                 }
@@ -244,14 +244,14 @@ namespace DDDSharp
 
             if (checkBoxY1.Checked)
             {
-                if (ConvertData.StringToFloat(textBoxY1.Text, out y1))
+                if (float.TryParse(textBoxY1.Text, out y1))
                 {
                     if (p.Y < y1) return true;
                 }
             }
             if (checkBoxY2.Checked)
             {
-                if (ConvertData.StringToFloat(textBoxY2.Text, out y2))
+                if (float.TryParse(textBoxY2.Text, out y2))
                 {
                     if (p.Y > y2) return true;
                 }
@@ -259,14 +259,14 @@ namespace DDDSharp
 
             if (checkBoxZ1.Checked)
             {
-                if (ConvertData.StringToFloat(textBoxZ1.Text, out z1))
+                if (float.TryParse(textBoxZ1.Text, out z1))
                 {
                     if (p.Z < z1) return true;
                 }
             }
             if (checkBoxZ2.Checked)
             {
-                if (ConvertData.StringToFloat(textBoxZ2.Text, out z2))
+                if (float.TryParse(textBoxZ2.Text, out z2))
                 {
                     if (p.Z > z2) return true;
                 }
@@ -274,14 +274,14 @@ namespace DDDSharp
 
             if (checkBoxV1.Checked)
             {
-                if (ConvertData.StringToFloat(textBoxV1.Text, out v1))
+                if (float.TryParse(textBoxV1.Text, out v1))
                 {
                     if (p.V < v1) return true;
                 }
             }
             if (checkBoxV2.Checked)
             {
-                if (ConvertData.StringToFloat(textBoxV2.Text, out v2))
+                if (float.TryParse(textBoxV2.Text, out v2))
                 {
                     if (p.V > v2) return true;
                 }
@@ -289,7 +289,7 @@ namespace DDDSharp
             //null value
             if (checkBoxNullValue.Checked)
             {
-                if (ConvertData.StringToFloat(NullValueTextBox.Text, out v1))
+                if (float.TryParse(NullValueTextBox.Text, out v1))
                 {
                     if (p.V == v1) return true;
                 }

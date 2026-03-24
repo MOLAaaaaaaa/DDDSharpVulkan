@@ -10,11 +10,13 @@ namespace RegisterAndEncrypt
     public class RegisterVerify
     {
         public string userid { get; set; } = "";
+        public string password { get; set; } = "";
         public string encryptKeyWord { get; set; } = "";
         public string Name { get; set; } = "3D Surfer";
         public string License { get; set; } = "";
         public string Version { get; set; } = "3.0";
         public string Date { get; set; } = "2020-01-01";
+        public string Date1  = "2020-01-01";
 
         public string ErrMsg = "";
         public RegisterVerify(string _userid)
@@ -30,11 +32,30 @@ namespace RegisterAndEncrypt
                 if (key == null) return false;
                 key = key.OpenSubKey("3DSurferV3");
                 if (key == null) return false;
-                Name = key.GetValue("Name").ToString();
-                License = key.GetValue("License").ToString();
+                var name = key.GetValue("name");
+                if (name == null) return false;
+                Name = name.ToString();
+                
+                var enpass = key.GetValue("password");
+                var enDate = key.GetValue("Register");
+                if (enpass == null || enDate == null) return false;
+                string Enpass = enpass.ToString();
+                string EnDate = enDate.ToString();
+                if (Enpass.Length > 0 && EnDate.Length > 0)
+                {
+                    DESEncrypt des = new DESEncrypt("cdut1234");
+                    password = des.Decrypt(Enpass);
+                    Date1 = des.Decrypt(EnDate);
+                }
 
-                Version = key.GetValue("Version").ToString();
-                Date = key.GetValue("Date").ToString();
+                var license = key.GetValue("License");
+                var version = key.GetValue("Version");
+                var date = key.GetValue("Date");
+                if(license == null || version == null || date == null) return false;
+                License = license.ToString();
+                Version = version.ToString();
+                Date = date.ToString();                
+
                 return IsValid();
             }
             catch(Exception e)
@@ -51,14 +72,19 @@ namespace RegisterAndEncrypt
                 if (key == null) return false;
                 key = key.CreateSubKey("3DSurferV3");                
                 if (key == null) return false;
+                
+                DESEncrypt des = new DESEncrypt("cdut1234");
+                string enpass = des.Encrypt(password);
 
                 DateTime t = DateTime.Now;
                 string date = t.Year + "-" + t.Month + "-" + t.Day;
+                string endate = des.Encrypt(date);
                 key.SetValue("Name", Name);
+                key.SetValue("Password", enpass);
                 key.SetValue("License", License);
                 key.SetValue("Version", Version);
                 key.SetValue("Date", date);
-
+                key.SetValue("Register", endate); //注册日期加密
                 return true;
             }
             catch(Exception e)
@@ -70,9 +96,12 @@ namespace RegisterAndEncrypt
         
         public bool IsValid()
         {
-            if ( Name.Length < 1 || 
+            if ( userid.Length < 1|| 
+                 Name.Length < 1 ||
+                 Date.Length < 1 ||
+                 Date1.Length < 1 ||
                  License.Length < 1 || 
-                 Version.Length < 1 || Date.Length<1 ) 
+                 Version.Length < 1 || Date != Date1) 
                 return false;
             else return true;
         }

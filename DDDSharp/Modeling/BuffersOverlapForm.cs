@@ -63,7 +63,7 @@ namespace DDDSharp
             GetValues();
 
             grid3d = new C3DGridData(xNum, yNum, zNum);
-            for (int i = 0; i < grid3d.pGridData.Length; i++) grid3d.pGridData[i] = 0;
+            for (int i = 0; i < grid3d.Length; i++) grid3d[i] = 0;
 
 
             int[] counts = new int[xNum*yNum*zNum];
@@ -114,16 +114,16 @@ namespace DDDSharp
             counts = null;
             values = null;
 
-            grid3d.UpdateDataRange();
+            grid3d.UpdateRange();
             double v;
             double v1 = grid3d.minv;
             double v2 = grid3d.maxv;
 
             //normalize
-            for (int j = 0; j < grid3d.pGridData.Length; j++)
+            for (int j = 0; j < grid3d.Length; j++)
             {
-                v = grid3d.pGridData[j];
-                grid3d.pGridData[j] =(float)( (v - v1) / (v2 - v1) );
+                v = grid3d[j];
+                grid3d[j] =(float)( (v - v1) / (v2 - v1) );
             }
             
             grid3d.minv = 0;

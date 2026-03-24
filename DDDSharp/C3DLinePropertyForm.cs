@@ -24,7 +24,7 @@ namespace DDDSharp
         {
             if (GetCurSelectedObject())
             {
-                length = line.GetLength();
+                length = line.GetLength(3);
                 textBoxLength.Text = length.ToString();
                 textRadiuBox.Text = (length / 10).ToString();
             }

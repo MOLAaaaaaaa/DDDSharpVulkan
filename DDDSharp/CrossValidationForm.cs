@@ -183,12 +183,12 @@ namespace DDDSharp
                     if(n2 == n1 )v = dao.pData[j];                         
                     else v = dao.pData[(int)(j*(double)n2 /n1)];
 
-                    vmax = maxUncertainty.pGridData[index];
+                    vmax = maxUncertainty[index];
 
                     if (v0 == 0) val = 100;
                     else val = 100 * Math.Abs(v - v0) / Math.Abs(v0);                    
 
-                    if(val > vmax) maxUncertainty.pGridData[index] = val;
+                    if(val > vmax) maxUncertainty[index] = val;
                 }
             }
         }
@@ -227,7 +227,7 @@ namespace DDDSharp
             string ss,sgyfile1;
 
             maxUncertainty.pGridData = new float[nx*ny*nz];
-            for (int i = 0; i < nx * ny * nz; i++) maxUncertainty.pGridData[i] = 0;
+            for (int i = 0; i < nx * ny * nz; i++) maxUncertainty[i] = 0;
             int err = 0;
             SetInfoTextMessage("Start to calculating ...");
             for (int k=0;k<pBoreholes.Count;k++)
@@ -281,15 +281,15 @@ namespace DDDSharp
 
         private void OKbutton_Click(object sender, EventArgs e)
         {
-            nx = ConvertData.StringToInt(CrossLineNum_textBox.Text);
-            ny = ConvertData.StringToInt(InLineNum_textBox.Text);
-            nz = ConvertData.StringToInt(Sampled_textBox.Text);
-            minx = ConvertData.StringToDouble(MinX_textBox.Text);
-            miny = ConvertData.StringToDouble(MinY_textBox.Text);
-            minz = ConvertData.StringToDouble(MinZ_textBox.Text);
-            maxx = ConvertData.StringToDouble(MaxX_textBox.Text);
-            maxy = ConvertData.StringToDouble(MaxY_textBox.Text);
-            maxz = ConvertData.StringToDouble(MaxZ_textBox.Text);
+            nx = int.Parse(CrossLineNum_textBox.Text);
+            ny = int.Parse(InLineNum_textBox.Text);
+            nz = int.Parse(Sampled_textBox.Text);
+            minx = double.Parse(MinX_textBox.Text);
+            miny = double.Parse(MinY_textBox.Text);
+            minz = double.Parse(MinZ_textBox.Text);
+            maxx = double.Parse(MaxX_textBox.Text);
+            maxy = double.Parse(MaxY_textBox.Text);
+            maxz = double.Parse(MaxZ_textBox.Text);
             minv = maxv = 0;
             if(nx<1||ny<1||nz<1||minx>=maxx||miny>=maxy||minz>=maxz)
             {

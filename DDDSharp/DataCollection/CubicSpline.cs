@@ -282,21 +282,24 @@ namespace DataCollection
 		}
 		public List<Vector64> CreateSpline(List<Vector64> points, int interpolated = 100)
 		{
+			if (points.Count < 2) return new List<Vector64>();
+			int n = points.Count;			
 			double[] xs, ys;
-			double[] x = new double[points.Count];
-			double[] y = new double[points.Count];
-			for (int i = 0; i < points.Count; i++)
-			{
-				x[i] = points[i].x;
-				y[i] = points[i].y;
-			}
+			double[] x = new double[n];
+			double[] y = new double[n];
+            for (int i = 0; i < points.Count; i++)
+            {
+                x[i] = points[i].x;
+                y[i] = points[i].y;
+            }
+            
 			FitParametric(x, y, interpolated, out xs, out ys);
 			List<Vector64> outpoints = new List<Vector64>();
 			for (int i = 0; i < ys.Length; i++)
 			{
 				outpoints.Add(new Vector64(xs[i], ys[i], 0));
-			}
-			xs = null;
+			}            
+            xs = null;
 			ys = null;
 			return outpoints;
 		}

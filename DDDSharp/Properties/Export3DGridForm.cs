@@ -69,7 +69,7 @@ namespace DDDSharp
 
                 if(reset) value = LayerValue;
 
-                data.pGridData[i] = value;
+                data[i] = value;
 
                 if (count == 0) minv = maxv = value;
                 else

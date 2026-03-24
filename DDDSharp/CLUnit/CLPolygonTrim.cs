@@ -869,7 +869,30 @@ namespace CLPolygonTrim
                 return false;
             }
         }
+        public bool CutWithPolygon(CMesh mesh, Polygon2D poly, bool keepOuter, Device[] devices)
+        {
+            for(int i=0;i<mesh.nRow;i++)
+            {
+                for (int j = 0; j < mesh.nCol; j++)
+                {
+                    Vector64 p = mesh[i, j];
+                    bool blank = false;
+                    if (poly.IsPointInsidePoly(p))
+                    {
+                        if (keepOuter) blank = true;
+                    }
+                    else 
+                    { 
+                        if (!keepOuter) blank = true;
+                    }
+                    if (blank) { p.V = double.NaN; mesh[i, j] = p; }
+                }
+            }
 
+            CalculateIntersetion(mesh, poly);
+
+            return true;
+        }
         public bool CutWithPolygon(C3DGridData grid3d, Polygon3D polygon, bool keepOuter,Device[] devices)
         {
             bool[] point_in;
@@ -1058,8 +1081,32 @@ namespace CLPolygonTrim
             
             return true;
         }
+        private bool CalculateIntersetion(CMesh mesh, Polygon2D poly )
+        {
+            double sec = 0;
+            Percentage = 0;
+            double step = 100 / zGrid;
+            DateTime t1 = DateTime.Now;
+            progressTitle = "calculating intersections ...";
+            CLine line = new CLine();
+            for (int k=0;k<poly.Count-1;k++)
+            {
+                line.p1 = poly[k];
+                line.p2 = poly[k+1];                
+                if (k == 0)
+                {
+                    sec = (DateTime.Now - t1).TotalSeconds;
+                }
+                //if (iz % step == 0)
+                {
+                    TimeLeft = (poly.Count - k - 1) * sec;
+                    Percentage += step;
+                }
+            }//for(iz = 0;iz<zGrid;iz++)
 
-       
+            return true;
+        }
+
         private bool[] CalculateBlanks(C3DGridData grid3d, TriangleObj obj, Device[]devices )
         {       
             if (devices == null)

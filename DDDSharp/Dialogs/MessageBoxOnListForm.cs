@@ -52,5 +52,16 @@ namespace DDDSharp.Dialogs
             form.Messages = messages.ToArray();
             form.ShowDialog();
         }
+        public static string InputDlgShow(string caption, string title)
+        {
+            MessageBoxInputDlg form = new MessageBoxInputDlg();
+            form.TitleText = caption;
+            form.labelText = title;
+            if (form.ShowDialog() == DialogResult.OK)
+            {
+                return form.textInput;
+            }
+            else return "";
+        }
     }
 }

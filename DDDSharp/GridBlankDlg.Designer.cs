@@ -61,12 +61,22 @@
             this.label8 = new System.Windows.Forms.Label();
             this.OK = new System.Windows.Forms.Button();
             this.Cancel = new System.Windows.Forms.Button();
+            this.radioButton1 = new System.Windows.Forms.RadioButton();
+            this.groupBox3 = new System.Windows.Forms.GroupBox();
+            this.radioButton2 = new System.Windows.Forms.RadioButton();
+            this.CopyFromButton2D = new System.Windows.Forms.Button();
+            this.CopyFromButton3D = new System.Windows.Forms.Button();
+            this.Update3D = new System.Windows.Forms.Button();
+            this.Update2D = new System.Windows.Forms.Button();
             this.groupBox1.SuspendLayout();
             this.groupBox2.SuspendLayout();
+            this.groupBox3.SuspendLayout();
             this.SuspendLayout();
             // 
             // groupBox1
             // 
+            this.groupBox1.Controls.Add(this.Update2D);
+            this.groupBox1.Controls.Add(this.CopyFromButton3D);
             this.groupBox1.Controls.Add(this.ZOffsetTextBox);
             this.groupBox1.Controls.Add(this.label9);
             this.groupBox1.Controls.Add(this.checkBox1);
@@ -210,6 +220,8 @@
             // 
             // groupBox2
             // 
+            this.groupBox2.Controls.Add(this.Update3D);
+            this.groupBox2.Controls.Add(this.CopyFromButton2D);
             this.groupBox2.Controls.Add(this.label10);
             this.groupBox2.Controls.Add(this.comboBox1);
             this.groupBox2.Controls.Add(this.Z23DtextBox);
@@ -344,7 +356,7 @@
             // 
             // OK
             // 
-            this.OK.Location = new System.Drawing.Point(26, 306);
+            this.OK.Location = new System.Drawing.Point(12, 337);
             this.OK.Name = "OK";
             this.OK.Size = new System.Drawing.Size(133, 36);
             this.OK.TabIndex = 2;
@@ -354,7 +366,7 @@
             // 
             // Cancel
             // 
-            this.Cancel.Location = new System.Drawing.Point(423, 306);
+            this.Cancel.Location = new System.Drawing.Point(423, 337);
             this.Cancel.Name = "Cancel";
             this.Cancel.Size = new System.Drawing.Size(133, 36);
             this.Cancel.TabIndex = 3;
@@ -362,10 +374,84 @@
             this.Cancel.UseVisualStyleBackColor = true;
             this.Cancel.Click += new System.EventHandler(this.Cancel_Click);
             // 
+            // radioButton1
+            // 
+            this.radioButton1.AutoSize = true;
+            this.radioButton1.Location = new System.Drawing.Point(23, 24);
+            this.radioButton1.Name = "radioButton1";
+            this.radioButton1.Size = new System.Drawing.Size(76, 19);
+            this.radioButton1.TabIndex = 4;
+            this.radioButton1.TabStop = true;
+            this.radioButton1.Text = "blank ";
+            this.radioButton1.UseVisualStyleBackColor = true;
+            // 
+            // groupBox3
+            // 
+            this.groupBox3.Controls.Add(this.radioButton2);
+            this.groupBox3.Controls.Add(this.radioButton1);
+            this.groupBox3.Location = new System.Drawing.Point(12, 259);
+            this.groupBox3.Name = "groupBox3";
+            this.groupBox3.Size = new System.Drawing.Size(544, 53);
+            this.groupBox3.TabIndex = 5;
+            this.groupBox3.TabStop = false;
+            this.groupBox3.Text = "How to do with terrain?";
+            // 
+            // radioButton2
+            // 
+            this.radioButton2.AutoSize = true;
+            this.radioButton2.Location = new System.Drawing.Point(190, 24);
+            this.radioButton2.Name = "radioButton2";
+            this.radioButton2.Size = new System.Drawing.Size(84, 19);
+            this.radioButton2.TabIndex = 6;
+            this.radioButton2.TabStop = true;
+            this.radioButton2.Text = "overlap";
+            this.radioButton2.UseVisualStyleBackColor = true;
+            // 
+            // CopyFromButton2D
+            // 
+            this.CopyFromButton2D.Location = new System.Drawing.Point(6, 193);
+            this.CopyFromButton2D.Name = "CopyFromButton2D";
+            this.CopyFromButton2D.Size = new System.Drawing.Size(107, 23);
+            this.CopyFromButton2D.TabIndex = 14;
+            this.CopyFromButton2D.Text = "=>CopyFrom";
+            this.CopyFromButton2D.UseVisualStyleBackColor = true;
+            this.CopyFromButton2D.Click += new System.EventHandler(this.CopyFromButton2D_Click);
+            // 
+            // CopyFromButton3D
+            // 
+            this.CopyFromButton3D.Location = new System.Drawing.Point(153, 193);
+            this.CopyFromButton3D.Name = "CopyFromButton3D";
+            this.CopyFromButton3D.Size = new System.Drawing.Size(107, 23);
+            this.CopyFromButton3D.TabIndex = 15;
+            this.CopyFromButton3D.Text = "CopyFrom<=";
+            this.CopyFromButton3D.UseVisualStyleBackColor = true;
+            this.CopyFromButton3D.Click += new System.EventHandler(this.CopyFromButton3D_Click);
+            // 
+            // Update3D
+            // 
+            this.Update3D.Location = new System.Drawing.Point(177, 193);
+            this.Update3D.Name = "Update3D";
+            this.Update3D.Size = new System.Drawing.Size(76, 23);
+            this.Update3D.TabIndex = 15;
+            this.Update3D.Text = "Apply";
+            this.Update3D.UseVisualStyleBackColor = true;
+            this.Update3D.Click += new System.EventHandler(this.Update3D_Click);
+            // 
+            // Update2D
+            // 
+            this.Update2D.Location = new System.Drawing.Point(177, 156);
+            this.Update2D.Name = "Update2D";
+            this.Update2D.Size = new System.Drawing.Size(76, 23);
+            this.Update2D.TabIndex = 16;
+            this.Update2D.Text = "Apply";
+            this.Update2D.UseVisualStyleBackColor = true;
+            this.Update2D.Click += new System.EventHandler(this.Update2D_Click);
+            // 
             // GridBlankDlg
             // 
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.None;
             this.ClientSize = new System.Drawing.Size(568, 399);
+            this.Controls.Add(this.groupBox3);
             this.Controls.Add(this.Cancel);
             this.Controls.Add(this.OK);
             this.Controls.Add(this.groupBox2);
@@ -377,6 +463,8 @@
             this.groupBox1.PerformLayout();
             this.groupBox2.ResumeLayout(false);
             this.groupBox2.PerformLayout();
+            this.groupBox3.ResumeLayout(false);
+            this.groupBox3.PerformLayout();
             this.ResumeLayout(false);
 
         }
@@ -416,5 +504,12 @@
         private System.Windows.Forms.Button Cancel;
         private System.Windows.Forms.ComboBox comboBox1;
         private System.Windows.Forms.Label label10;
+        private System.Windows.Forms.RadioButton radioButton1;
+        private System.Windows.Forms.GroupBox groupBox3;
+        private System.Windows.Forms.RadioButton radioButton2;
+        private System.Windows.Forms.Button CopyFromButton3D;
+        private System.Windows.Forms.Button CopyFromButton2D;
+        private System.Windows.Forms.Button Update2D;
+        private System.Windows.Forms.Button Update3D;
     }
 }

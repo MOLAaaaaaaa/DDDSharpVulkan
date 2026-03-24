@@ -17,16 +17,25 @@ using DDDSharp.Modeling;
 using DDDSharp.Boreholes;
 using DDDSharp.Gridding;
 
+using RegisterAndEncrypt;
+using ADODatabase;
+
+using DataCollection.Projection;
+using static AviFile.Avi;
+using static System.Windows.Forms.VisualStyles.VisualStyleElement.Window;
+using System.Security.Policy;
+using DDDSharp.Analyze;
+using static System.Windows.Forms.VisualStyles.VisualStyleElement;
+using DDDSharp.Dialogs;
+using DDDSharp.Grid3DProperty;
+
 namespace DDDSharp
 {
     public partial class MainForm : Form
     {
-        //三维窗口
-        public DDDForm m_DDDForm;
-        //对象浏览窗口
-        public ObjectForm m_ObjectForm;
-        //信息显示窗口
-        private InformationForm m_InforForm;
+        public DDDForm m_DDDForm = new DDDForm(); //三维显示窗口        
+        public ObjectForm m_ObjectForm = new ObjectForm();//对象浏览窗口        
+        private InformationForm m_InforForm = new InformationForm();//信息显示窗口
 
         public C3DGridDataPropertyForm m_3DGridForm ;
         public PlyPropertyForm m_PlyPropertyForm ;
@@ -35,31 +44,23 @@ namespace DDDSharp
         public C3DLinePropertyForm m_3DLinePropertyForm;
         public ScatteredPointsPropertyForm m_ScatterPointsPropertyForm;
 
-        string CaptionTitle = "3D Surfer -- data visualization";
-
+        string CaptionTitle = "3D Surfer Plus";
         static int iBoxCreated = 1;
         static int iConeCreated = 1;
         static int iCylinderCreated = 1;
-
-
+        
         public MainForm()
         {  
-            InitializeComponent();            
-            //三维窗口
-            m_DDDForm = new DDDForm();
+            InitializeComponent();                        
             drawUpdateEvent += m_DDDForm.OnUpdateDrawEvent; //绘图更新事件
-            KeyPreview = true;
-            //对象浏览窗口
-            m_ObjectForm = new ObjectForm();
-            //信息显示窗口
-            m_InforForm = new InformationForm();
+            KeyPreview = true;           
             m_3DGridForm = new C3DGridDataPropertyForm();
             m_PlyPropertyForm = new PlyPropertyForm();
             m_SlicerPropertyForm = new CSlicerPropertyForm();
             m_BoreholesPropertyForm = new CBoreholesPropertyForm();
             m_3DLinePropertyForm = new C3DLinePropertyForm();
             m_ScatterPointsPropertyForm = new ScatteredPointsPropertyForm();
-            Text = CaptionTitle;
+            Text = CaptionTitle + "--data visualization";
         }
 
         /// <summary>
@@ -81,6 +82,7 @@ namespace DDDSharp
                 Directory.Delete(d);
             }
         }
+
         public void DeleteFolderFiles(string dir)
         {
             if (!Directory.Exists(dir)) return;
@@ -154,11 +156,12 @@ namespace DDDSharp
                 }
             }
             //这句必须要加上  //或者 dockPanel1.Parent = this;
-            //dockPanel1.DocumentStyle = DocumentStyle.DockingWindow;
+            //dockPanel1.DocumentStyle = DocumentStyle.DockingWindow;            
             dockPanel1.Parent = this;
-            m_DDDForm.Show(dockPanel1, DockState.Document);
-            m_InforForm.Show(dockPanel1, DockState.DockBottom);
-            m_ObjectForm.Show(this.dockPanel1, DockState.DockLeft);
+            m_DDDForm.Show(dockPanel1, DockState.Document);//居中停靠
+            m_InforForm.Show(dockPanel1, DockState.DockBottom);//底部停靠
+            m_ObjectForm.Show(this.dockPanel1, DockState.DockLeft);//左边停靠
+
             //m_ObjectForm.Show(this.dockPanel1, DockState.DockLeftAutoHide);
             //m_3DGridForm.Show(this.dockPanel1, DockState.DockLeft|DockState.DockBottom);
             //m_PlyPropertyForm.Show(this.dockPanel1, DockState.DockLeftAutoHide);       
@@ -175,7 +178,7 @@ namespace DDDSharp
                 RegisterAndEncrypt.HardWareInfo.InfoType type = (RegisterAndEncrypt.HardWareInfo.InfoType)rand.Next(3);
                 if ( !reg.Verify(type) ) regist = true;
             }            
-            if( regist )//注册界面
+            if( regist )//待注册
             {
                 //first register
                 RegisterForm reg1 = new RegisterForm();
@@ -184,57 +187,73 @@ namespace DDDSharp
                 reg1.Show(this);
                 //reg1.BringToFront();                
             }
-            
+            else//已注册-远程验证注册是否正确
+            {
+                if (!VerifyRemote())
+                {
+                    MessageBox.Show("Remote verifying failed,please check the network.");
+                    this.Close();
+                }                
+            }
+
         }
 
         private void LoadDataFrom3DGrid(object sender, EventArgs e)
         {
             try
             {
-                using (var dlg = new OpenFileDialog())
+                var dlg = new OpenFileDialog();
+                dlg.Filter = Resource1.Grid3DFileFormatFilter;
+                dlg.Filter += "|" + "All Files(*.*)|*.*";
+                if (dlg.ShowDialog() != DialogResult.OK) return;
+
+                Cursor = Cursors.WaitCursor;                
+               
+                bool ret = false;
+                double xyzscale = 1;
+                C3DGridData data = new C3DGridData();
+                data.Read3DGridHeader(dlg.FileName);
+                long all = data.xyzNum;
+                data.Clear();
+                double memscale = 0.1;
+                double memrequired = all * sizeof(float) / 1024 / 1024;//存储字节数
+                double memavailable = PhysicalMemory.GetAvailableMemoryMB();
+                if (memrequired > memavailable * memscale)
                 {
-                    dlg.Filter = Resource1.Grid3DFileFormatFilter;
-                    dlg.Filter += "|" + "All Files(*.*)|*.*";
-                    if (dlg.ShowDialog() == DialogResult.OK)
-                    {
-                        Cursor = Cursors.WaitCursor;
-                        bool ret = C3DData.Load3DGridData(dlg.FileName);
-                        Cursor = Cursors.Default;
-
-                        if ( ret )
-                        {
-                            /////this validation section//////////////
-                            ///Validation
-                            if (C3DData.DemoVersion)
-                            {
-                                if (!CheckVialidation()) return;
-                            }
-                            /////this is end validation section//////////////
-                            if ( !CDataModel.IsModelScaleAcceptable(0.01) )
-                            {
-                                string ss = "This model doesn't have a proper scale." + Environment.NewLine;
-                                MessageBoxWarning(ss + CDataModel.m_ModelOrg.toString());
-                            }
-                            
-                            if (C3DData.objectsDiction.Count > 1)
-                            {
-                                C3DData.UpdateRange();
-                                m_ObjectForm.AddToTree(C3DData.lastLoaded);
-                                C3DData.objSelected = C3DData.lastLoaded;
-                                UpdateDraw(C3DData.lastLoaded);                                
-                            }
-                            else
-                            {
-                                m_ObjectForm.AddToTree(C3DData.lastLoaded);
-                                C3DData.objSelected = C3DData.lastLoaded;
-                                UpdateDraw(C3DData.lastLoaded);
-                            }                            
-                            //m_DDDForm.UpdateDraw();
-
-                        }
-                        else MessageBoxErr(C3DData.errMessage);                        
-                    }
+                    //抽样比例
+                    double scale = memrequired / (memavailable * memscale);
+                    //3个方向的抽样
+                    xyzscale = Math.Pow(scale, 1.0 / 3.0);
                 }
+                bool range_updated = false;
+                ret = C3DData.Load3DGridData(dlg.FileName, ref range_updated, xyzscale);
+
+                Cursor = Cursors.Default;
+
+                if (ret)
+                {
+                    AddtoInfo("Load grid data successfully."+ dlg.FileName);
+
+                    /////this validation section//////////////
+                    ///Validation
+                    if (C3DData.DemoVersion)
+                    {
+                        if (!CheckVialidation()) return;
+                    }
+                    /////this is end validation section//////////////
+                    if (!CDataModel.IsModelScaleAcceptable(0.01))
+                    {
+                        string ss = "This model doesn't have a proper scale." + Environment.NewLine;
+                        MessageBoxWarning(ss + CDataModel.m_ModelOrg.toString());
+                    }
+                                        
+                    m_ObjectForm.AddToTree(C3DData.lastLoaded);
+                    C3DData.objSelected = C3DData.lastLoaded;
+                    if(range_updated)UpdateDraw();
+                    else UpdateDraw(C3DData.lastLoaded);
+
+                }
+                else MessageBoxErr(C3DData.errMessage);
             }
             catch (Exception ex)
             {
@@ -549,13 +568,13 @@ namespace DDDSharp
         }
         private void scattedPointsPropertyToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            DockScattedPointsProperty();
+           // DockScattedPointsProperty();
         }
 
         private void scattedPointsPropertyToolStripMenuItem_DropDownOpened(object sender, EventArgs e)
         {
-            if (m_ScatterPointsPropertyForm.IsDisposed) scattedPointsPropertyToolStripMenuItem.Checked = false;
-            else scattedPointsPropertyToolStripMenuItem.Checked = true;
+           // if (m_ScatterPointsPropertyForm.IsDisposed) scattedPointsPropertyToolStripMenuItem.Checked = false;
+           // else scattedPointsPropertyToolStripMenuItem.Checked = true;
         }
         private void slicerPropertyToolStripMenuItem_Click(object sender, EventArgs e)
         {
@@ -595,24 +614,24 @@ namespace DDDSharp
         private void outerBoxToolStripMenuItem_Click(object sender, EventArgs e)
         {
             C3DData.bShowOuterBox = !C3DData.bShowOuterBox;
-            UpdateDraw(false, 1);
+            UpdateDraw(UpdateDrawTypeEnum.UpdateOutline);
         }        
         private void directionArrowToolStripMenuItem_Click(object sender, EventArgs e)
         {
             //对象类型，0 -C3DObjectBase对象，1虚线框，2坐标轴箭头，3Lights位置
             C3DData.bShowDirectionArrow = !C3DData.bShowDirectionArrow;
-            UpdateDraw(false,2);            
+            UpdateDraw(UpdateDrawTypeEnum.Update3DArrow);            
         }
 
         private void lightsPositionToolStripMenuItem_Click(object sender, EventArgs e)
         {
             C3DData.bShowLightPositions = !C3DData.bShowLightPositions;
-            UpdateDraw(false, 3);
+            UpdateDraw(UpdateDrawTypeEnum.Update3DLights);
         }
         private void selectedOutlineToolStripMenuItem_Click(object sender, EventArgs e)
         {
             C3DData.bShowSelectedOuterBox = !C3DData.bShowSelectedOuterBox;
-            UpdateDraw(false, 4);
+            UpdateDraw(UpdateDrawTypeEnum.UpdateSelectedBox);
         }
         private void vRMLModelsToolStripMenuItem_Click(object sender, EventArgs e)
         {
@@ -836,7 +855,7 @@ namespace DDDSharp
         //创建二维轮廓PolygonSlicer
         private void dOutlineToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            PolygonSlicer obj = new PolygonSlicer();
+            PolygonSlicer obj = new PolygonSlicer();            
             obj.minx = 0;
             obj.maxx = 1000;
             obj.miny = 0;
@@ -849,16 +868,19 @@ namespace DDDSharp
 
             SlicerModelingForm sf = new SlicerModelingForm();
             sf.SetSlicer(obj);
+            sf.Add3DObjects(C3DData.GetObjects());
+            
+            sf.ResetRangeByImage = true;
+
             if (sf.ShowDialog() == DialogResult.OK)
             {
                 obj = sf.slicer;
-                if (obj.IsLocated)
-                {
-                    obj.UpdateTraced();
-                    CDataModel.m_ModelOrg = new CubeModel64(-1, -1, -1, 1, 1, 1);
-                    CDataModel.UpdateModelSize(obj);
-                }
-
+                //if (obj.IsLocated)
+                //{
+                //    obj.UpdateTraced();
+                //    CDataModel.m_ModelOrg = new CubeModel64(-1, -1, -1, 1, 1, 1);
+                //    CDataModel.UpdateModelSize(obj);
+                //}
                 //obj.UpdateRange();
                 bool range_updated = C3DData.AddObject(obj, true);
                 C3DData.objSelected = C3DData.lastLoaded;
@@ -1150,7 +1172,7 @@ namespace DDDSharp
 
                         d.pGridData[id] = (float)((1-v1) * 0.1 + 0.9 * v2 );
                     }
-            d.UpdateDataRange();
+            d.UpdateRange();
             d.minv = 0;
             d.maxv = 1;
             d.ColorScale.SetValueRange(0, 1);
@@ -1543,9 +1565,9 @@ namespace DDDSharp
                                 int ix1 = ix + 10;
                                // if (ix1 < 100)
                                 {
-                                    data.pGridData[id] = 100;
+                                    data[id] = 100;
                                     id1 = data.GetVerticIndex(ix1, iy, iz);
-                                    data.pGridData[id1] = v;                                    
+                                    data[id1] = v;                                    
                                 }
                             }
                             /*else
@@ -1581,8 +1603,322 @@ namespace DDDSharp
             s = Math.Round(s,1);
             return d + ":" + m + ":" + s;            
         }
+        void 钻孔分层采样0(CBorehole bh, List<Vector64> points)
+        {
+            StreamReader br = new StreamReader(new FileStream(bh.errMessage, FileMode.Open));
+            int i = 0;
+            double x = bh.Position.X, y = bh.Position.Y, z = 0, v = 1;
+            string line = "";
+            CBoreholes boreholes = new CBoreholes();
+            double lastdepth = 0;
+            while ((line = br.ReadLine()) != null)
+            {
+                if (i == 0) { i++; continue; }
+                string[] ss = line.Split(new char[] { ',' }, StringSplitOptions.RemoveEmptyEntries);
+                if (ss.Length < 4) continue;
+                double h1 = double.Parse(ss[2]);
+                double h2 = double.Parse(ss[3]);
+                string name = ss[4].Trim();
+
+                if (name.Contains("铁矿"))
+                {
+                    //start
+                    v = 1.0;
+                    z = bh.Position.Z - (h1 + 1);
+                    points.Add(new Vector64(x, y, z, v));
+                    //end
+                    z = bh.Position.Z - (h2 - 1);
+                    points.Add(new Vector64(x, y, z, v));
+                    //sample on between
+
+                    z = bh.Position.Z - (h2 + h1) / 2;
+                    //  points.Add(new Vector64(x, y, z, v));
+                    lastdepth = h2;
+
+                    //double step = 100;
+                    //if ( h2 - h1 > step )
+                    //{
+                    //    for (double h = h1 + step; h < h2; h += step)
+                    //    {
+                    //        z = bh.Position.Z - h;
+                    //        v = 1.0;
+                    //        points.Add(new Vector64(x, y, z, v));
+                    //    }
+                    //}
+                }
+                else
+                {
+                    //start
+                    v = 0;
+                    z = bh.Position.Z - h1 - 1;
+                    points.Add(new Vector64(x, y, z, v));
+
+                    //end
+                    //z = bh.Position.Z - h2 + 1;
+                    // points.Add(new Vector64(x, y, z, v));
+
+                    //sample on between
+                    double step = 20;
+                    if (h2 - h1 > step)
+                    {
+                        for (double h = h1 + step; h < h2; h += step)
+                        {
+                            z = bh.Position.Z - h;
+                            v = 0;
+                            points.Add(new Vector64(x, y, z, v));
+                        }
+                    }
+                }
+                i++;
+            }
+            br.Close();
+        }
+        void 钻孔分层采样(CBorehole bh, List<Vector64> points)
+        {
+            StreamReader br = new StreamReader(new FileStream(bh.errMessage, FileMode.Open));
+            int i = 0;
+            double x = bh.Position.X, y = bh.Position.Y, z=0,v=1;            
+            string line = "";
+            CBoreholes boreholes = new CBoreholes();
+            double lastdepth = 0;
+            while ((line = br.ReadLine()) != null)
+            {
+                if (i == 0) { i++; continue; }
+                string[] ss = line.Split(new char[] { ',' }, StringSplitOptions.RemoveEmptyEntries);
+                if (ss.Length < 4) continue;
+                double h1 = double.Parse(ss[2]);
+                double h2 = double.Parse(ss[3]);
+                string name = ss[4].Trim();
+                
+                if ( name.Contains("铁矿") )
+                {
+                    //start
+                    v = 1.0;
+                    z = bh.Position.Z - (h1+1);                    
+                    points.Add(new Vector64(x, y, z, v));
+                    //end
+                    z = bh.Position.Z - (h2-1);                    
+                    points.Add(new Vector64(x, y, z, v));
+
+                    //sample on between
+                    double step = 10;
+                    if (h2 - h1 > step)
+                    {
+                        for (double h = h1 + step; h < h2; h += step)
+                        {
+                            z = bh.Position.Z - h;
+                            v = 1.0;
+                            points.Add(new Vector64(x, y, z, v));
+                        }
+                    }
+                }
+                else 
+                {
+                    //start
+                    v = 0;
+                    z = bh.Position.Z - h1 - 1;
+                    points.Add(new Vector64(x, y, z, v));
+
+                    //end
+                    z = bh.Position.Z - h2 + 1;
+                    points.Add(new Vector64(x, y, z, v));
+
+                    //sample on between
+                    double step = 10;
+                    if (h2 - h1 > step)
+                    {
+                        for (double h = h1 + step; h < h2; h += step)
+                        {
+                            z = bh.Position.Z - h;
+                            v = 0;
+                            points.Add(new Vector64(x, y, z, v));
+                        }
+                    }
+                }
+                i++;                
+            }
+            br.Close();            
+        }
+
+        void 钻孔采样()
+        {
+            using (var dlg = new OpenFileDialog())
+            {
+                dlg.Filter = "钻孔坐标文件*.csv|*.csv";
+                dlg.Filter += "|" + "All Files(*.*)|*.*";
+
+                if (dlg.ShowDialog() != DialogResult.OK) return;
+                string path = Path.GetDirectoryName(dlg.FileName);
+                this.Cursor = Cursors.WaitCursor;
+
+                int i = 0;
+                double x, y, z;
+                StreamReader br = new StreamReader(new FileStream(dlg.FileName, FileMode.Open));
+                string line = "";
+                CBoreholes boreholes = new CBoreholes();
+                while ( (line = br.ReadLine()) != null )
+                {
+                    if( i == 0) { i++;continue; }
+                    string[]ss = line.Split(new char[] { ',' },StringSplitOptions.RemoveEmptyEntries);
+                    if ( ss.Length < 3 ) continue;
+
+                    CBorehole bh = new CBorehole();
+                    bh.Name = ss[0].Trim();
+                    x = double.Parse(ss[1]);
+                    y = double.Parse(ss[2]);
+                    z = double.Parse(ss[3]);
+                    bh.Position = new Vector64(x,y,z);
+                    bh.errMessage = path + "\\"+ bh.Name + ".csv";
+                    boreholes.AddBorehole(bh);
+
+                    i++;
+                }
+                br.Close();
+
+                List<Vector64> points = new List<Vector64>();
+                
+                for(int k = 0; k < boreholes.Count; k++) 
+                {
+                    钻孔分层采样(boreholes[k], points);
+                }
+
+                StreamWriter wr = new StreamWriter(new FileStream( path + "\\钻孔分层采样数据.csv", FileMode.Create));
+                wr.WriteLine("X,Y,Z,VALUE");
+                for (int k = 0; k < points.Count; k++)
+                {
+                    wr.WriteLine(points[k].ToString());
+                }
+                wr.Close();
+                this.Cursor = Cursors.Default;
+            }
+        }
+        void 切片采样()
+        {
+            if (C3DData.objSelected == null) return;
+            if (C3DData.Stratums.Count < 1) return;
+            PolygonSlicer slicer = C3DData.objSelected as PolygonSlicer;
+            int nx = 200, ny = 200;
+            int[,] grid = C3DData.Stratums.SamplingFromImage(slicer.BackgroundImage,nx,ny,10);
+            double x, y, z, dx, dy;
+            dx = (slicer.maxx - slicer.minx) / nx;
+            dy = (slicer.maxy - slicer.miny) / ny;
+            Vector64 p1, p2, p;
+            FileStream fs = new FileStream(@"C:\jian\2024\简楚\攀枝花\红格\勘探剖面\勘探线\SlicerSampled.dat", FileMode.Append);
+            StreamWriter br = new StreamWriter(fs);
+            for (int iy = 0; iy < ny; iy++)
+            {
+                y = slicer.miny + iy * dy;
+                for (int ix = 0; ix < nx; ix++)
+                {
+                    x = slicer.minx + ix * dx;
+                    p = slicer.toTracedPoint(new Vector64(x, y,0,0));
+                    p.V = grid[ix, iy] + 1;
+                    br.WriteLine(p.toString(4));
+                }
+            }
+            br.Close();
+            fs.Close();
+        }
+
         private void testToolStripMenuItem_Click(object sender, EventArgs e)
         {
+            var dlg1 = new OpenFileDialog();
+            dlg1.Filter = Resource1.Grid3DFileFormatFilter;
+            dlg1.Filter += "|" + "All Files(*.*)|*.*";
+            if (dlg1.ShowDialog() != DialogResult.OK) return;
+            VTKFile vtk = new VTKFile();
+            vtk.Load(dlg1.FileName);
+
+
+            return;
+            //
+            var dlg = new OpenFileDialog();
+            dlg.Filter = Resource1.Grid3DFileFormatFilter;
+            dlg.Filter += "|" + "All Files(*.*)|*.*";
+            if (dlg.ShowDialog() != DialogResult.OK) return;
+
+            Cursor = Cursors.WaitCursor;
+            C3DGridData d1 = new C3DGridData();
+            d1.Read3DGridHeader(dlg.FileName);
+            double x1 = d1.minx, x2 = d1.maxx;
+            double y1 = d1.miny, y2 = d1.maxy;
+            double z1 = d1.minz, z2 = d1.maxz;
+            //d1.SaveBigGridTo(dlg.FileName, dlg.FileName + "_0.3DGrid", 201, 201, 51);
+            d1.SaveBigGridTo(dlg.FileName, dlg.FileName + "_3.3DGrid", 201, 201, 51,
+                46, 65, z1,
+                55, 71, z2);
+            return;
+            d1.SaveBigGridTo(dlg.FileName, dlg.FileName + "_1.3DGrid", 101, 101, 101,
+                x1,y1,z1,
+                x1+(x2-x1)/2, y1 + (y2 - y1) / 2, z2);
+            d1.SaveBigGridTo(dlg.FileName, dlg.FileName + "_2.3DGrid", 101, 101, 101,
+                x1 + (x2 - x1) / 2, y1, z1,
+                x2, y1 + (y2 - y1) / 2, z2);
+            d1.SaveBigGridTo(dlg.FileName, dlg.FileName + "_3.3DGrid", 101, 101, 101,
+                x1, y1 + (y2 - y1) / 2, z1,
+                x1 + (x2 - x1) / 2, y2, z2);
+            d1.SaveBigGridTo(dlg.FileName, dlg.FileName + "_4.3DGrid", 101, 101, 101,
+                x1 + (x2 - x1) / 2, y1 + (y2 - y1) / 2, z1,
+                x2, y2, z2);
+            
+            d1.Clear();
+            d1 = null;
+            Cursor = Cursors.Default;
+            return;
+
+            Cursor = Cursors.WaitCursor;
+            切片采样();
+            Cursor = Cursors.Default;
+            return;
+
+            FileStream fs = new FileStream(@"C:\jian\2024\简楚\攀枝花\白马\勘探剖面线\Slicers\dem.txt", FileMode.Create, FileAccess.Write);
+            StreamWriter wr = new StreamWriter(fs);
+            string line = "X,   Y,   Z";
+            wr.WriteLine(line);           
+
+            List<C3DObjectBase>objs = C3DData.GetObjects();
+            for(int i=0;i<objs.Count;i++)
+            {
+                C3DObjectBase obj = objs[i];
+                if(obj.type == ShapeEnum.PolygonSlicer)
+                {
+                    PolygonSlicer s = objs[i] as PolygonSlicer;
+                    for(int j=0;j<s.tracedGeoObjects.Count;j++)
+                    {
+                        Polygon2D poly = s.tracedGeoObjects[j];
+                        if (poly.Name != "S1") continue;
+                        for(int k=0;k<poly.points.Count;k++)
+                        {
+                            Vector64 p1 = poly.points[k];
+                            p1 = s.toTracedPoint(p1);
+                            wr.WriteLine(p1.toString(3));
+                        }
+                    }
+                }                
+            }
+            wr.Close();
+            fs.Close();
+            return;
+            钻孔采样();
+            return;
+            float[] values = new float[]
+            {
+                0.1f,3.15f,4.25f,5,7.2f,8.5f,9.1f,10,120,130,200
+            };
+            MyBinarySearch bs = new MyBinarySearch(values);
+
+            int n = bs.Search(6.2, out int n1, out int n2);
+            
+            C3DGridData data = new C3DGridData();
+            data.visibleValues.Add(new GlmNet.vec2(0, 3));
+            data.visibleValues.Add(new GlmNet.vec2(3, 5));         
+            data.visibleValues.Add(new GlmNet.vec2(6, 7));
+            data.visibleValues.Add(new GlmNet.vec2(8, 9));
+            data.MergeVisibleValues();
+
+            //MultiPropertiesMarchingCubes cb = new MultiPropertiesMarchingCubes();
+
+            return;
             //
             double rate = 3.55;
             int months = 240;
@@ -1601,7 +1937,7 @@ namespace DDDSharp
             string file = @"D:\jian\项目\电磁法勘探\2020地调项目\2022年给瞿程数据\MT实测点位坐标(1).txt";
             string outfile = @"D:\jian\项目\电磁法勘探\2020地调项目\2022年给瞿程数据\MT实测点位坐标(2).txt";
             StreamReader sr = new StreamReader(new FileStream(file, FileMode.Open, FileAccess.Read));
-            string line;
+            //string line;
             string []ss;
             double x, y, z;
             string s1, s2;
@@ -1619,7 +1955,7 @@ namespace DDDSharp
             sr.Close();
 
             Vector64 p;
-            StreamWriter wr = new StreamWriter(new FileStream(outfile, FileMode.Create, FileAccess.Write));
+           // StreamWriter wr = new StreamWriter(new FileStream(outfile, FileMode.Create, FileAccess.Write));
             
             for( int i=0; i < points.Count; i++ )
             {
@@ -1728,7 +2064,7 @@ namespace DDDSharp
         }
         private bool LoadGlobal(BinaryReader br)
         {
-            try 
+          //  try 
             {
                 //data model
                 CDataModel.LoadDataModel(br);
@@ -1744,9 +2080,9 @@ namespace DDDSharp
                 }
                 return true;
             }
-            catch(Exception e)
+          //  catch(Exception e)
             {
-                return false;
+           //     return false;
             }            
         }
         bool SaveProject(string prjFile)
@@ -1776,7 +2112,32 @@ namespace DDDSharp
                 return false;
             }            
         }
-       
+        //Save As -- save g3d
+        private void saveAsToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            using (var dlg = new SaveFileDialog())
+            {
+                dlg.Filter = Resource1.G3dProjectFileFilter;
+                dlg.Filter += "|" + "All Files(*.*)|*.*";
+                if (C3DData.CurrentProjectFile.Length > 0)
+                { 
+                    dlg.FileName = C3DData.CurrentProjectFile;
+                    //dlg.CheckFileExists = false;
+                }
+                if (dlg.ShowDialog() != DialogResult.OK) return;
+                C3DData.CurrentProjectFile = dlg.FileName;
+            }
+
+            if (SaveProject(C3DData.CurrentProjectFile))
+            {
+                AddtoInfo("Project Saved to " + C3DData.CurrentProjectFile);
+                Text = CaptionTitle +  " - " + C3DData.CurrentProjectFile;
+            }
+            else
+            {
+                AddtoInfo("Failed to save Project. ");
+            }
+        }
         //save g3d to file
         private void SaveProjectToolStripMenuItem_Click(object sender, EventArgs e)
         {
@@ -1796,7 +2157,7 @@ namespace DDDSharp
                 if( SaveProject(C3DData.CurrentProjectFile) )
                 {
                     AddtoInfo("Project Saved to " + C3DData.CurrentProjectFile);
-                    Text = "3D Surfer - " + C3DData.CurrentProjectFile;
+                    Text = CaptionTitle + " - " + C3DData.CurrentProjectFile;
                 }
                 else
                 {
@@ -1836,26 +2197,30 @@ namespace DDDSharp
                     if (ret)
                     {
                         ret = LoadGlobal(br);
-                        Text = "3D Surfer - " + dlg.FileName;
+                        Text = CaptionTitle + " - " + dlg.FileName;
                         C3DData.CurrentProjectFile = dlg.FileName;
                     }
-
                     br.Close();
                 }
                 catch (IOException ee)
-                {
+                {                    
                     MessageBoxErr("Loading data failed." + Environment.NewLine + ee.Message);
+                    this.Cursor = DefaultCursor;
                     return;
                 }               
 
                 this.Cursor = DefaultCursor;
 
                 if (ret)
-                {                    
+                {
+                    this.Cursor = Cursors.WaitCursor;
                     m_DDDForm.InitMatrix();
+
+                   // C3DData.dataTrees.Clear();//已经载入树
                     m_ObjectForm.CreateDataTrees();                   
                     m_ObjectForm.UpdateTree();                   
                     UpdateDraw();
+                    this.Cursor = DefaultCursor;
                 }
                 else MessageBoxErr(C3DData.errMessage);
             }            
@@ -1869,7 +2234,7 @@ namespace DDDSharp
 
         private void refreshToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            //m_DDDForm.UpdateDraw();
+            ClearObjectDrawBuffer();
             UpdateDraw();
         }
 
@@ -1932,26 +2297,58 @@ namespace DDDSharp
                     dlg.Filter += "|" + "All Files(*.*)|*.*";
                     //dlg.Multiselect = true;
                     if (dlg.ShowDialog() == DialogResult.OK)
-                    {
-                        
-                        ImportScatterPointsForm im = new ImportScatterPointsForm();
-                        im.datafile = dlg.FileName;
-                        if( im.ShowDialog() == DialogResult.OK )
+                    {                        
+                        string ext = Path.GetExtension(dlg.FileName).ToLower();
+                        if(ext == ".pcd") 
                         {
-                            if (im.output != null && im.output.Count > 1)
+                        }
+                        if(ext == ".pnts")
+                        {
+                            PntsPointCloudReader reader = new PntsPointCloudReader();
+                            List<Vector32>points = reader.ReadPntsFile(dlg.FileName);
+                            if (points.Count > 0 )
                             {
-                                Cursor = Cursors.WaitCursor;
-                                bool range_updated = C3DData.AddObject(im.output);                                
+                                ScatteredPoints sc = new ScatteredPoints(points);
+                                sc.Name = Path.GetFileName(dlg.FileName);
+                                bool range_updated = C3DData.AddObject(sc);
                                 C3DData.objSelected = C3DData.lastLoaded;
                                 m_ObjectForm.AddToTree(C3DData.lastLoaded);
-                                Cursor = Cursors.Default;
-
-                                if (range_updated) UpdateDraw();
-                                else UpdateDraw(C3DData.lastLoaded);
                             }
                         }
-                        
-                    }
+                        else if(ext == ".vtk")
+                        {
+                            Cursor = Cursors.WaitCursor;
+                            VTKFile vtk = new VTKFile();
+                            if( vtk.Load(dlg.FileName))
+                            {
+                                ScatteredPoints sc = new ScatteredPoints(vtk.Points);
+                                sc.Name = Path.GetFileName(dlg.FileName);
+                                bool range_updated = C3DData.AddObject(sc);
+                                C3DData.objSelected = C3DData.lastLoaded;
+                                m_ObjectForm.AddToTree(C3DData.lastLoaded);                               
+                            }
+                            Cursor = Cursors.Default;
+                        }
+                        else if( ext == ".dat" || ext == ".csv" || ext == ".txt")
+                        {
+                            ImportScatterPointsForm im = new ImportScatterPointsForm();
+                            im.datafile = dlg.FileName;
+                            if (im.ShowDialog() == DialogResult.OK)
+                            {
+                                if (im.output != null && im.output.Count > 1)
+                                {
+                                    Cursor = Cursors.WaitCursor;
+                                    bool range_updated = C3DData.AddObject(im.output);
+                                    C3DData.objSelected = C3DData.lastLoaded;
+                                    m_ObjectForm.AddToTree(C3DData.lastLoaded);
+                                    Cursor = Cursors.Default;
+
+                                    if (range_updated) UpdateDraw();
+                                    else UpdateDraw(C3DData.lastLoaded);
+                                }
+                            }
+                        }//else if( ext == ".dat" || ext == ".csv" || ext == ".txt")                        
+                    }// if (dlg.ShowDialog() == DialogResult.OK)
                 }
             }
             catch (Exception ex)
@@ -2468,15 +2865,15 @@ namespace DDDSharp
         }       
 
         public event EventHandler drawUpdateEvent; //绘图委托事件       
-
+       
         //refreshAll - 重绘全部
-        //对象类型，0 -C3DObjectBase对象，1虚线框，2坐标轴箭头，3Lights位置
-        public void UpdateDraw(bool refreshAll, int type, C3DObjectBase obj = null) //update all object
+        //对象类型，0 -C3DObjectBase对象，1虚线框，2坐标轴箭头，3Lights位置,4坐标轴刻度
+        public void UpdateDraw(UpdateDrawTypeEnum type, C3DObjectBase obj = null, bool refreshAll = false) //update all object
         {
             drawUpdateEvent(this, new DrawUpdateEventArg(refreshAll, obj, type));
         }
         public void UpdateDraw() //update all object
-        {
+        {            
             drawUpdateEvent( this, new DrawUpdateEventArg(true,null,0) );
         }
 
@@ -2488,8 +2885,8 @@ namespace DDDSharp
                 drawUpdateEvent(this, new DrawUpdateEventArg(false, obj, 0));
                 if ( CDataModel.rangeUpdated )
                 {
-                    if(C3DData.bShowDirectionArrow) UpdateDraw(false, 2, null);
-                    if (C3DData.bShowOuterBox) UpdateDraw(false, 1, null);
+                    if(C3DData.bShowDirectionArrow) UpdateDraw(UpdateDrawTypeEnum.Update3DArrow);
+                    if (C3DData.bShowOuterBox) UpdateDraw(UpdateDrawTypeEnum.UpdateOutline);
                     CDataModel.rangeUpdated = false;
                 }
             }
@@ -2500,8 +2897,8 @@ namespace DDDSharp
                 UpdateDraw(obj);
             if (CDataModel.rangeUpdated)
             {
-                if (C3DData.bShowDirectionArrow) UpdateDraw(false, 2, null);
-                if (C3DData.bShowOuterBox) UpdateDraw(false, 1, null);
+                if (C3DData.bShowDirectionArrow) UpdateDraw(UpdateDrawTypeEnum.Update3DArrow);
+                if (C3DData.bShowOuterBox) UpdateDraw(UpdateDrawTypeEnum.UpdateOutline);
                 CDataModel.rangeUpdated = false;
             }
         }       
@@ -2509,8 +2906,71 @@ namespace DDDSharp
         public void UpdateView()//刷新显示
         {
             drawUpdateEvent(this, new DrawUpdateEventArg(false, null,0));            
-        }         
+        }
 
+        public void ClearObjectDrawBuffer(C3DObjectBase obj)
+        {
+            Program.m_MainForm.m_DDDForm.ClearObjectDrawBuffer(obj);
+        }
+        public void ClearObjectDrawBuffer()
+        {
+            Program.m_MainForm.m_DDDForm.ClearObjectDrawBuffer();
+        }
+        private bool VerifyRemote()
+        {            
+            RegisterVerify reg = new RegisterVerify(C3DData.UserID);
+            if (!reg.ReadFromRegister()) return false;
+            if (!reg.IsValid()) return false;
+
+            DateTime regDate = DateTime.Parse(reg.Date1);
+            var tt = DateTime.Now - regDate;
+            if (tt.TotalDays < 0) return false;
+            if (tt.TotalDays < 365) return true;
+
+            DBClass db = new DBClass();
+
+            Cursor = Cursors.WaitCursor;
+
+            if (!db.Connect("Data Source = registration.cdtracer.cn; Initial Catalog = DDDSURFER; user id = sa; password = giT26vJLR957QU; Network Library = DBMSSOCN; "))
+            {
+                MessageBox.Show("Connect remote server failed.\r\n" + db.ErrMsg);
+                return false;
+            }
+
+            string sql = "select * from users where UserID = '";
+            sql += reg.userid + "';";            
+
+            if ( !db.SqlDataReader(sql) )
+            {
+                Cursor = Cursors.Default;
+                db.Close();
+                return false;
+            }
+
+            if (db.Count < 1 || !db.reader.HasRows)
+            {
+                Cursor = Cursors.Default;
+                db.Close();
+                return false;
+            }
+
+            if (!db.reader.Read())
+            {
+                Cursor = Cursors.Default;
+                db.Close();
+                return false;
+            }
+
+            UserStruct us = new UserStruct(C3DData.UserID);
+            us.Keyword = us.DecryptKey(db.reader["Keyword"].ToString());
+            us.Password = us.Decrypt(db.reader["Password"].ToString());          
+
+            db.Close();
+
+            if ( reg.password == us.Password && us.Password.Length > 0)
+                return true;
+            else return false;
+        }
         private void cutingToolStripMenuItem_Click(object sender, EventArgs e)
         {
             //Register Verify
@@ -2532,12 +2992,23 @@ namespace DDDSharp
             CutWithForm form1 = new CutWithForm();
             if (form1.ShowDialog() == DialogResult.OK)
             {
-                if (form1.cutIndex >= 0 && form1.selectedTarget != null)
+                if (form1.cutIndex >= 0 && 
+                    form1.selectedTarget != null && 
+                    form1.selectedTarget.type == ShapeEnum.Grid3D )
                 {
                     C3DData.SetObjectByKey(form1.cutIndex,form1.selectedTarget);
                     C3DData.objSelected = form1.selectedTarget;                    
                     Program.m_MainForm.m_3DGridForm.UpdateColorScale();
                     // Program.m_MainForm.m_DDDForm.UpdateDraw();
+                }
+                if (form1.cutIndex >= 0 &&
+                    form1.selectedTarget != null &&
+                    form1.selectedTarget.type == ShapeEnum.GeoLayerMeshes)
+                {
+                    C3DData.SetObjectByKey(form1.cutIndex, form1.selectedTarget);
+                    C3DData.objSelected = form1.selectedTarget;
+                    //Program.m_MainForm.m_ObjectForm.AddToTree(C3DData.lastLoaded);
+                     Program.m_MainForm.m_DDDForm.UpdateDraw(C3DData.objSelected);
                 }
             }
         }
@@ -2653,9 +3124,16 @@ namespace DDDSharp
             MeshCreateFromSlicersForm mf = new MeshCreateFromSlicersForm();
             if( mf.ShowDialog() == DialogResult.OK)
             {
-                m_ObjectForm.AddToTree(C3DData.lastLoaded);
-                C3DData.objSelected = C3DData.lastLoaded;
-                UpdateDraw(C3DData.lastLoaded);
+                if (mf.createdMeshes.Count > 0)
+                {
+                    for (int i = 0; i < mf.createdMeshes.Count; i++)
+                    {
+                        C3DData.AddObject(mf.createdMeshes[i], false);
+                        m_ObjectForm.AddToTree(C3DData.lastLoaded);
+                        C3DData.objSelected = C3DData.lastLoaded;
+                        UpdateDraw(C3DData.lastLoaded);
+                    }                    
+                }
             }
         }
         
@@ -2879,7 +3357,8 @@ namespace DDDSharp
             if( ax.ShowDialog() == DialogResult.OK )
             {
                 //m_DDDForm.InitCamera();
-                UpdateDraw(false,2,null);
+                UpdateDraw(UpdateDrawTypeEnum.Update3DArrow);
+                UpdateDraw(UpdateDrawTypeEnum.UpdateAxisLabel);
             }
         }
 
@@ -3027,6 +3506,7 @@ namespace DDDSharp
             {
                 GeoLayerMeshes geolayer = new GeoLayerMeshes();
                 geolayer.AddRange(ms.Layers);
+                //geolayer.UpdateBlanked();
                 geolayer.UpdateRange();
                 bool range_updated = C3DData.AddObject(geolayer);
 
@@ -3175,8 +3655,422 @@ namespace DDDSharp
                     C3DData.objSelected = C3DData.lastLoaded;
                     m_ObjectForm.AddToTree(C3DData.lastLoaded);
                     if (range_updated) UpdateDraw();
-                    else UpdateDraw(C3DData.lastLoaded);                   
+                    else UpdateDraw(C3DData.lastLoaded);                            
                 }
+            }
+        }
+
+        private void axisLabelsToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            AxisLableForm dlg = new AxisLableForm();
+            dlg.xRuler = CDataModel.xAxisRuler.Copy();
+            dlg.yRuler = CDataModel.yAxisRuler.Copy();
+            dlg.zRuler = CDataModel.zAxisRuler.Copy();
+            if( dlg.ShowDialog() == DialogResult.OK )
+            {
+                CDataModel.xAxisRuler = dlg.xRuler;
+                CDataModel.yAxisRuler = dlg.yRuler;
+                CDataModel.zAxisRuler = dlg.zRuler;
+                UpdateDraw(UpdateDrawTypeEnum.UpdateAxisLabel);
+            }
+        }
+
+        private void mouseControlToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            MouseControlForm dlg = new MouseControlForm();
+            if( dlg.ShowDialog() == DialogResult.OK )
+            {
+                
+            }
+        }
+        /// <summary>
+        /// 载入钻孔分层数据
+        /// 序号 钻孔编号 East(X) North(Y) Elevation(Z)
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        private void 钻孔分层文件ToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            try
+            {
+                var dlg = new OpenFileDialog();
+                dlg.Filter = "钻孔坐标文件*.csv|*.csv";
+                dlg.Filter += "|" + "All Files(*.*)|*.*";
+
+                if (dlg.ShowDialog() != DialogResult.OK) return;
+                string path = Path.GetDirectoryName(dlg.FileName);
+
+                this.Cursor = Cursors.WaitCursor;
+
+                int i = 0;
+                double x, y, z;
+                StreamReader br = new StreamReader(new FileStream(dlg.FileName, FileMode.Open));
+                string line = "";
+                CBoreholes boreholes = new CBoreholes();
+                while ((line = br.ReadLine()) != null)
+                {
+                    if (i == 0) { i++; continue; }//第一行表头
+                    if (line.Length < 3) continue;
+                    string[] ss = line.Split(new char[] { ',' }, StringSplitOptions.RemoveEmptyEntries);
+                    if (ss.Length < 3) continue;
+
+                    CBorehole bh = new CBorehole();
+                    bh.Name = ss[1].Trim();//钻孔编号                    
+                    x = double.Parse(ss[2]);//east x
+                    y = double.Parse(ss[3]);//north y
+                    z = double.Parse(ss[4]);//elevation
+                    bh.Position = new Vector64(x, y, z);
+                    
+                    //bh.errMessage = path + "\\" + bh.Name + ".csv"; //文件名
+                    if ( 读入钻孔分层数据(bh, path + "\\" + bh.Name + ".csv"))
+                        boreholes.AddBorehole(bh);
+                    
+                    i++;
+                }
+                boreholes.ShowCylinder = false;
+                boreholes.UpdateRange();
+                br.Close();
+
+                bool range_updated = C3DData.AddObject(boreholes);
+                m_ObjectForm.AddToTree(C3DData.lastLoaded);
+                C3DData.objSelected = C3DData.lastLoaded;
+                if (range_updated) UpdateDraw();
+                else UpdateDraw(C3DData.lastLoaded);
+
+                this.Cursor = Cursors.Default;
+            }
+            catch(Exception ex)
+            {
+                
+                this.Cursor = Cursors.Default;
+
+                MessageBox.Show(ex.Message);
+            }
+        }
+        /// <summary>
+        /// 读入钻孔分层数据（单钻孔）
+        /// 分层序号 起(m) 止(m) 地层属性
+        /// 分层序号 起(m) 长度(m) 地层属性
+        /// </summary>
+        /// <param name="bh"></param>
+        /// <param name="filename"></param>
+        /// <returns></returns>
+        bool 读入钻孔分层数据(CBorehole bh,string filename)
+        {
+            char[] splitchars = new char[] { ',', ';' };
+            string[] columns = new string[4]; //列标题
+            try
+            {                
+                StreamReader br = new StreamReader(new FileStream(filename, FileMode.Open));
+                int i = 0;
+                string line = "";
+                while ((line = br.ReadLine()) != null)
+                {
+                    if (line.Length < 1) continue;
+                    if (i == 0) 
+                    {
+                        columns = line.Split(splitchars, StringSplitOptions.RemoveEmptyEntries);
+                        i++;continue; 
+                    }
+
+                    string[] ss = line.Split(splitchars, StringSplitOptions.RemoveEmptyEntries);
+                    if (ss.Length < 4) continue;
+                    
+                    int id = 1; //0,序号，1分层开始
+                    if ( ss.Length > 4 && !int.TryParse(ss[0],out int id1) )
+                    {
+                        id = id+1;
+                    }
+                    double h1 = double.Parse(ss[id]);   //起
+                    double h2 = double.Parse(ss[id+1]); //止/厚度
+                    string name = ss[id+2].Trim();      //地层属性/岩性
+
+                    StratumData layer;
+                    string column = columns[id + 1].ToLower(); //第2列标题
+                    
+                    if (column.Contains("止") ||
+                        column.Contains("结束")||
+                        column.Contains("终") )
+                        layer = new StratumData(name, h1, h2 - h1);
+                    else if (column.Contains("厚度") ||
+                        column.Contains("长度") ||
+                        column.Contains("长") ||
+                        column.Contains("thick") ||
+                        column.Contains("depth"))
+                        layer = new StratumData(name, h1, h2);
+                    else layer = new StratumData(name, h1, h2);
+
+                    bh.Stratums.AddLayer(layer);
+                    i++;
+                }
+                br.Close();
+                bh.UpdateRange();
+                return true;
+            }
+            catch(Exception ex)
+            {
+                AddtoInfo("载入数据出错："+filename + ex.Message);
+                return false;
+            }            
+        }
+
+        private void stratumsEditorToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            GeoLayerEditor dlg = new GeoLayerEditor();
+            dlg.stratums = new StratumDatas();
+            dlg.ShowDialog();
+        }
+
+        private void overlayAnalysisToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            List<C3DObjectBase>objs = C3DData.GetObjects();
+            OverlayAnalyseForm dlg = new OverlayAnalyseForm(objs);
+            if( dlg.ShowDialog() == DialogResult.OK ) 
+            {
+                C3DGridData data = dlg.data;
+                if( data!=null && data.maxv>data.minv )
+                {
+                    data.Name = "叠加分析结果" + DateTime.Now.ToString("g");
+                    data.InitTables();
+                    bool range_updated = C3DData.AddObject(data);
+                    m_ObjectForm.AddToTree(C3DData.lastLoaded);
+                    C3DData.objSelected = C3DData.lastLoaded;
+                    if (range_updated) UpdateDraw();
+                    else UpdateDraw(C3DData.lastLoaded);
+                }
+            }
+        }
+
+        private void toThisObjectToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            C3DObjectBase obj = C3DData.objSelected;
+            if(obj != null)
+            {
+                CDataModel.ResetModelSize(obj.Minx, obj.Miny, obj.Minz, obj.Maxx, obj.Maxy, obj.Maxz);
+                UpdateDraw();
+            }
+        }
+
+        private void resetViewToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            m_DDDForm.InitArcBall();
+            UpdateView();
+        }
+
+        private void stratumColorSchemeToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            GeoLayerEditor dlg = new GeoLayerEditor();
+            dlg.stratums = C3DData.Stratums.Copy();
+            if (dlg.ShowDialog() == DialogResult.OK)
+            {
+                C3DData.Stratums = dlg.stratums.Copy();
+            }
+        }
+
+        private void newProjectToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            if (C3DData.objectsDiction.Count > 0 && C3DData.IsDataModified)
+            {
+                string info = "Changes have not been saved, save it first?";
+                DialogResult ret = MessageBoxQestionYesNoCancel(info, "Save Changes？");
+                if (ret == DialogResult.Cancel) return;
+                else if (ret == DialogResult.Yes)
+                {
+                    SaveProjectToolStripMenuItem_Click(sender, e);
+                    return;
+                }
+            }
+            Text = CaptionTitle + "-- untitled project";
+            m_DDDForm.ClearObjectDrawBuffer();
+            C3DData.ClearObjects();
+            CDataModel.ResetModelSize(-1,-1,-1,1,1,1);
+            m_DDDForm.InitMatrix();
+            C3DData.dataTrees.Clear();
+            m_ObjectForm.UpdateTree();
+            UpdateDraw();
+
+        }
+
+        private void fromSlicersToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            InterpolatedSlicerModelingForm dlg = new InterpolatedSlicerModelingForm();
+            var objs = C3DData.GetObjects();
+            foreach(var obj in objs) 
+            {
+                if(obj.type == ShapeEnum.PolygonSlicer && obj.Visible) 
+                {
+                    dlg.AddSlicer(obj as PolygonSlicer);
+                }
+            }
+            objs.Clear();
+
+            if (dlg.ShowDialog() == DialogResult.OK)
+            {
+                if (dlg.grid3d !=null )
+                {
+                    C3DData.AddObject(dlg.grid3d, false);
+                    C3DData.objSelected = C3DData.lastLoaded;
+                    m_ObjectForm.AddToTree(C3DData.lastLoaded);
+                    UpdateDraw();
+                }
+
+                //if (dlg.createdModels.Count > 0)
+                //{
+                //    foreach(TriangleObj obj in dlg.createdModels)
+                //    {
+                //        C3DData.AddObject(obj, false);
+                //        C3DData.objSelected = C3DData.lastLoaded;
+                //        m_ObjectForm.AddToTree(C3DData.lastLoaded);                       
+                //    }
+                //    UpdateDraw();
+                //}
+            }
+        }
+
+        private void fromGeoToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            GeoInterConvertForm gcf = new GeoInterConvertForm();
+            gcf.ShowDialog();
+        }
+
+        private void fromG3DToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            using (var dlg = new OpenFileDialog())
+            {
+                dlg.Filter = Resource1.G3dProjectFileFilter;
+                dlg.Filter += "|" + "All Files(*.*)|*.*";
+
+                if (dlg.ShowDialog() != DialogResult.OK) return;
+                string foldername = Path.GetFileName(dlg.FileName);
+
+                this.Cursor = Cursors.WaitCursor;
+
+                bool ret = false;
+                try
+                {
+                    BinaryReader br = new BinaryReader(new FileStream(dlg.FileName, FileMode.Open));
+                    ret = C3DData.ImportFromG3DFile(br, foldername);
+                    br.Close();
+                    if (ret)
+                    {                       
+                        m_ObjectForm.CreateDataTrees();
+                        m_ObjectForm.UpdateTree();
+                        UpdateDraw();
+                    }
+                    else MessageBoxErr(C3DData.errMessage);
+                }
+                catch (IOException ee)
+                {
+                    this.Cursor = DefaultCursor;
+                    MessageBoxErr("Loading data failed." + Environment.NewLine + ee.Message);                    
+                    return;
+                }
+
+                this.Cursor = DefaultCursor;                
+            }
+        }
+
+        private void terrianBlankToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            TopographyBlankForm dlg = new TopographyBlankForm();
+            dlg.ShowDialog();
+        }
+
+        private void toDiscretedPointsToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            SlicerModelingDlg md = new SlicerModelingDlg();   
+            
+            foreach (C3DObjectBase obj in C3DData.GetObjects())
+            {
+                if (obj.type == ShapeEnum.PolygonSlicer && obj.Visible)
+                {
+                    PolygonSlicer s = (PolygonSlicer)obj;
+                    md.AddSlicer(s);
+                }
+            }
+            
+            if (md.ShowDialog() == DialogResult.OK)
+            {
+            }
+
+            return;
+        }
+
+        private void to3DGridsToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            SlicersSamplingForm md = new SlicersSamplingForm();            
+            if (md.ShowDialog() == DialogResult.OK)
+            {
+            }
+
+            return;
+        }
+
+        private void meshesFrom3DGridsToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            MeshesFrom3DGridsForm dlg = new MeshesFrom3DGridsForm();
+            if(dlg.ShowDialog()== DialogResult.OK)
+            {
+                if (dlg.Created) 
+                {
+                    m_ObjectForm.AddToTree(C3DData.lastLoaded);
+                    C3DData.objSelected = C3DData.lastLoaded;
+                    UpdateDraw(C3DData.objSelected);
+                }            
+            }
+        }
+
+        private void layersFromMeshesToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+
+        }
+
+        private void toImageRecognizingToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            SlicerImagesRecognitionForm dlg = new SlicerImagesRecognitionForm();
+            dlg.ShowDialog();
+        }
+
+        private void mineralBoreholesToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+
+        }
+
+        private void polygonToolStripMenuItem_Click_1(object sender, EventArgs e)
+        {
+            PolygonSlicer obj = new PolygonSlicer();
+            double minx = CDataModel.m_Model.X1;
+            double maxx = CDataModel.m_Model.X2;
+            double miny = CDataModel.m_Model.Y1;
+            double maxy = CDataModel.m_Model.Y2;
+            double minz = CDataModel.m_Model.Z1;
+            double maxz = CDataModel.m_Model.Z2;
+            obj.axis = AxisEnum.yAxis;
+            obj.minx = 0;
+            obj.maxx = maxx-minx;
+            obj.miny = 0;
+            obj.maxy = maxy-miny;
+            obj.minz = 0;
+            obj.maxz = maxz-minz;
+            obj.AddLocationPoint(new Vector64(0, 0, 0),new Vector64(minx,miny,maxz));
+            obj.AddLocationPoint(new Vector64(maxx-minx, maxy-miny, 0), new Vector64(maxx, maxy, maxz));
+            obj.UpdateTraced();
+
+            SlicerModelingForm sf = new SlicerModelingForm();
+            sf.SetSlicer(obj);
+            sf.Add3DObjects(C3DData.GetObjects());
+
+            sf.ResetRangeByImage = true;
+
+            if (sf.ShowDialog() == DialogResult.OK)
+            {
+                obj = sf.slicer;
+                C2DPolygons polys = obj.toTraced3DPolygons(obj.tracedGeoObjects);
+                
+                C3DData.AddObject(polys, true);
+                C3DData.objSelected = C3DData.lastLoaded;
+                m_ObjectForm.AddToTree(polys);
+                UpdateDraw(C3DData.lastLoaded);
             }
         }
     }
@@ -3186,13 +4080,22 @@ namespace DDDSharp
         //传递主窗体的数据信息
         public bool refreshAll = false;  //是否绘制全部
         public C3DObjectBase Obj = null; //指定重绘的对象
-        public int ObjType = 0;         //对象类型，0 -C3DObjectBase对象，1虚线框，1坐标轴箭头，2Lights位置
-        public DrawUpdateEventArg(bool _refresh,C3DObjectBase _obj,int _type)
+        public UpdateDrawTypeEnum updateType =  UpdateDrawTypeEnum.UpdateObject;         //对象类型，0 -C3DObjectBase对象，1虚线框，2坐标轴箭头，3Lights位置
+        public DrawUpdateEventArg(bool _refresh,C3DObjectBase _obj, UpdateDrawTypeEnum _type)
         {
             refreshAll = _refresh;
             Obj = _obj;
-            ObjType = _type;
+            updateType = _type;
         }
     }
-
+    public enum UpdateDrawTypeEnum
+    {
+        UpdateAll = -1,
+        UpdateObject = 0,
+        UpdateOutline = 1,
+        Update3DArrow = 2,
+        Update3DLights = 3,
+        UpdateAxisLabel = 4,
+        UpdateSelectedBox = 5,
+    }
 }

@@ -589,6 +589,11 @@ namespace DDDSharp.Boreholes
             }
         }
 
+        private void listView1_ItemSelectionChanged(object sender, ListViewItemSelectionChangedEventArgs e)
+        {
+
+        }
+
         private void pictureBox1_Resize(object sender, EventArgs e)
         {
             pictureBox1.Invalidate();

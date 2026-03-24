@@ -1204,8 +1204,8 @@ namespace DataCollection
     public class InversePower
     {        
         public int Power = 2;
-        public double ZeroValue = 1.0E-20;
-        
+        public double ZeroValue = 1.0E-10;
+        public bool NearestValueOnly = false;
         public List<Vector32> Points = new List<Vector32>();
         public List<double[]> Values = new List<double[]>();
 
@@ -1314,12 +1314,12 @@ namespace DataCollection
             }            
             return fenmu;
         }
-        public virtual double GetInterpolatedValue(double x, double y, double z)
+        double GetValueByInterpolation(double x,double y,double z)
         {
-            if ( Count == 0 ) return double.NaN;
+            if (Count == 0) return double.NaN;
             int id;
             //存在距离为0的点
-            if ( !GetDistances(x, y, z, out id) ) return Points[id].v;
+            if (!GetDistances(x, y, z, out id)) return Points[id].v;
             else
             {
                 double val = 0;
@@ -1328,7 +1328,34 @@ namespace DataCollection
                     val += (Points[i].v * Distances[i] / fenmu);
                 return val;
             }
-        } //GetInterpolatedValue(double x, double y, double z)    
+        }
+        double GetValueForNearest(double x, double y, double z)
+        {
+            if (Count == 0) return double.NaN;
+            int id;
+            //存在距离为0的点
+            if (!GetDistances(x, y, z, out id)) return Points[id].v;
+            else
+            {
+                double val = double.NaN;
+                double min_dist = 1E10;
+                for (int i = 0; i < Points.Count; i++)
+                {
+                    if ( Distances[i] < min_dist) 
+                    {
+                        val = Points[i].V;
+                        min_dist = Distances[i];
+                    }
+                }   
+                return val;
+            }
+        }
+        public virtual double GetInterpolatedValue(double x, double y, double z)
+        {
+            if (NearestValueOnly) return GetValueForNearest(x, y, z);
+            else return GetValueByInterpolation(x, y, z);
+        } 
+
         public virtual double[]GetInterpolatedValues(double x, double y, double z)
         {
             if (Count == 0) return null;
@@ -1354,6 +1381,7 @@ namespace DataCollection
                 return values;
             }
         } //GetInterpolatedValue(double x, double y, double z)   
+
         public virtual double GetInterpolatedValueByIndices(double x, double y, double z, List<int>indices,List<Vector64>_points)
         {            
             double rr;

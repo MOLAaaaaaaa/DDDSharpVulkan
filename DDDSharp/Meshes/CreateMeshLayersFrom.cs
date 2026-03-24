@@ -152,16 +152,16 @@ namespace DDDSharp
 
             //地层相交切割--尖灭处理
             
-            MeshesRestrictedProfilesInterpolation ms = new MeshesRestrictedProfilesInterpolation();
-            foreach(GeoMesh cs in Layers)
-            {
-                ms.Layers.Add(cs);
-            }            
-            if (checkBox1.Checked)
-            { 
-                if (comboBox1.SelectedIndex == 0) ms.BlankLayers(true, true);
-                else if (comboBox1.SelectedIndex == 1) ms.BlankLayers(true, false);
-            }
+            //MeshesRestrictedProfilesInterpolation ms = new MeshesRestrictedProfilesInterpolation();
+            //foreach(GeoMesh cs in Layers)
+            //{
+            //    ms.Layers.Add(cs);
+            //}            
+            //if (checkBox1.Checked)
+            //{ 
+            //    if (comboBox1.SelectedIndex == 0) ms.BlankLayers(true, true);
+            //    else if (comboBox1.SelectedIndex == 1) ms.BlankLayers(true, false);
+            //}
             
             Cursor = Cursors.Default;
 

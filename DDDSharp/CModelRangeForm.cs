@@ -51,12 +51,23 @@ namespace DDDSharp
             if( checkBox1.Checked )
             {
                 CubeModel64 range = C3DData.GetObjectsRange();
-                textBoxX1.Text = range.X1.ToString();
-                textBoxX2.Text = range.X2.ToString();
-                textBoxY1.Text = range.Y1.ToString();
-                textBoxY2.Text = range.Y2.ToString();
-                textBoxZ1.Text = range.Z1.ToString();
-                textBoxZ2.Text = range.Z2.ToString();
+                if (range.IsValid())
+                {
+                    textBoxX1.Text = range.X1.ToString();
+                    textBoxX2.Text = range.X2.ToString();
+                    textBoxY1.Text = range.Y1.ToString();
+                    textBoxY2.Text = range.Y2.ToString();
+                    textBoxZ1.Text = range.Z1.ToString();
+                    textBoxZ2.Text = range.Z2.ToString();
+                }
+                else
+                {
+                    string info = "data range is invalid." + Environment.NewLine;
+                    info += "X: " + range.X1 + " to " + range.X2 + Environment.NewLine;
+                    info += "Y: " + range.Y1 + " to " + range.Y2 + Environment.NewLine;
+                    info += "Z: " + range.Z1 + " to " + range.Z2;
+                    MessageBox.Show(info);
+                }
             }
         }
     }

@@ -1,26 +1,34 @@
-﻿using System;
-using System.IO;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using System.ComponentModel;
+﻿using DataCollection.DelaunayVoronoi;
+using DDDSharp.DataCollection.Trianglate;
 using GlmNet;
+using Graphics3D;
+using IxMilia.Dxf.Entities;
+using MathNet.Numerics;
+using MathNet.Numerics.Distributions;
+using Poly2Tri;
+using System;
+using System.Collections;
+using System.Collections.Generic;
+using System.ComponentModel;
+using System.ComponentModel.Design;
 using System.Drawing;
+using System.Drawing.Design;
 using System.Drawing.Drawing2D;
 using System.Drawing.Imaging;
-using System.Drawing.Design;
+using System.Globalization;
+using System.IO;
+using System.Linq;
+using System.Net;
+using System.Reflection;
+using System.Runtime.InteropServices;
+using System.Runtime.InteropServices.ComTypes;
+using System.Text;
+using System.Threading.Tasks;
 using System.Windows.Forms;
 using System.Windows.Forms.Design;
-using MathNet.Numerics.Distributions;
-using IxMilia.Dxf.Entities;
-using System.Globalization;
-using System.Runtime.InteropServices;
 using TextReaderWriter;
-using System.Collections;
-using System.ComponentModel.Design;
-using System.Reflection;
-using Poly2Tri;
+using static AviFile.Avi;
+using static Khronos.Platform;
 
 namespace DataCollection
 {
@@ -70,6 +78,17 @@ namespace DataCollection
             type = ShapeEnum.Box;
             Create(x,y,z,xlen,ylen,zlen,_colors);
         }
+        public void FacesEnabled(bool enable)
+        {
+            for(int i=0;i<faces.Length;i++)
+            {
+                faces[i] = enable;
+            }
+        }
+        public void FacesEnabled(int id,bool enable)
+        {
+            faces[id] = enable;
+        }
         public void Create(double x, double y, double z, double xlen, double ylen, double zlen, vec4[] _colors = null)
         {
             //      p3--------p2 
@@ -79,14 +98,14 @@ namespace DataCollection
             //   | /      | / 
             // p4|/-------p5--->east 
             points = new vec3[8];
-            points[0] = new vec3((float)(x - xlen / 2), (float)(y - ylen / 2), (float)(z - zlen / 2));
-            points[1] = new vec3((float)(x + xlen / 2), (float)(y - ylen / 2), (float)(z - zlen / 2));
-            points[2] = new vec3((float)(x + xlen / 2), (float)(y + ylen / 2), (float)(z - zlen / 2));
-            points[3] = new vec3((float)(x - xlen / 2), (float)(y + ylen / 2), (float)(z - zlen / 2));
-            points[4] = new vec3((float)(x - xlen / 2), (float)(y - ylen / 2), (float)(z + zlen / 2));
-            points[5] = new vec3((float)(x + xlen / 2), (float)(y - ylen / 2), (float)(z + zlen / 2));
-            points[6] = new vec3((float)(x + xlen / 2), (float)(y + ylen / 2), (float)(z + zlen / 2));
-            points[7] = new vec3((float)(x - xlen / 2), (float)(y + ylen / 2), (float)(z + zlen / 2));
+            points[0] = new vec3((float)x, (float)y, (float)z);
+            points[1] = new vec3((float)(x + xlen), (float)y, (float)z);
+            points[2] = new vec3((float)(x + xlen), (float)(y + ylen), (float)z);
+            points[3] = new vec3((float)x, (float)(y + ylen), (float)z);
+            points[4] = new vec3((float)x, (float)(y), (float)(z + zlen));
+            points[5] = new vec3((float)(x + xlen), (float)(y), (float)(z + zlen));
+            points[6] = new vec3((float)(x + xlen), (float)(y + ylen), (float)(z + zlen));
+            points[7] = new vec3((float)(x), (float)(y + ylen), (float)(z + zlen));
 
             faces = new bool[6];
             for (int i = 0; i < 6; i++) faces[i] = true;
@@ -595,9 +614,7 @@ namespace DataCollection
                 color = new vec4((float)(c.R / 255.0), (float)(c.G / 255.0), (float)(c.B / 255.0), (float)(c.A / 255.0));
                 if(IsUniformColor)RenderMode = RenderingUpdateMode.Redraw;
             }
-        }
-        //check if color is 0-255
-        [CategoryAttribute("Color"), DisplayNameAttribute("Is Byte Color"),Browsable(false)]
+        }       
         public bool IsByteColor
         {
             get
@@ -659,7 +676,237 @@ namespace DataCollection
                 RenderMode = RenderingUpdateMode.Redraw;
             }
         }
+        public Color GetColor(int index)
+        {
+            if (IsUniformColor || colors.Count <= index ) return uniformColor;
+            else 
+            {
+                vec4 c = colors[index];
+                byte r = (byte)(c.x * 255.0);
+                byte g = (byte)(c.y * 255.0);
+                byte b = (byte)(c.z * 255.0);
+                byte w = (byte)(c.w * 255.0);
+                return Color.FromArgb(w,r, g, b);
+            }
+        }
+        public Vector64 CalculateDensityCenter(List<Vector64> points, int nx, int ny, double x1, double x2, double y1, double y2)
+        {
 
+            double dx = (x2 - x1) / (nx - 1);
+            double dy = (y2 - y1) / (ny - 1);
+
+            int[,] grids = new int[nx, ny];
+            for (int ix = 0; ix < nx; ix++)
+                for (int iy = 0; iy < ny; iy++)
+                {
+                    grids[ix, iy] = 0;
+                }
+
+            foreach (var p in points)
+            {
+                int ix = (int)((p.X - x1) / dx + 0.1);
+                int iy = (int)((p.Y - y1) / dy + 0.1);
+                grids[ix, iy]++;
+            }
+            int count = points.Count;
+            double x = 0, y = 0, cx = 0, cy = 0;
+            for (int ix = 0; ix < nx; ix++)
+                for (int iy = 0; iy < ny; iy++)
+                {
+                    if (grids[ix, iy] > 0)
+                    {
+                        x = x1 + ix * dx;
+                        y = y1 + iy * dy;
+                        cx += x * grids[ix, iy] / (double)count;
+                        cy += y * grids[ix, iy] / (double)count;
+                    }
+                }
+            grids = null;
+            return new Vector64(cx, cy, 0);
+        }
+        public C3DLine to3DLine1(int n)
+        {
+            int nx = 100,ny = 100, nz = n;
+            double x, y, z, dx, dy, dz;
+
+            AxisEnum axis = AxisEnum.xAxis;
+            double len = XWidth;
+            if (YWidth > len) { len = YWidth; axis = AxisEnum.yAxis; }
+            if (ZWidth > len) { len = ZWidth; axis = AxisEnum.zAxis; }            
+            
+            List<Vector64>[]lists = new List<Vector64>[n];
+            for (int i = 0; i < n; i++) lists[i] = new List<Vector64>();
+
+            C3DLine line = new C3DLine(Name);            
+            if (axis == AxisEnum.xAxis)
+            {
+                nx = n;
+                ny = nz = 100;
+                dx = (maxx - minx) / (nx - 1);
+                dy = (maxy - miny) / (ny - 1);
+                dz = (maxz - minz) / (nz - 1);
+                foreach (Vector32 p in points)
+                {
+                    int ix = (int)((p.X - minx) / dx + 0.1);
+                    lists[ix].Add(new Vector64(p.Y, p.Z, 0));
+                }
+
+                for (int ix = 0; ix < nx; ix++)
+                {
+                    if (lists[ix].Count == 0) continue;
+                    Vector64 densityCenter = CalculateDensityCenter(lists[ix], 100, 100, miny, maxy, minz, maxz);
+                    x = minx + ix * dx;
+                    line.AddPoint(new Vector64(x, densityCenter.X, densityCenter.Y));
+                }
+            }
+            else if (axis == AxisEnum.yAxis)
+            {
+                ny = n;
+                nx = nz = 100;
+                dx = (maxx - minx) / (nx - 1);                
+                dy = (maxy - miny) / (ny - 1);
+                dz = (maxz - minz) / (nz - 1);                
+                foreach(Vector32 p in points)                
+                {
+                    int iy = (int)((p.Y - miny) / dy + 0.1);
+                    lists[iy].Add(new Vector64(p.X, p.Z, 0));
+                }
+
+                for (int iy = 0; iy < ny; iy++)
+                {
+                    if ( lists[iy].Count == 0 ) continue;
+                    Vector64 densityCenter = CalculateDensityCenter(lists[iy],100,100,minx,maxx,minz,maxz);
+                    y = miny + iy * dy;
+                    line.AddPoint(new Vector64(densityCenter.X, y, densityCenter.Y));
+                }
+            }
+            else if (axis == AxisEnum.zAxis)
+            {
+                nz = n;
+                nx = ny = 100;
+                dx = (maxx - minx) / (nx - 1);
+                dy = (maxy - miny) / (ny - 1);
+                dz = (maxz - minz) / (nz - 1);
+                foreach (Vector32 p in points)
+                {
+                    int iz = (int)((p.Z - minz) / dz + 0.1);
+                    lists[iz].Add(new Vector64(p.X, p.Y, 0));
+                }
+
+                for (int iz = 0; iz < nz; iz++)
+                {
+                    if (lists[iz].Count == 0) continue;
+                    Vector64 densityCenter = CalculateDensityCenter(lists[iz], 100, 100, minx, maxx, miny, maxy);
+                    z = minz + iz * dz;
+                    line.AddPoint(new Vector64(densityCenter.X, densityCenter.Y,z));
+                }
+            } 
+            lists = null;            
+            return line;
+        }
+
+        public C3DLine to3DLine(int n)
+        {           
+            AxisEnum axis = AxisEnum.xAxis;
+            double len = XWidth;
+            if (YWidth > len) { len = YWidth; axis = AxisEnum.yAxis; }
+            if (ZWidth > len) { len = ZWidth; axis = AxisEnum.zAxis; }
+            
+            Vector32[] pp = new Vector32[n];
+            int[] counts = new int[n];
+            for (int i = 0; i < n; i++) { pp[i] = new Vector32(0, 0, 0, 0); counts[i] = 0; }
+            if (axis == AxisEnum.xAxis)
+            {
+                double dx = len / (n-1);
+                double x, y, z;
+                for (int i = 0; i < points.Count; i++)
+                {
+                    Vector32 p = points[i];
+                    int id = (int)((p.X - minx) / dx + 0.1);
+                    pp[id].Y += p.Y;
+                    pp[id].Z += p.Z;
+                    counts[id]++;
+                }
+                for (int i = 0; i < n; i++)
+                {
+                    x = minx + i * dx;
+                    if (counts[i] == 0) continue;
+                    y = pp[i].Y / counts[i];
+                    z = pp[i].Z / counts[i];
+                    pp[i] = new Vector32(x, y, z);
+                }
+            }
+            else if (axis == AxisEnum.yAxis)
+            {
+                double dy = len / (n-1);
+                double x, y, z;
+                for (int i = 0; i < points.Count; i++)
+                {
+                    Vector32 p = points[i];
+                    int id = (int)((p.Y - miny) / dy + 0.1);
+                    pp[id].X += p.X;
+                    pp[id].Z += p.Z;
+                    counts[id]++;
+                }
+                for (int i = 0; i < n; i++)
+                {
+                    if (counts[i] == 0) continue;
+                    y = miny + i * dy;
+                    x = pp[i].X / counts[i];
+                    z = pp[i].Z / counts[i];
+                    pp[i] = new Vector32(x, y, z);
+                }
+            }
+            else if (axis == AxisEnum.zAxis)
+            {
+                double dz = len / (n-1);
+                double x, y, z;
+                for (int i = 0; i < points.Count; i++)
+                {
+                    Vector32 p = points[i];
+                    int id = (int)((p.Z - minz) / dz + 0.1);
+                    pp[id].Y += p.Y;
+                    pp[id].X += p.X;
+                    counts[id]++;
+                }
+                for (int i = 0; i < n; i++)
+                {
+                    if (counts[i] == 0) continue;
+                    z = minz + i * dz;
+                    y = pp[i].Y / counts[i];
+                    x = pp[i].X / counts[i];
+                    pp[i] = new Vector32(x, y, z);
+                }
+            }
+            C3DLine line =   new C3DLine(Name);
+            for(int i=0;i<pp.Length;i++)
+            {
+                if (counts[i] > 0)
+                    line.AddPoint(pp[i]);
+            }
+            counts = null;
+            pp = null;
+            return line;
+
+        }
+        //public C3DLine to3DLine(int n)
+        //{
+        //    List<Vector64> _points = new List<Vector64>();
+        //    foreach(Vector32 p  in points) 
+        //    {
+        //        _points.Add(new Vector64(p.x, p.y, p.z));
+        //    }
+        //    var generator = new TrajectoryGenerator();
+        //    var linearTrajectory = generator.GenerateTrajectory(_points, trajectoryPointCount: 20);
+
+        //    C3DLine line = new C3DLine(Name);
+        //    line.AddPoint(linearTrajectory);
+        //    line.UpdateRange();
+        //    _points.Clear();
+        //    linearTrajectory.Clear();
+        //    return line;
+
+        //}
         static public vec3 GetNormal(Vector32 p1, Vector32 p2, Vector32 p3)
         {
             vec3 pn = new vec3(0, 0, 0);
@@ -1117,7 +1364,7 @@ namespace DataCollection
                     //xyz
                     p = TransformedPoint(points[i]);
                     //line = points[i].x + " " + points[i].y + " " + points[i].z;
-                    line = p.x + " " + p.y + " " + p.z;
+                    line = p.X + " " + p.Y + " " + p.Z;
                     //r,g,b
                     if (colors.Count > 0)
                     {
@@ -1197,10 +1444,17 @@ namespace DataCollection
                     br.Write(texCoords[i].x);
                     br.Write(texCoords[i].y);
                 }
+                //also uniform color
                 br.Write(color.x);
                 br.Write(color.y);
                 br.Write(color.z);
                 br.Write(color.w);
+
+                //added 2025-11-14 1.32version
+                br.Write(IsUniformColor);
+                br.Write(WireFrameVisible);
+                br.Write(WireFrameColor.ToArgb());
+                br.Write(WireFrameAlpha);
 
                 return true;
             }
@@ -1263,6 +1517,16 @@ namespace DataCollection
                 z = br.ReadSingle();
                 w = br.ReadSingle();
                 color = new vec4(x, y, z, w);
+
+                //added 2025-11-14 1.32version
+                if (C3DData.DataVersion >= 1.32f)
+                {
+                    IsUniformColor = br.ReadBoolean();
+                    WireFrameVisible = br.ReadBoolean();
+                    WireFrameColor = Color.FromArgb(br.ReadInt32());
+                    WireFrameAlpha = br.ReadSingle();
+                }
+
                 UpdateRange();
                 return true;
             }
@@ -1283,6 +1547,14 @@ namespace DataCollection
         public void AddPoint(Vector32 p)
         {
             points.Add(p);
+        }
+        public void AddPoints(List<Vector32> _points)
+        {
+            points.AddRange(_points);
+        }
+        public void AddPoints(List<Vector64> _points)
+        {
+            foreach(Vector64 p in _points) points.Add(p);
         }
         public void AddTexture(vec2 p)
         {
@@ -1369,6 +1641,16 @@ namespace DataCollection
                 }
             }
             return GetTriangle(id);
+        }
+        public override double GetNearestDistance(Vector64 p0)
+        {
+            double mindist = 1e30,dist;
+            for(int i=0;i<points.Count;i++)
+            {
+                dist = points[i].Distance(p0);
+                if (dist < mindist) mindist = dist;
+            }
+            return mindist;
         }
         public virtual Vector32 GetMiddlePoint(Vector32 p1, Vector32 p2)
         {
@@ -1809,26 +2091,16 @@ namespace DataCollection
 
         public override void UpdateRange()
         {
-            minx = maxx = 0;
-            miny = maxy = 0;
-            minz = maxz = 0;
-            for (int i = 0; i < points.Count; i++)
+            minx = miny = minz = double.MaxValue;
+            maxx = maxy = maxz = double.MinValue;
+            foreach( Vector32 p in  points )             
             {
-                if (i == 0)
-                {
-                    minx = maxx = points[i].X;
-                    miny = maxy = points[i].Y;
-                    minz = maxz = points[i].Z;
-                }
-                else
-                {
-                    if (points[i].X < minx) minx = points[i].X;
-                    if (points[i].Y < miny) miny = points[i].Y;
-                    if (points[i].Z < minz) minz = points[i].Z;
-                    if (points[i].X > maxx) maxx = points[i].X;
-                    if (points[i].Y > maxy) maxy = points[i].Y;
-                    if (points[i].Z > maxz) maxz = points[i].Z;
-                }
+                if (!float.IsNaN(p.x) && minx > p.x) minx = p.x;
+                if (!float.IsNaN(p.y) && miny > p.y) miny = p.y;
+                if (!float.IsNaN(p.z) && minz > p.z) minz = p.z;
+                if (!float.IsNaN(p.x) && maxx < p.x) maxx = p.x;
+                if (!float.IsNaN(p.y) && maxy < p.y) maxy = p.y;
+                if (!float.IsNaN(p.z) && maxz < p.z) maxz = p.z;
             }
         }
         public override bool LoadFrom(string path)
@@ -1848,7 +2120,7 @@ namespace DataCollection
 
             return true;
         }
-        public override bool SaveAs(string path)
+        public override bool SaveAs(string path,int version = 0)
         {
             return ExportData(path);
 
@@ -2230,33 +2502,44 @@ namespace DataCollection
 
     public struct ImageStruct
     {
-        public DoubleRect rect;
-        public Image img;
+        public DoubleRect rect;        
+        public Bitmap bmp;
         public string errMsg;
+        public ImageStruct Copy()
+        {
+            ImageStruct im = new ImageStruct();
+            im.rect = rect;
+            im.errMsg = errMsg;
+            im.bmp = new Bitmap(bmp);
+            return im;
+        }
+        public void Clear()
+        {
+            if (bmp != null) bmp.Dispose();
+        }
+        public void LPtoDP(ref double x,ref double y)
+        {
+            int width = bmp.Width;
+            int height = bmp.Height;
+            x = 0 + (width-1) * (x - rect.X1) / rect.Width;
+            y = (height-1) - (height - 1) * (y - rect.Y1) / rect.Height;
+        }
+        public void DPtoLP(ref double x, ref double y)
+        {
+            int width = bmp.Width;
+            int height = bmp.Height;
+            x = rect.X1 + rect.Width * x / (width - 1);
+            y = rect.Y2 - rect.Height * y / (height-1);
+        }
         public bool SaveAs(ref BinaryWriter br)
         {
             try
             {
-                br.Write(rect.x1);
-                br.Write(rect.y1);
-                br.Write(rect.x2);
-                br.Write(rect.y2);
-
-                Bitmap bmp = new Bitmap(img);//a copy from locked img
-
-                MemoryStream stream = new MemoryStream();
-                bmp.Save(stream, System.Drawing.Imaging.ImageFormat.Jpeg);
-
-                byte[] data = new byte[stream.Length];
-                stream.Seek(0, SeekOrigin.Begin);
-                stream.Read(data, 0, Convert.ToInt32(stream.Length));
-                br.Write(Convert.ToInt32(stream.Length));
-                br.Write(data, 0, Convert.ToInt32(stream.Length));
-                stream.Close();
-                stream.Dispose();
-                bmp.Dispose();
-
-                data = null;
+                br.Write(rect.X1);
+                br.Write(rect.Y1);
+                br.Write(rect.X2);
+                br.Write(rect.Y2);
+                C3DData.toStream(br, bmp);
                 return true;
             }
             catch (Exception e)
@@ -2275,22 +2558,9 @@ namespace DataCollection
                 x2 = br.ReadDouble();
                 y2 = br.ReadDouble();
                 rect = new DoubleRect(x1, y1, x2, y2);
-
-                int length = br.ReadInt32();
-                byte[] data = new byte[length];
-                data = br.ReadBytes(length);
-
-                MemoryStream stream = new MemoryStream();
-                stream.Write(data, 0, length);
-
-                img = Image.FromStream(stream);
-
-
-                stream.Close();
-                stream.Dispose();
-                data = null;
-
-                return true;
+                bmp = C3DData.fromStream(br, 4096);
+                if (bmp == null) { errMsg = C3DData.errMessage;return false; }
+                else return true;
             }
             catch (Exception e)
             {
@@ -2311,6 +2581,9 @@ namespace DataCollection
         public Vector64 LocationCorner1 = new Vector64();   //空间坐标最低点, XY对应着2D点位置
         public Vector64 LocationCorner2 = new Vector64();   //空间坐标最高点，XY对应着2D点位置
 
+        double globalHight1 = 0, globalHight2 = 0;
+        double localHight1 = 0, localHight2 = 0;
+
         public double minxLocated = 0;  //空间定位后的坐标范围
         public double minyLocated = 0;
         public double minzLocated = 0;
@@ -2330,8 +2603,70 @@ namespace DataCollection
 
         //modified by jian 2020-12-9
         public List<ImageStruct> backImages = new List<ImageStruct>();
-
+        [CategoryAttribute("Background Image"), DisplayNameAttribute("Visibal")]
+        public bool ShowBackgroundImage { get; set; } = false;
+        [CategoryAttribute("Background Image"), DisplayNameAttribute("Image")]
+        public Bitmap BackgroundImage 
+        { 
+            get 
+            {
+                if (backImages.Count > 0) return backImages[0].bmp;
+                else return null;
+            }
+            set 
+            {
+                if (backImages.Count > 0)
+                {
+                    ImageStruct im = backImages[0];
+                    im.bmp = value;
+                    backImages[0] = im;
+                }
+            }
+        }
+        [CategoryAttribute("Background Image"), DisplayNameAttribute("Value")]
         public double backgroundPropertyValue { get; set; } = 0;
+        public double slicerWidth //剖面长度（全局）
+        {
+            get 
+            {
+                if(axis == AxisEnum.zAxis )
+                {
+                    return Math.Sqrt(XWidth*XWidth +YWidth*YWidth);
+                }
+                else if (axis == AxisEnum.yAxis)
+                {
+                    return Math.Sqrt(XWidth * XWidth + ZWidth * ZWidth);
+                }
+                else return Math.Sqrt(YWidth * YWidth + ZWidth * ZWidth);
+            }
+        }
+        public double slicerHeight //剖面高度（全局）
+        {
+            get
+            {
+                if (axis == AxisEnum.zAxis)
+                {
+                    return ZWidth;
+                }
+                else if (axis == AxisEnum.yAxis)
+                {
+                    return YWidth;
+                }
+                else return XWidth;
+            }
+        }
+        public DoubleRect imageRect 
+        {
+            get 
+            {
+                DoubleRect rect = new DoubleRect();
+                if(backImages.Count > 0)
+                {
+                    rect = backImages[0].rect;
+                }
+                return rect;
+            }
+        }
         public string originalPath = "";    //打开文件全路径
         public override float Alpha 
         {
@@ -2380,7 +2715,8 @@ namespace DataCollection
                     poly._IsWireFrameMode = value;
                 }
             }
-        }
+        }        
+
         public override bool enbaleTexture 
         {
             get { return _textStruct.Enable; }
@@ -2475,14 +2811,104 @@ namespace DataCollection
             polygons.RenderMode = render;
             tracedGeoObjects.RenderMode = render;
         }
+        public bool TopographyBlank(C2DPolygons polys, CMesh mesh)
+        {
+            for (int i = polys.Count - 1; i >= 0; i--)
+            {
+                List<int> vertices = new List<int>();
+                Polygon2D poly = polys[i];
+                for (int j = 0; j < poly.Count; j++)
+                {
+                    Vector64 p = poly[j];
+                    p = toTracedPoint(p);
+                    if (p.Z > mesh.GetValue(p.X, p.Y))
+                        vertices.Add(j);
+                }
+                if (vertices.Count > 0)
+                {
+                    poly.RemovePoints(vertices);
+                    polys[i] = poly;
+                    if (poly.Count < 3) polys.RemoveAt(i);
+                }
+            }
+            return true;
+        }
+        public bool TopographyBlank(List<ImageStruct> images, CMesh mesh)
+        {
+            if (images.Count < 1) return true;
+            ImageStruct im = images[0];
+            Bitmap bmp = im.bmp;
+
+            //1拷贝图像到数据bytes
+            BitmapData bd = bmp.LockBits(new Rectangle(0, 0, bmp.Width, bmp.Height), ImageLockMode.ReadWrite, PixelFormat.Format32bppArgb);
+            int stride = bd.Stride;
+            byte[] bytes = new byte[bmp.Height * stride];
+            Marshal.Copy(bd.Scan0, bytes, 0, bytes.Length);
+            Vector64 p;
+            double x, y, z;
+            byte r, g, b, a;
+            for (int j = 0; j < stride; j += 4) 
+            {
+                for (int i = 0; i < bmp.Height; i++)
+                {
+                    if (BitConverter.IsLittleEndian)
+                    {
+                        b = bytes[i * stride + j];
+                        g = bytes[i * stride + j + 1];
+                        r = bytes[i * stride + j + 2];
+                        //a = bytes[i * stride + j + 3];
+                    }
+                    else
+                    {
+                        //a = bytes[i * stride + j];
+                        r = bytes[i * stride + j + 1];
+                        g = bytes[i * stride + j + 2];
+                        b = bytes[i * stride + j + 3];
+                    }
+
+                    x = j/4; y = i;   //图像坐标
+                    im.DPtoLP(ref x, ref y);//切片局部坐标
+                    p = toTracedPoint(new Vector64(x, y, 0));//3D全局坐标
+                    z = mesh.GetValue(p.X, p.Y);
+
+                    if (p.Z > z) //地形之上
+                    {
+                        if (BitConverter.IsLittleEndian)
+                            bytes[i * stride + j + 3] = 0;
+                        else bytes[i * stride + j] = 0;
+                    }
+                    else break; //地形以下不扫描
+                }                
+            }
+            
+            //拷贝数据bytes到图像
+            Marshal.Copy(bytes, 0, bd.Scan0, bytes.Length);
+            bmp.UnlockBits(bd);
+            bytes = null;
+
+            im.bmp = bmp;
+            images[0] = im;
+
+            return true;
+        }
+        public override bool TopographyBlank(CMesh mesh)
+        {
+            TopographyBlank(polygons,mesh);
+            TopographyBlank(tracedGeoObjects, mesh);
+            TopographyBlank(backImages, mesh);
+            return true;
+        }
         public PolygonSlicer Copy()
         {
-            PolygonSlicer poly = new PolygonSlicer();
+            PolygonSlicer poly = new PolygonSlicer();            
+            poly.CopyHeaderFrom(this);
+
+            poly.ShowBackgroundImage = ShowBackgroundImage;
 
             foreach (Polygon2D p in polygons.Polygons)
-                poly.AddPolygon(p.Copy());
-            
-            poly.CopyHeaderFrom(this);
+                poly.AddPolygon(p);
+            foreach (Polygon2D obj in tracedGeoObjects.Polygons)
+                poly.tracedGeoObjects.Add(obj);
 
             poly.axis = axis;
             poly.minxLocated = minxLocated;
@@ -2492,10 +2918,7 @@ namespace DataCollection
             poly.maxyLocated = maxyLocated;
             poly.maxzLocated = maxzLocated;
             poly.backgroundPropertyValue = backgroundPropertyValue;
-            poly.originalPath = originalPath;
-
-            foreach (Polygon2D obj in tracedGeoObjects.Polygons)
-                poly.tracedGeoObjects.Add(obj.Copy());
+            poly.originalPath = originalPath;            
 
             //背景图片
             foreach (ImageStruct img in backImages)
@@ -2519,6 +2942,18 @@ namespace DataCollection
 
             return poly;
         }
+        public List<string>GetPolygonNames()
+        {
+            List<string> polys = new List<string>();
+            for(int i=0;i<tracedGeoObjects.Count;i++)
+            {
+                string s = tracedGeoObjects[i].Name;
+                if ( s.Length < 1 ) continue;
+                if (polys.IndexOf(s) < 0) polys.Add(s);
+            }
+            return polys;
+        }
+       
         public override void ScaledToRange(double x1, double y1, double z1, double x2, double y2, double z2)
         {
             if (IsLocated)
@@ -2594,7 +3029,7 @@ namespace DataCollection
                 maxz = z2;
             }
         }       
-        public override bool SaveAs(string path)
+        public override bool SaveAs(string path,int version = 0)
         {
             BinaryWriter br;
             try
@@ -2672,6 +3107,7 @@ namespace DataCollection
             br.Write(p2.Y);
             br.Write(p2.Z);
 
+            br.Write(ShowBackgroundImage); //added 2025-8-28
             br.Write(backImages.Count);
             foreach (ImageStruct img in backImages)
             {
@@ -2747,20 +3183,52 @@ namespace DataCollection
             ///*
             if (br.PeekChar() >= 0) //是否有图像数据
             {
+                if (C3DData.DataVersion >= 1.31f) ShowBackgroundImage = br.ReadBoolean();
+
                 int imgCount = br.ReadInt32();
                 for (int i = 0; i < imgCount; i++)
                 {
                     ImageStruct img = new ImageStruct();
                     if (img.ReadFrom(br))
                         backImages.Add(img);
-                    else return false;
+                    else 
+                    {
+                        errMessage = img.errMsg;
+                        return false; 
+                    }
                 }
             }
             UpdateRange();
             //*/
             return true;
         }
-        public int SetLayersPropertyByName(List<LayerProperty> layers)
+        public override bool ExportData(string path)
+        {
+            StreamWriter wr = new StreamWriter(new FileStream(path, FileMode.Create));
+            
+            string headerLine = "POLYGON Slicer 1200";
+            wr.WriteLine(headerLine);
+            string line = "Polygon Count = " + tracedGeoObjects.Count;
+            wr.WriteLine(line);
+
+            Vector64 v;
+            int i = 1;
+            foreach (Polygon2D obj in tracedGeoObjects.Polygons)
+            {
+                line = "Polygon_" + i + " " + obj.Name + " Count " + obj.Count;
+                wr.WriteLine(line);
+                foreach(Vector32 p in obj.points)
+                {
+                    v =  toTracedPoint(p.toVector64());
+                    line = v.X + "," + v.Y + "," + v.Z;
+                    wr.WriteLine(line);
+                }
+                i++;
+            }
+            wr.Close();
+            return true;
+        }
+        public int SetLayersPropertyByName(StratumDatas stratums)
         {
             int count = 0;
             string name1, name2;
@@ -2769,13 +3237,13 @@ namespace DataCollection
             {
                 poly = tracedGeoObjects[i];
                 name1 = poly.Name.ToLower();
-                for (int j = 0; j < layers.Count; j++)
+                for (int j = 0; j < stratums.Count; j++)
                 {
-                    name2 = layers[j].LayerName.ToLower();
+                    name2 = stratums[j].Name.ToLower();
                     if (name1 == name2)
                     {
-                        poly.fillColor = layers[j].LayerColor;
-                        poly.PropertyValue = layers[j].LayerValue;
+                        poly.fillColor = stratums[j].Color;
+                        poly.PropertyValue = stratums[j].Value;
                         tracedGeoObjects[i] = poly;
                         count++;
                         break;
@@ -2806,95 +3274,10 @@ namespace DataCollection
         public void AddLocationPoint(Vector64 p2d, Vector64 p3d)
         {
             if (Locations2D.Contains(p2d)) return;
-            if (Locations3D.Contains(p3d)) return;
+            //if (Locations3D.Contains(p3d)) return;//默认为(0,0,0)
             Locations2D.Add(p2d);
             Locations3D.Add(p3d);
-        }
-
-        //得到空间定位点的最高值和最低值
-        private void UpdateLocationCorner()
-        {
-            int n = Locations3D.Count;
-            if (n < 2) return;
-            Vector64 p1, p2;
-            for (int i = 0; i < Locations3D.Count; i++)
-            {
-                p1 = Locations2D[i];
-                p2 = Locations3D[i];
-                if (i == 0)
-                {
-                    if (axis == AxisEnum.zAxis) //Hight is Z
-                    {
-                        LocationCorner1.X = p1.X; //2D Point
-                        LocationCorner1.Y = p1.Y; //2D Point
-                        LocationCorner1.Z = p2.Z; //3D Point
-                        LocationCorner2 = LocationCorner1;
-                    }
-                    if (axis == AxisEnum.yAxis)//Hight is Y
-                    {
-                        LocationCorner1.X = p1.X;
-                        LocationCorner1.Y = p1.Y;
-                        LocationCorner1.Z = p2.Y;
-                        LocationCorner2 = LocationCorner1;
-                    }
-                    if (axis == AxisEnum.xAxis)//Hight is X
-                    {
-                        LocationCorner1.X = p1.X;
-                        LocationCorner1.Y = p1.Y;
-                        LocationCorner1.Z = p2.X;
-                        LocationCorner2 = LocationCorner1;
-                    }
-                }
-                else
-                {
-                    if (axis == AxisEnum.zAxis)//Hight is Z
-                    {
-                        if (p2.Z < LocationCorner1.Z)
-                        {
-                            LocationCorner1.X = p1.X;
-                            LocationCorner1.Y = p1.Y;
-                            LocationCorner1.Z = p2.Z;
-                        }
-                        if (p2.Z > LocationCorner2.Z)
-                        {
-                            LocationCorner2.X = p1.X;
-                            LocationCorner2.Y = p1.Y;
-                            LocationCorner2.Z = p2.Z;
-                        }
-                    }
-                    else if (axis == AxisEnum.yAxis)//Hight is Y
-                    {
-                        if (p2.Y < LocationCorner1.Z)
-                        {
-                            LocationCorner1.X = p1.X;
-                            LocationCorner1.Y = p1.Y;
-                            LocationCorner1.Z = p2.Y;
-                        }
-                        if (p2.Y > LocationCorner2.Z)
-                        {
-                            LocationCorner2.X = p1.X;
-                            LocationCorner2.Y = p1.Y;
-                            LocationCorner2.Z = p2.Y;
-                        }
-                    }
-                    else if (axis == AxisEnum.xAxis)//Hight is X
-                    {
-                        if (p2.X < LocationCorner1.Z)
-                        {
-                            LocationCorner1.X = p1.X;
-                            LocationCorner1.Y = p1.Y;
-                            LocationCorner1.Z = p2.X;
-                        }
-                        if (p2.X > LocationCorner2.Z)
-                        {
-                            LocationCorner2.X = p1.X;
-                            LocationCorner2.Y = p1.Y;
-                            LocationCorner2.Z = p2.X;
-                        }
-                    }
-                }
-            }
-        }
+        }        
 
         //更新空间定位数据
         public void UpdateTraced()
@@ -2963,7 +3346,14 @@ namespace DataCollection
             }
             marked = null;
         }
-
+        public void ClearLocations()
+        {
+            Locations2D.Clear();
+            Locations3D.Clear();            
+        }
+        /// <summary>
+        /// 按照local X顺序排列定位点
+        /// </summary>
         private void SortLocation()
         {
             int n = Locations2D.Count;
@@ -2993,46 +3383,132 @@ namespace DataCollection
             double hh = LocationCorner2.Z - LocationCorner1.Z;
             return LocationCorner1.Z + hh * (y - LocationCorner1.y) / yy;
         }
-
+        /// <summary>
+        /// Convert Point between id1 - id2
+        /// 映射点在两个定位点之间
+        /// </summary>
+        /// <param name="p"></param>
+        /// <param name="id1">index in Locations2D</param>
+        /// <param name="id2">index in Locations2D</param>
+        /// <returns></returns>
         private Vector64 toTracedPoint(Vector64 p, int id1, int id2)
         {
-            Vector64 p1 = Locations2D[id1];
-            Vector64 p2 = Locations2D[id2];
+            Vector64 p1 = Locations2D[id1]; //local p1
+            Vector64 p2 = Locations2D[id2]; //local p2
 
-            Vector64 v1 = Locations3D[id1];
-            Vector64 v2 = Locations3D[id2];
+            Vector64 v1 = Locations3D[id1]; //global p1
+            Vector64 v2 = Locations3D[id2]; //global p2
 
             double scale = (p.X - p1.X) / (p2.X - p1.X);
 
             Vector64 v = v1 + scale * (v2 - v1);
-            if (axis == AxisEnum.xAxis) v.X = GetTracedHight(p.Y);
-            if (axis == AxisEnum.yAxis) v.Y = GetTracedHight(p.Y);
-            if (axis == AxisEnum.zAxis) v.Z = GetTracedHight(p.Y);
-            v.V = p.V;
 
+            if (axis == AxisEnum.xAxis) 
+            {
+                v.X = globalHight1 + (globalHight2 - globalHight1) *(p.Y - localHight1) / (localHight2 - localHight1);
+            }
+            if (axis == AxisEnum.yAxis)
+            {
+                v.Y = globalHight1 + (globalHight2 - globalHight1) * (p.Y - localHight1) / (localHight2 - localHight1);
+            }
+            if (axis == AxisEnum.zAxis)
+            {
+                v.Z = globalHight1 + (globalHight2 - globalHight1) * (p.Y - localHight1) / (localHight2 - localHight1);
+            }
+            v.V = p.V;
             return v;
         }
         public Vector64 toTracedPoint(double x, double y, double z, double v)
         {
             return toTracedPoint(new Vector64(x, y, z, v));
         }
+        /// <summary>
+        /// 空间点到剖面的投影
+        /// 默认XOZ平面
+        /// </summary>
+        /// <param name="x"></param>
+        /// <param name="y"></param>
+        /// <param name="z"></param>
+        /// <returns>投影坐标</returns>
+        public Vector64 ProjectTo(double x, double y, double z)
+        {
+            Vector64 p1 = Locations3D[0];
+            Vector64 p2 = Locations3D[Locations3D.Count-1];
+            double x1 = Math.Min(p1.X, p2.X);
+            double x2 = Math.Max(p1.X, p2.X);
+            double y1 = Math.Min(p1.Y, p2.Y);
+            double y2 = Math.Max(p1.Y, p2.Y);
+            double z1 = Math.Min(p1.Z, p2.Z);
+            double z2 = Math.Max(p1.Z, p2.Z);
+            CLine line = new CLine(p1, p2);
+            //点到直线投影
+            Vector64 p0 = line.GetPointProjection(new Vector64(x, y, z));
+            p0.Z = z;
+            return p0;
+        }
+        /// <summary>
+        /// 空间点投影到剖面上，返回剖面局部点坐标x,y
+        /// 默认zAxis切片
+        /// </summary>
+        /// <param name="x"></param>
+        /// <param name="y"></param>
+        /// <param name="z"></param>
+        /// <returns></returns>
+        public Vector64 ProjectToLocalPoint(double x, double y, double z)
+        {
+            Vector64 p1 = Locations3D[0];
+            Vector64 p2 = Locations3D[Locations3D.Count - 1];
+            double x1 = Math.Min(p1.X, p2.X);
+            double x2 = Math.Max(p1.X, p2.X);
+            double y1 = Math.Min(p1.Y, p2.Y);
+            double y2 = Math.Max(p1.Y, p2.Y);
+            double z1 = Math.Min(p1.Z, p2.Z);
+            double z2 = Math.Max(p1.Z, p2.Z);
+            CLine line = new CLine(p1, p2);
+
+            //点到直线投影
+            Vector64 p0 = line.GetPointProjection(new Vector64(x, y, z));
+            p0.Z = z;
+            double mx1 = imageRect.X1;
+            double mx2 = imageRect.X2;
+            double my1 = imageRect.Y1;
+            double my2 = imageRect.Y2;
+
+            double width = Math.Sqrt((x2-x1)*(x2-x1) + (y2-y1)*(y2-y1));
+            double height = z2 - z1;
+            double len = Math.Sqrt((p0.X - x1) * (p0.X - x1) + (p0.Y - y1) * (p0.Y - y1));
+            double px = mx1 + (mx2 - mx1) * (p0.X - x1) / (x2 - x1);
+            double pz = my1 + (my2 - my1) * (z - z1) / (z2 - z1);
+            return new Vector64(px,pz,0);
+        }
+        /// <summary>
+        /// X1,Y2  ---------  X2,Y2
+        /// 
+        /// X1,Y1  --------- X2,Y1
+        /// </summary>
+        /// <param name="p"></param>
+        /// <returns></returns>
         public Vector64 toTracedPoint(Vector64 p)
         {
             if (Locations2D.Count < 2) return p;
+
+            if (localHight1 >= localHight2 || globalHight1 >= globalHight2) 
+                UpdateLocationHights();
+
             //left side            
-            if (p.X <= Locations2D[0].X)
+            if (p.X <= Locations2D[0].X)//0
             {
                 return toTracedPoint(p, 0, 1);
             }
             //right side            
-            if (p.X >= Locations2D[Locations2D.Count - 1].X)
+            if (p.X >= Locations2D[Locations2D.Count - 1].X)//n-1
             {
                 return toTracedPoint(p, Locations2D.Count - 2, Locations2D.Count - 1);
             }
 
-            for (int i = 1; i < Locations2D.Count; i++)
+            for (int i = 1; i < Locations2D.Count; i++)//1 - (n-1)
             {
-                if (p.X <= Locations2D[i].X) return toTracedPoint(p, i - 1, i);
+                if (p.X < Locations2D[i].X) return toTracedPoint(p, i - 1, i);
             }
             return p;
         }
@@ -3070,21 +3546,90 @@ namespace DataCollection
             {
                 poly3d.points.Add(toTracedPoint(p));
             }
+            poly3d.UpdateRange();
             return poly3d;
         }
-        //更新空间定位后的坐标范围
+        public C2DPolygons toTraced3DPolygons(C2DPolygons polys)
+        {
+            C2DPolygons polygons = new C2DPolygons(Name);
+            foreach(Polygon2D poly in polys.Polygons)
+            {
+                polygons.Add(toTraced3DPolygon(poly));
+            }
+            polygons.UpdateRange();
+            return polygons;
+        }
+        /// <summary>
+        /// 更新空间定位后的坐标范围
+        /// localHeight,globalHeight
+        /// </summary>
+        void UpdateLocationHights()
+        {
+            localHight1 = localHight2 = 0;
+            globalHight1 = globalHight2 = 0;
+            if (!IsLocated) return;            
+            Vector64 v;
+            for (int j = 0; j < Locations2D.Count; j++)
+            {
+                v = Locations2D[j];
+                if (j == 0)
+                {
+                    localHight1 = localHight2 = v.Y;
+                }
+                else
+                {
+                    if (v.Y < localHight1) localHight1 = v.Y;
+                    if (v.Y > localHight2) localHight2 = v.Y;
+                }
+            }
+
+            //更新定位坐标范围
+            for (int j = 0; j < Locations3D.Count; j++)
+            {
+                v = Locations3D[j];
+                if (j == 0)
+                {
+                    if (axis == AxisEnum.xAxis) globalHight1 = globalHight2 = v.X;
+                    if (axis == AxisEnum.yAxis) globalHight1 = globalHight2 = v.Y;
+                    if (axis == AxisEnum.zAxis) globalHight1 = globalHight2 = v.Z;
+                }
+                else
+                {
+                    if (axis == AxisEnum.xAxis)
+                    {
+                        if (v.X < globalHight1) globalHight1 = v.X;
+                        if (v.X > globalHight2) globalHight2 = v.X;
+                    }
+                    if (axis == AxisEnum.yAxis)
+                    {
+                        if (v.Y < globalHight1) globalHight1 = v.Y;
+                        if (v.Y > globalHight2) globalHight2 = v.Y;
+                    }
+                    if (axis == AxisEnum.zAxis)
+                    {
+                        if (v.Z < globalHight1) globalHight1 = v.Z;
+                        if (v.Z > globalHight2) globalHight2 = v.Z;
+                    }
+                }
+            } 
+        }
+        /// <summary>
+        /// 更新空间定位后的坐标范围
+        /// localHeight1,localHeight2
+        /// object映射后的空间坐标范围，Range of the slicer
+        /// </summary>
         private void UpdateLocationRange()
         {
+            if (!IsLocated) return;
+            UpdateRange();
+            UpdateLocationHights();
+
             minxLocated = maxxLocated = 0;
             minyLocated = maxyLocated = 0;
             minzLocated = maxzLocated = 0;
 
-            if (!IsLocated) return;
-
-            if (LocationCorner1.Z <= LocationCorner2.Z) UpdateLocationCorner();
-
+            Vector64 v; 
             //更新定位坐标范围
-            Vector64 v;
             for (int j = 0; j < Locations3D.Count; j++)
             {
                 v = Locations3D[j];
@@ -3098,89 +3643,119 @@ namespace DataCollection
                 {
                     if (v.x < minxLocated) minxLocated = v.x;
                     if (v.y < minyLocated) minyLocated = v.y;
-                    if (v.x < minzLocated) minzLocated = v.z;
+                    if (v.z < minzLocated) minzLocated = v.z;
                     if (v.x > maxxLocated) maxxLocated = v.x;
                     if (v.y > maxyLocated) maxyLocated = v.y;
                     if (v.z > maxzLocated) maxzLocated = v.z;
                 }
             }
-            //按需更新
-            if (minx >= maxx || miny >= maxy)
-                UpdateRange();
+
+            if (axis == AxisEnum.zAxis)//Z is height
+            {                
+                minzLocated = globalHight1 + (globalHight2 - globalHight1) * (miny - localHight1) / (localHight2 - localHight1);
+                maxzLocated = globalHight1 + (globalHight2 - globalHight1) * (maxy - localHight1) / (localHight2 - localHight1);
+            }
+            else if (axis == AxisEnum.yAxis)//Y is height
+            {
+                minyLocated = globalHight1 + (globalHight2 - globalHight1) * (miny - localHight1) / (localHight2 - localHight1);
+                maxyLocated = globalHight1 + (globalHight2 - globalHight1) * (maxy - localHight1) / (localHight2 - localHight1);
+            }
+            else if (axis == AxisEnum.xAxis)
+            {                
+                minxLocated = globalHight1 + (globalHight2 - globalHight1) * (miny - localHight1) / (localHight2 - localHight1);
+                maxxLocated = globalHight1 + (globalHight2 - globalHight1) * (maxy - localHight1) / (localHight2 - localHight1);
+            }
+
+            //update local range except hight, slicer of first and last
+            Vector64 p1 = toTracedPoint(new Vector64(minx, miny, 0));
+            Vector64 p2 = toTracedPoint(new Vector64(maxx, maxy, 0));
+            if (axis == AxisEnum.zAxis)//Z is height
+            {
+                minxLocated = Math.Min(p1.X, p2.X);
+                maxxLocated = Math.Max(p1.X, p2.X);
+                minyLocated = Math.Min(p1.Y, p2.Y);
+                maxyLocated = Math.Max(p1.Y, p2.Y);                
+            }
+            if (axis == AxisEnum.yAxis)//Y is height
+            {
+                minxLocated = Math.Min(p1.X, p2.X);
+                maxxLocated = Math.Max(p1.X, p2.X);
+                minzLocated = Math.Min(p1.Z, p2.Z);
+                maxzLocated = Math.Max(p1.Z, p2.Z);
+            }
+            if (axis == AxisEnum.xAxis)//X is height
+            {
+                minyLocated = Math.Min(p1.Y, p2.Y);
+                maxyLocated = Math.Max(p1.Y, p2.Y);
+                minzLocated = Math.Min(p1.Z, p2.Z);
+                maxzLocated = Math.Max(p1.Z, p2.Z);
+            }
+        }
+        public DoubleRect GetTracedGeoObjectsRange(List<string>names = null)
+        {
+            double x1 = 1E30, y1 = 1E30, x2 = -1E30, y2=-1E30;            
+            for (int i = 0; i < tracedGeoObjects.Count; i++)
+            {
+                Polygon2D obj = tracedGeoObjects[i];
+                obj.UpdateRange();
+
+                bool ignore = false;
+                if( names != null && names.Count > 0 )
+                {
+                    foreach (string name in names)
+                    {
+                        if (obj.Name.ToLower() == name.ToLowerInvariant())
+                        {
+                            ignore = true;
+                            break;
+                        }
+                    }
+                }
+                
+                if (ignore) continue;
+
+                if (obj.minx < x1) x1 = obj.minx;
+                if (obj.maxx > x2) x2 = obj.maxx;
+                if (obj.miny < y1) y1 = obj.miny;
+                if (obj.maxy > y2) y2 = obj.maxy;
+            }
+
+            if (names == null || names.Count < 1)
+            {
+                x1 = minx;x2 = maxx;
+                y1 = miny;y2 = maxy;
+            }
+            
+            Vector64 p1 = new Vector64(x1,y1,0);
+            p1 = toTracedPoint(p1);
+            Vector64 p2 = new Vector64(x2, y2, 0);
+            p2 = toTracedPoint(p2);
 
             if (axis == AxisEnum.zAxis)
             {
-                minzLocated = LocationCorner1.Z + (LocationCorner2.Z - LocationCorner1.Z) * (miny - LocationCorner1.Y) / (LocationCorner2.Y - LocationCorner1.Y);
-                maxzLocated = LocationCorner1.Z + (LocationCorner2.Z - LocationCorner1.Z) * (miny - LocationCorner1.Y) / (LocationCorner2.Y - LocationCorner1.Y);
+                x1 = 0;
+                x2 = Math.Sqrt( (p1.X-p2.X)* (p1.X - p2.X) + 
+                                (p1.Y - p2.Y)* (p1.Y - p2.Y) );                
+                y1 = Math.Min(p1.Z, p2.Z);
+                y2 = Math.Max(p1.Z, p2.Z);
             }
-            if (axis == AxisEnum.yAxis)
+            else if (axis == AxisEnum.yAxis)
             {
-                minyLocated = LocationCorner1.Z + (LocationCorner2.Z - LocationCorner1.Z) * (miny - LocationCorner1.Y) / (LocationCorner2.Y - LocationCorner1.Y);
-                maxyLocated = LocationCorner1.Z + (LocationCorner2.Z - LocationCorner1.Z) * (miny - LocationCorner1.Y) / (LocationCorner2.Y - LocationCorner1.Y);
+                x1 = 0;
+                x2 = Math.Sqrt( (p1.X - p2.X) * (p1.X - p2.X) +
+                                (p1.Z - p2.Z) * (p1.Z - p2.Z));
+                y1 = Math.Min(p1.Y, p2.Y);
+                y2 = Math.Max(p1.Y, p2.Y);
             }
-            if (axis == AxisEnum.xAxis)
+            else if (axis == AxisEnum.xAxis)
             {
-                minxLocated = LocationCorner1.Z + (LocationCorner2.Z - LocationCorner1.Z) * (miny - LocationCorner1.Y) / (LocationCorner2.Y - LocationCorner1.Y);
-                maxxLocated = LocationCorner1.Z + (LocationCorner2.Z - LocationCorner1.Z) * (miny - LocationCorner1.Y) / (LocationCorner2.Y - LocationCorner1.Y);
+                x1 = 0;
+                x2 = Math.Sqrt( (p1.Y - p2.Y) * (p1.Y - p2.Y) +
+                                (p1.Z - p2.Z) * (p1.Z - p2.Z));
+                y1 = Math.Min(p1.X, p2.X);
+                y2 = Math.Max(p1.X, p2.X);
             }
-        }
-        void UpdateLocatedRange()
-        {
-            if (!IsLocated) return;
-
-            Polygon2D poly;
-            bool init = false;
-            Vector32 p1;
-            for (int i = 0; i < polygons.Count; i++)
-            {
-                poly = polygons[i];
-                foreach(Vector64 p in poly.points)
-                {
-                    p1 = toTracedPoint(p);
-                    if (init) 
-                    {
-                        minxLocated = maxxLocated = p1.X;
-                        minyLocated = maxyLocated = p1.Y;
-                        minzLocated = maxzLocated = p1.Z;
-                        init = true;
-                    }
-                    else
-                    {
-                        if (p1.X < minxLocated) minxLocated = p1.X;
-                        if (p1.Y < minyLocated) minyLocated = p1.Y;
-                        if (p1.Z < minzLocated) minzLocated = p1.Z;
-                        if (p1.X > maxxLocated) maxxLocated = p1.X;
-                        if (p1.Y > maxyLocated) maxyLocated = p1.Y;
-                        if (p1.Z > maxzLocated) maxzLocated = p1.Z;
-                    }
-                }             
-                
-            }
-
-            for (int i = 0; i < tracedGeoObjects.Count; i++)
-            {
-                poly = tracedGeoObjects[i];
-                foreach (Vector64 p in poly.points)
-                {
-                    p1 = toTracedPoint(p);
-                    if (init)
-                    {
-                        minxLocated = maxxLocated = p1.X;
-                        minyLocated = maxyLocated = p1.Y;
-                        minzLocated = maxzLocated = p1.Z;
-                        init = true;
-                    }
-                    else
-                    {
-                        if (p1.X < minxLocated) minxLocated = p1.X;
-                        if (p1.Y < minyLocated) minyLocated = p1.Y;
-                        if (p1.Z < minzLocated) minzLocated = p1.Z;
-                        if (p1.X > maxxLocated) maxxLocated = p1.X;
-                        if (p1.Y > maxyLocated) maxyLocated = p1.Y;
-                        if (p1.Z > maxzLocated) maxzLocated = p1.Z;
-                    }
-                }
-            }
+            return new DoubleRect(x1, y1, x2, y2);
         }
         public override void UpdateRange()
         {
@@ -3223,8 +3798,6 @@ namespace DataCollection
                     maxy = obj.maxy;
                     minz = obj.minz;
                     maxz = obj.maxz;
-
-                    init = true;
                 }
                 else
                 {
@@ -3236,9 +3809,6 @@ namespace DataCollection
                     if (obj.maxz > maxz) maxz = obj.maxz;
                 }
             }
-
-            UpdateLocatedRange();
-
         }
         //获取指定点地层属性值
         public double GetPropertyValue(double x, double y)
@@ -3438,7 +4008,7 @@ namespace DataCollection
                 p2.v = p1.v;
                 points[i] = p2;
             }
-            RemoveDuplicatedSampled(ref points);
+            Vector64.DuplicatedFilter(ref points, 0.1);            
             return points.Count;
         }
 
@@ -3598,27 +4168,44 @@ namespace DataCollection
             return sampledGrids;
         }
 
-        //对指定的某些地层（names）进行采样,均匀采样
-        public List<Vector64> SampleLayerCoords(List<string> names,
-                                                int xgrid = 101,//网格采样数 
-                                                int ygrid = 101,//网格采样数                                                
+        bool IsInLists(string name, List<string>Names)
+        {
+            foreach (string s in Names) 
+            {
+                if (s.ToLower() == name.ToLower())
+                    return true;
+            }
+            return false;
+        }
+        /// <summary>
+        /// 对地层进行采样(指定地层或全部,均匀采样,均匀采样）
+        /// </summary>
+        /// <param name="names">地层名称数组，null表示全部地层</param>
+        /// <param name="xgrid"></param>
+        /// <param name="ygrid"></param>
+        /// <param name="resetLayer"></param>
+        /// <param name="bkvalue"></param>
+        /// <param name="resetValue"></param>
+        /// <returns>采样数组</returns>      
+        public List<Vector64> SampleLayerCoords(List<string> names,//地层名称
+                                                int xgrid,//网格采样数 +1
+                                                int ygrid,//网格采样数 +1                                               
+                                                int xbksample, int ybksample, //背景采样网格
                                                 bool resetLayer = false, //重置地层值
+                                                bool samplebackground = true,//是否采样背景地层                                                
                                                 float bkvalue = 0,  //背景值（地层外节点值）
                                                 float resetValue = 1)//地层值重置为
         {
-            double x, y, z, v;
+            double x, y, val;
             double xx = (maxx - minx) / (xgrid - 1);
             double yy = (maxy - miny) / (ygrid - 1);
-
+            
             int all = xgrid * ygrid;
             double[] grids = new double[all];
 
-            for (int i = 0; i < grids.Length; i++) grids[i] = bkvalue;
-
-            sampledGrids.Clear();
-
-            double val;
-            //将剖面数据采样到网格grids 中，
+            for (int i = 0; i < grids.Length; i++) grids[i] = bkvalue;            
+            
+            //将剖面数据采样到网格grids 中，后面的覆盖前面的
             for (int iy = 0; iy < ygrid; iy++)
             {
                 y = miny + iy * yy + yy / 2;
@@ -3626,143 +4213,117 @@ namespace DataCollection
                 {
                     x = minx + ix * xx + xx / 2;
                     Vector64 p = new Vector64(x, y, -1, bkvalue);
-                    for (int k = tracedGeoObjects.Count - 1; k >= 0; k--)
+                    bool islayer = false; //地层样本点
+                    for (int k = 0; k < tracedGeoObjects.Count; k++) //按绘制顺序
                     {
                         Polygon2D poly = tracedGeoObjects[k];
-                        if (names.Contains(poly.Name.ToLower()) &&
-                             poly.IsPointInsidePoly(x, y))
+                        if (names != null && names.Count > 0)
+                        {
+                            if ( !IsInLists( poly.Name,names) ) 
+                                continue;
+                        }
+                        if( poly.IsPointInsidePoly(x, y) )
                         {
                             val = poly.PropertyValue;
                             if (resetLayer) val = resetValue;
                             grids[ix + iy * xgrid] = val;
                             p.z = k;
                             p.v = val;
+                            islayer = true; //地层样本点
                             break;
                         }
                     }
-
-                    sampledGrids.Add(p);
+                    if(islayer) sampledGrids.Add(p);
+                    else 
+                    {
+                        if(samplebackground && iy % ybksample == 0 && ix % xbksample == 0)
+                        {
+                            sampledGrids.Add(p);
+                        }
+                    }
 
                 }//for (int ix = 0; ix < xgrid; ix++)
             }//for (int iy = 0; iy < ygrid; iy++)           
 
-
+            grids = null;
             return sampledGrids;
         }
 
-        //对指定的某些地层（names）进行采样 
-        public List<Vector64> SampleLayerCoords(List<string> names,
-                                                int xgrid = 101,//网格采样数 
-                                                int ygrid = 101,//网格采样数
-                                                int XResampleExtGrid = 2,//重采样网格扩展 > 1
-                                                int YResampleExtGrid = 2,//重采样网格扩展 > 1
-                                                bool resetLayer = false, //重置地层值
-                                                float bkvalue = 0,  //背景值（地层外节点值）
-                                                float resetValue = 10)//地层值重置为
+
+        public List<Vector64> SampleLayerCoords(List<Color> colors,//颜色列表
+                                                int xgrid,//网格采样数 +1
+                                                int ygrid,//网格采样数 +1                                               
+                                                float resetValue = 1,  //地层值
+                                                float bkvalue = -1)//背景值（地层外节点值）
         {
-            double x, y, z, v;
+            sampledGrids.Clear();
+            if (colors.Count < 1) return sampledGrids;
+
+            double x, y;
             double xx = (maxx - minx) / (xgrid - 1);
             double yy = (maxy - miny) / (ygrid - 1);
-
             int all = xgrid * ygrid;
             double[] grids = new double[all];
-
             for (int i = 0; i < grids.Length; i++) grids[i] = bkvalue;
 
-            sampledGrids.Clear();
-
-            //将剖面数据采样到网格grids 中，
-            for (int iy = 0; iy < ygrid; iy++)
+            ImageStruct im = backImages[0];
+            int width = im.bmp.Width;
+            int height = im.bmp.Height;
+            //拷贝图像数据
+            Rectangle rect = new Rectangle(0, 0, width, height);
+            BitmapData data = im.bmp.LockBits(rect, ImageLockMode.ReadOnly, PixelFormat.Format32bppArgb);
+            int stride = data.Stride;//data.Stride;
+            byte[] bytes = new byte[height * stride];
+            Marshal.Copy(data.Scan0, bytes, 0, bytes.Length);
+            im.bmp.UnlockBits(data);//图像数据解锁
+ 
+            Color c;
+            int id = 0;           
+            byte r, g, b;
+            int dx = width / xgrid + 1;
+            int dy = height / ygrid + 1;
+            
+            for (int iy = 0; iy < height; iy += dy)
             {
-                y = miny + iy * yy + yy / 2;
-                for (int ix = 0; ix < xgrid; ix++)
-                {
-                    x = minx + ix * xx + xx / 2;
-                    for (int k = tracedGeoObjects.Count - 1; k >= 0; k--)
+                for (int ix = 0; ix < width; ix += dx)
+                {                   
+                    id = iy * stride + 4*ix;
+                    x = ix; y = iy;
+                    im.DPtoLP(ref x,ref y);
+                    Vector64 p = new Vector64(x, y, -1, bkvalue);
+                   // p = toTracedPoint(p);
+                    if (BitConverter.IsLittleEndian)
                     {
-                        Polygon2D poly = tracedGeoObjects[k];
-                        if (names.Contains(poly.Name.ToLower()) &&
-                             poly.IsPointInsidePoly(x, y))
-                        {
-                            if (resetLayer)
-                                grids[ix + iy * xgrid] = resetValue;
-                            else grids[ix + iy * xgrid] = poly.PropertyValue;
-                            break;
-                        }
+                        b = bytes[id];
+                        g = bytes[id+1];
+                        r = bytes[id+2];
+                        //a = bytes[id+3];
                     }
-                }//for (int ix = 0; ix < xgrid; ix++)
-            }//for (int iy = 0; iy < ygrid; iy++)
-
-            /////////////////////////////////
-            //搜索边界点，保存到boders中
-            int id;
-            int[] Nears = new int[8];
-            bool[] boders = new bool[all];//是否边界点
-            for (int i = 0; i < all; i++) boders[i] = false;
-            for (id = 0; id < all; id++)
-            {
-                //8个方向搜索
-                Nears[0] = id - xgrid;
-                Nears[1] = id + xgrid;
-                Nears[2] = id - 1;
-                Nears[3] = id + 1;
-                Nears[4] = id - xgrid - 1;
-                Nears[5] = id + xgrid - 1;
-                Nears[6] = id - xgrid + 1;
-                Nears[7] = id + xgrid + 1;
-                foreach (int idnear in Nears)
-                {
-                    if (idnear < 0 || idnear >= all)//数据边界点
+                    else
                     {
-                        boders[id] = true;
-                        break;
+                        //a = bytes[id];
+                        r = bytes[id + 1];
+                        g = bytes[id + 2];
+                        b = bytes[id+3];
                     }
-                    else if (grids[idnear] != grids[id])//周围存在值不一致的点
-                    {
-                        boders[id] = true;
-                        break;
-                    }
+                    c = Color.FromArgb(r, g, b);                    
+                    if ( C3DData.IsColorInList(c, colors, 10) )
+                        p.Z = p.V = resetValue;
+                    sampledGrids.Add(p);
                 }
-            }//for (int id = 0; id < all; id++)
-
-
-            bool[] keep = new bool[all];//是否要保留点
-            for (int i = 0; i < all; i++) keep[i] = false;
-            //网格重采样
-            for (int iy = 0; iy < ygrid; iy += YResampleExtGrid)
-            {
-                for (int ix = 0; ix < xgrid; ix += XResampleExtGrid)
-                {
-                    id = ix + iy * xgrid;
-                    keep[id] = true;
-                }
-            }
-
-            //输出
-            for (int iy = 0; iy < ygrid; iy++)
-            {
-                y = miny + iy * yy + yy / 2;
-                for (int ix = 0; ix < xgrid; ix++)
-                {
-                    x = minx + ix * xx + xx / 2;
-                    id = ix + iy * xgrid;
-                    if (keep[id] || boders[id])
-                    {
-                        z = 0;
-                        v = grids[id];
-                        sampledGrids.Add(new Vector64(x, y, z, v));
-                    }
-                }
-            }
-
-            grids = null;
-            boders = null;
-            keep = null;
-
+            }            
+            bytes = null;           
             return sampledGrids;
         }
 
-        //对指定的某些地层（names）进行采样 
+        /// <summary>
+        /// 地层边界采样 
+        /// </summary>
+        /// <param name="names">指定地层名称，空则为全部地层</param>
+        /// <param name="step"></param>
+        /// <param name="resetLayer"></param>
+        /// <param name="resetValue"></param>
+        /// <returns></returns>
         public List<Vector64> SampleBoudary(List<string> names, double step,
                                             bool resetLayer = false, //重置地层值                                            
                                             float resetValue = 10)
@@ -3772,7 +4333,9 @@ namespace DataCollection
             for (int k = tracedGeoObjects.Count - 1; k >= 0; k--)
             {
                 Polygon2D poly = tracedGeoObjects[k];
-                if (names.Contains(poly.Name.ToLower()))
+
+                if( names == null || names.Count < 1 || 
+                    names.Contains(poly.Name.ToLower()) )
                 {
                     if (resetLayer) val = resetValue;
                     else val = poly.PropertyValue;
@@ -3792,21 +4355,25 @@ namespace DataCollection
             return sampledGrids;
         }
 
-        //对网格进行重采样
-        public void ResampleGrids(int xgrid, int ygrid, int stepx, int stepy)
+
+
+
+        /// <summary>
+        /// 对采样网格进行过滤
+        /// </summary>
+        /// <param name="xgrid"></param>
+        /// <param name="ygrid"></param>
+        /// <param name="stepx"></param>
+        /// <param name="stepy"></param>
+        public void ResampleFilter(int xgrid, int ygrid, int stepx, int stepy)
         {
-            int all = xgrid * ygrid;
-
             int id;
-
+            int all = xgrid * ygrid;
             int[] Nears = new int[8];
-
             bool[] boders = new bool[all];//是否边界点
             for (int i = 0; i < all; i++) boders[i] = false;
-
             bool[] keep = new bool[all];//是否保留点，默认不保留
             for (int i = 0; i < all; i++) keep[i] = false;
-
             for (id = 0; id < all; id++)
             {
                 Nears[0] = id - xgrid;
@@ -3818,15 +4385,14 @@ namespace DataCollection
                 Nears[6] = id - xgrid + 1;
                 Nears[7] = id + xgrid + 1;
 
+                bool bodergrid = false;
                 foreach (int idnear in Nears)
                 {
                     if (idnear < 0 || idnear >= all)//范围边界点
-                    {
-                        boders[id] = true;
-                        keep[id] = true;
-                        break;
-                    }
-                    if (sampledGrids[idnear].V != sampledGrids[id].V) //边界点
+                        bodergrid = true;
+                    else if (sampledGrids[idnear].V != sampledGrids[id].V) //属性边界点
+                        bodergrid = true;
+                    if ( bodergrid )
                     {
                         boders[id] = true;
                         keep[id] = true;
@@ -3835,25 +4401,22 @@ namespace DataCollection
                 }//foreach(int idnear in Nears)
             }//for (int id = 0; id < all; id++)
 
-
-            //重采样过滤
+            //重采样网格过滤
             for (int iy = 0; iy < ygrid; iy += stepy)
-                for (int ix = 0; ix < xgrid; ix += stepx)
+             for (int ix = 0; ix < xgrid; ix += stepx)
                 {
                     id = ix + iy * xgrid;
                     keep[id] = true;
-                }//
+                }
 
             List<Vector64> sampled = new List<Vector64>();
 
-            //输出网格
-            double x, y, z, v;
+            //输出网格            
             for (int iy = 0; iy < ygrid; iy++)
             {
                 for (int ix = 0; ix < xgrid; ix++)
                 {
-                    id = ix + iy * xgrid;
-                    if (keep[id])
+                    if (keep[ix + iy * xgrid])
                     {
                         sampled.Add(sampledGrids[id]);
                     }
@@ -3862,78 +4425,20 @@ namespace DataCollection
 
             sampledGrids.Clear();
             sampledGrids = sampled;
-
+            
+            Nears = null;
             boders = null;
             keep = null;
         }
+
         /// <summary>
-        /// 将可能重复采样的点过滤，优先删除边界外点
+        /// 采样网格，冗余点过滤
         /// </summary>
-        /// <param name="points"></param>
-        /// <param name="zerobase"></param>
-        /// <returns></returns>
-        int RemoveDuplicatedSampled(ref List<Vector64> points, double zerobase = 0.0001)
+        /// <param name="percent"></param>
+        public void SampledDuplicatedFilter(double percent)
         {
-            if (points.Count < 2) return 0;
-
-            double dist;
-            Vector64 p, p1, p2;
-            double maxlen = 0;
-            double x1 = 0, y1 = 0, z1 = 0;
-            double x2 = 0, y2 = 0, z2 = 0;
-            for (int i = 0; i < points.Count; i++)
-            {
-                p = points[i];
-                if (i == 0)
-                {
-                    x1 = x2 = p.x;
-                    y1 = y2 = p.y;
-                    z1 = z2 = p.z;
-                }
-                else
-                {
-                    if (p.x < x1) x1 = p.x;
-                    if (p.y < y1) y1 = p.y;
-                    if (p.z < z1) z1 = p.z;
-                    if (p.x > x2) x2 = p.x;
-                    if (p.y > y2) y2 = p.y;
-                    if (p.z > z2) z2 = p.z;
-                }
-            }
-            maxlen = x2 - x1;
-            if (y2 - y1 > maxlen) maxlen = y2 - y1;
-            if (z2 - z1 > maxlen) maxlen = z2 - z1;
-
-            double err = maxlen * zerobase;
-
-            bool[] del = new bool[points.Count];
-            for (int i = 0; i < points.Count; i++) del[i] = false;
-
-            for (int i = 0; i < points.Count; i++)
-            {
-                for (int j = i + 1; j < points.Count; j++)
-                {
-                    p1 = points[i];
-                    p2 = points[j];
-                    dist = Math.Abs(p1.x - p2.x) +
-                           Math.Abs(p1.y - p2.y) +
-                           Math.Abs(p1.z - p2.z);
-                    if (dist <= err)
-                    {
-                        if (p2.v == 0) del[j] = true;
-                        else del[i] = true;
-                    }
-                }
-            }
-            int num = 0;
-            for (int i = points.Count - 1; i >= 0; i--)
-            {
-                if (del[i]) { points.RemoveAt(i); num++; }
-            }
-            del = null;
-            return num;
-        }           
-
+            Vector64.DuplicatedFilter(ref sampledGrids, percent);
+        }
         /// <summary>
         /// 将指定的地层属性数据输出为散乱点XYZ格式
         /// </summary>
@@ -4000,6 +4505,59 @@ namespace DataCollection
                 return false;
             }
         }//public bool ExportLayerPropertyToXYZ   
+
+        public void TrimBackgroundImage(Rectangle rect)
+        {
+            if (rect.Width < 1 || rect.Height < 1) return;
+
+            double x1 = rect.X;
+            double y1 = rect.Y;
+            double x2 = x1 + rect.Width-1;
+            double y2 = y1 + rect.Height-1;
+            //to logical coordinates
+            x1 = minx + (maxx - minx) * x1 / (BackgroundImage.Width-1);
+            x2 = minx + (maxx - minx) * x2 / (BackgroundImage.Width-1);
+            y1 = miny + (maxy - miny) * y1 / (BackgroundImage.Height-1);
+            y2 = miny + (maxy - miny) * y2 / (BackgroundImage.Height-1);
+            //new logical coordinates
+            Vector64 p1 = new Vector64(x1, y1, 0);
+            Vector64 p2 = new Vector64(x2, y2, 0);
+            //new logical traced coordinates
+            Vector64 p11 = toTracedPoint(p1);
+            Vector64 p12 = toTracedPoint(p2);            
+            minx = 0;
+            maxx = rect.Width-1;
+            miny = 0;
+            maxy = rect.Height-1;
+            Locations2D.Clear();
+            Locations3D.Clear();
+            AddLocationPoint(new Vector64(minx, miny, 0), p11);
+            AddLocationPoint(new Vector64(maxx, maxy, 0), p12);
+            UpdateTraced();
+
+            ImageStruct im = backImages[0];                        
+            im.rect = new DoubleRect(0,0,rect.Width-1,rect.Height-1);
+            im.bmp = CGraphic3D.TrimImage(im.bmp, rect);
+            //im.bmp.Dispose();
+            //im.bmp = newBmp;
+            backImages[0] = im;
+        }
+
+        public bool ExportImage(string filename)
+        {
+            if (backImages.Count < 1) { errMessage = "no image files"; return false; }
+            try
+            {                
+                ImageStruct im = backImages[0];
+                im.bmp.Save(filename);
+                return true;
+            }
+            catch (Exception e)
+            {
+                errMessage = e.Message;
+                return false;
+            }
+        }//public bool ExportLayerPropertyToXYZ   
     }
 
     public enum ClockDirection
@@ -4015,7 +4573,9 @@ namespace DataCollection
         /// <summary>
         /// 逆时针方向
         /// </summary>
-        Counterclockwise = 2
+        Counterclockwise = 2,
+        Collinear = 3,//点共线
+
     }
     public enum PolygonType
     {
@@ -4037,6 +4597,12 @@ namespace DataCollection
         [CategoryAttribute("Display"), DisplayNameAttribute("Uniform Style")]
         public bool IsUniformStyle { get; set; } = false;
 
+        [CategoryAttribute("Display"), DisplayNameAttribute("Name")]
+        public override string Name 
+        {   get; 
+            set; 
+        }
+
         [CategoryAttribute("Display"), DisplayNameAttribute("Filled")]
         public bool IsFill { get; set; } = false;
 
@@ -4050,7 +4616,7 @@ namespace DataCollection
         public Color lineColor { get; set; } = Color.Black;
 
         [CategoryAttribute("Display"), DisplayNameAttribute("Line Width")]
-        public float lineWidth { get; set; } = 1.0f;
+        public float lineWidth { get; set; } = 1.0f;       
 
         [CategoryAttribute("Properties"), DisplayNameAttribute("Property Value")]
         public double PropertyValue { get; set; } = 0; //property value
@@ -4136,7 +4702,22 @@ namespace DataCollection
                 }
             }
         }
-
+        /// <summary>
+        /// 获取唯一性的地层名称列表
+        /// </summary>
+        /// <param name="closed"></param>
+        /// <param name="all"></param>
+        /// <returns></returns>
+        public List<string>toObjectNames(bool closed,bool all = false)
+        {
+            List<string>names = new List<string>();
+            foreach(var s  in Polygons) 
+            {
+                if (!all && s.IsClosed != closed) continue;
+                if( !names.Contains(s.Name) ) names.Add(s.Name);                
+            }
+            return names;
+        }
         public override bool SaveAs(BinaryWriter br)
         {
             try 
@@ -4196,19 +4777,119 @@ namespace DataCollection
             }            
         }
     }
-
+    public class MyRegion
+    {
+        GraphicsPath gp = new GraphicsPath();
+        Bitmap bmp = null;
+        int minx = 0, maxx=0, miny=0, maxy=0;
+        void UpdateDataRange(List<Point> points)
+        {
+            for (int i = 0; i < points.Count; i++)
+            {
+                if (i == 0)
+                {
+                    minx = maxx = points[i].X;
+                    miny = maxy = points[i].Y;
+                }
+                else
+                {
+                    if (points[i].X < minx) minx = points[i].X;
+                    if (points[i].X > maxx) maxx = points[i].X;
+                    if (points[i].Y < miny) miny = points[i].Y;
+                    if (points[i].Y > maxy) maxy = points[i].Y;
+                }
+            }
+        }
+        public MyRegion( List<Point>points )
+        {
+            UpdateDataRange(points);
+            int width  = maxx - minx - 1;
+            int height = maxy - miny - 1;            
+            bmp = new Bitmap(width, height);
+            Graphics g = Graphics.FromImage(bmp);            
+            List<Point> points1 = new List<Point>();
+            for(int i = 0; i < points.Count; i++)
+            points1.Add(new Point(points[i].X - minx, points[i].Y - miny));
+            gp.AddPolygon(points1.ToArray());
+            Region rgn = new Region(gp);
+            g.FillRegion(Brushes.Red, rgn);
+            points1.Clear();            
+            g.Dispose();
+            rgn.Dispose();
+        }
+        public bool IsPointInRgn(int ix,int iy)
+        {
+            int ix0 = ix - minx, iy0 = iy - miny;// maxy - iy - 1;
+            if (ix0 < 0 || ix0 >= bmp.Width || 
+                iy0 < 0 || iy0 >= bmp.Height) return false;
+            Color color = bmp.GetPixel(ix0, iy0);
+            if (color.R == 255 && color.G == 0 && color.B == 0) return true;
+            else return false;
+        }
+        public void Clear()
+        {
+            bmp.Dispose();
+        }
+    }
     public class Polygon2D : C3DObjectBase
     {
         [CategoryAttribute("Object Properties"), DisplayNameAttribute("Is Closed")]
         public bool IsClosed { get; set; } = true;
-        [CategoryAttribute("Object Properties"), DisplayNameAttribute("Fill Color")]
-        public Color fillColor { get; set; } = Color.White;
-        [CategoryAttribute("Object Properties"), DisplayNameAttribute("Line Color")]
-        public Color lineColor { get; set; } = Color.Black;
         [CategoryAttribute("Object Properties"), DisplayNameAttribute("Property Value")]
         public double PropertyValue { get; set; } = 0; //property value
-        public string headerLine = "POLYGON 2D 1200";
+        [CategoryAttribute("Object Properties"), DisplayNameAttribute("Alpha(0-1)")]
+        public override float Alpha { get; set; } = 1;
+        [CategoryAttribute("Object Properties"), DisplayNameAttribute("Smooth")]
+        public bool SmoothDraw { get; set; } = false;
+        
+        [CategoryAttribute("Object Properties"), DisplayNameAttribute("Locked")]
+        public bool Locked { get; set; } = false;
 
+        [CategoryAttribute("Filling"), DisplayNameAttribute("Fill")]
+        public bool IsFill { get; set; } = true;        
+        FillPatternClass _fillMethod = new FillPatternClass(FillMethodEnum.Solid);        
+        [CategoryAttribute("Filling"), DisplayNameAttribute("Pattern")]
+        [Editor(typeof(PatternEditor), typeof(UITypeEditor)), TypeConverter(typeof(PatternConverter))]
+        public FillPatternClass fillMethod
+        {
+            get 
+            {
+                _fillMethod.fillColor = _fillColor;
+                return _fillMethod; 
+            }
+            set 
+            { 
+                _fillMethod = value;
+                _fillColor = _fillMethod.fillColor;
+            }
+        }
+        
+        Color _fillColor = Color.White;
+        [CategoryAttribute("Object Properties"), DisplayNameAttribute("Fill Color")]
+        public Color fillColor 
+        {
+            get 
+            {
+                return _fillColor;
+            }
+            set 
+            {
+                _fillColor = value;
+                _fillMethod.fillColor = _fillColor;
+            }
+        }
+
+        [CategoryAttribute("Line"), DisplayNameAttribute("Style")]
+        public DashStyle dashStyle { get; set; } = DashStyle.Solid;
+        
+        [CategoryAttribute("Line"), DisplayNameAttribute("Color")]
+        public Color lineColor { get; set; } = Color.Black;
+        [CategoryAttribute("Line"), DisplayNameAttribute("Width")]
+        public float lineWidth { get; set; } = 1.0f;
+        [CategoryAttribute("Line"), DisplayNameAttribute("Visible")]
+        public bool ShowLine { get; set; } = true;
+
+        public string headerLine = "POLYGON 2D 1200";
         public PolygonSlicer polygonSlicer = null;
 
         public bool IsValid
@@ -4223,16 +4904,6 @@ namespace DataCollection
         public List<Vector64> points = new List<Vector64>();
         //切面轴，默认垂向切面z
         public AxisEnum axis = AxisEnum.zAxis;
-
-        [CategoryAttribute("Display"), DisplayNameAttribute("Line Width")]
-        public float lineWidth { get; set; } = 1.0f;        
-
-        [CategoryAttribute("Display"), DisplayNameAttribute("Dash Style")]
-        public DashStyle dashStyle { get; set; } = DashStyle.Solid;
-
-        [CategoryAttribute("Display"), DisplayNameAttribute("Is Filled")]
-        public bool IsFill { get; set; } = true;
-
         public Vector64 this[int index]
         {
             get
@@ -4281,18 +4952,36 @@ namespace DataCollection
         public Polygon2D Copy()
         {
             Polygon2D poly = new Polygon2D(points);
-            poly.CopyHeaderFrom(this);           
+            poly.CopyHeaderFrom(this);
 
             poly.IsClosed = IsClosed;
             poly.IsFill = IsFill;
+            poly.SmoothDraw = SmoothDraw;
             poly.fillColor = fillColor;
+            poly.fillMethod = fillMethod;
             poly.lineColor = lineColor;
+            poly.fillMethod = fillMethod.Copy();
             poly.PropertyValue = PropertyValue;
             poly.axis = axis;
             poly.lineWidth = lineWidth;
+            poly.dashStyle = dashStyle;
+            poly.ShowLine = ShowLine;
+            poly.Alpha = Alpha;
+            
             if(triangledObject != null) poly.triangledObject = triangledObject.Copy();
             return poly;
         }
+        public bool RemovePoints(List<int>indices)
+        {
+            indices.Sort();
+            for (int j = indices.Count-1; j >= 0; j--)
+            {
+                int id = indices[j];
+                points.RemoveAt(id);                
+            }
+            return true;
+        }
+
         /// <summary>
         /// Project 3D Polygon to 2D Plane XOY,XOZ,YOZ
         /// </summary>
@@ -4390,6 +5079,11 @@ namespace DataCollection
             return poly;
         }
 
+        public ClockDirection GetClockDirection()
+        {
+            return MyMath.DetectDirection(points);
+        }
+
         public bool IsPoly2D 
         {
             get 
@@ -4409,6 +5103,7 @@ namespace DataCollection
             }
             else  return p;
         }
+
         /// <summary>
         /// Convert to a traced line
         /// </summary>
@@ -4445,37 +5140,44 @@ namespace DataCollection
             }
             line.UpdateRange();
             return line;
-        }
+        }        
         /// <summary>
         /// 多边形或曲线平滑
         /// selfsmooth = true,平滑自身
         /// </summary>
         public Polygon2D Smooth(bool selfsmooth = false)
         {
-            if (points.Count < 2) return null;
-
+            if (points.Count < 2) return null;            
             Polygon2D poly = this.Copy();
             if (IsClosed)
             {
-                BezierSmooth bz = new BezierSmooth();
-                bz.AddPoint(points);
-                poly.points = bz.Smooth().points;
-                if (selfsmooth) points = poly.points;
+                //BezierSmooth bz = new BezierSmooth();
+                //bz.AddPoint(points);
+                //poly.points = bz.Smooth().points;
+                //if (selfsmooth) points = poly.points;                
+              //  List<Vector64>_points = PolygonProcessor.SmoothPolygon(poly.points, 20);
+                //_points.RemoveAt(_points.Count-1);
+                //poly.points.Clear();
+                //poly.points = _points;
             }
             else
-            {
+            {   //只有两个点的线段平滑存在问题，CreateSpline已修正
                 CubicSpline spline = new CubicSpline();
-                poly.points = spline.CreateSpline(points);
+                poly.points = spline.CreateSpline(points);                
                 if (selfsmooth) points = poly.points;
             }
             return poly;
         }
         
-        public override vec2 GetTextureCoord(Vector32 p)
+        public override vec2 GetTextureCoord(Vector32 p,planEnum plan = planEnum.XOY)
         {
             vec2 tex = new vec2(-1,-1);
-            tex.x = (float)( (p.x - minx) / (maxx - minx) );
-            tex.y = (float)( (p.y - miny) / (maxy - miny) );
+            if( p.X >= Minx && p.X <= Maxx && 
+                p.Y >= Miny && p.Y <= Maxy )
+            {
+                tex.x = (float)((p.x - minx) / (maxx - minx));
+                tex.y = (float)((p.y - miny) / (maxy - miny));
+            }            
             return tex;
         }
         /// <summary>
@@ -4516,6 +5218,126 @@ namespace DataCollection
         /// <param name="polygon"></param>
         /// <returns></returns>
         public TriangleObj triangledObject = null;
+        public TriangleObj Triangulate(bool update = true)
+        {
+            if (triangledObject != null && update == false)
+                return triangledObject;
+
+            if (triangledObject != null) triangledObject.Clear();
+
+            TriangleObj triangles = new TriangleObj();
+
+            //这里的三角剖分，多边形必须是2D的
+            Polygon2D poly2d = this;
+            if (!IsPoly2D) poly2d = toProjectedPolygon();
+
+            Poly2Tri.Polygon poly = new Polygon(poly2d);
+
+            if (!P2T.Triangulate(poly)) 
+            { 
+                return null; 
+            }
+
+            Vector32 p1 = new Vector32();
+            Vector32 p2 = new Vector32();
+            Vector32 p3 = new Vector32();
+            float z = (float)points[0].Z;
+            float v = (float)points[0].V;
+            int n = 0;
+            foreach (DelaunayTriangle tri in poly.Triangles)
+            {
+                p1 = new Vector32(tri.Points[0].Xf, tri.Points[0].Yf, z, v);
+                p2 = new Vector32(tri.Points[1].Xf, tri.Points[1].Yf, z, v);
+                p3 = new Vector32(tri.Points[2].Xf, tri.Points[2].Yf, z, v);
+
+                if (poly2d.polygonSlicer != null)
+                {
+                    p1 = poly2d.polygonSlicer.toTracedPoint(new Vector64(p1.X, p1.Y, 0));
+                    p2 = poly2d.polygonSlicer.toTracedPoint(new Vector64(p2.X, p2.Y, 0));
+                    p3 = poly2d.polygonSlicer.toTracedPoint(new Vector64(p3.X, p3.Y, 0));
+                }
+                triangles.AddPoint(p1);
+                triangles.AddPoint(p2);
+                triangles.AddPoint(p3);
+                n = triangles.points.Count;
+                triangles.AddTriangleIndex(n - 3, n - 2, n - 1);
+            }
+            poly.Clear();
+            //poly2d.Clear();
+
+            triangles.UpdateRange();
+
+            for (int i = 0; i < triangles.points.Count; i++)
+            {
+                triangles.AddTexture(GetTextureCoord(triangles.points[i]));
+            }
+
+            triangledObject = triangles;
+            return triangledObject;
+        }
+        /// <summary>
+        /// 基于几何库NetTopologySuite的多边形约束三角剖分
+        /// </summary>
+        /// <param name="update"></param>
+        /// <returns></returns>
+        public TriangleObj NetTopologySuiteTriangulate(bool update = true)
+        {
+            if (triangledObject != null && update == false)
+                return triangledObject;
+
+            if (triangledObject != null) triangledObject.Clear();
+
+            TriangleObj triangles = new TriangleObj();
+
+            //这里的三角剖分，多边形必须是2D的
+            Polygon2D poly2d = this;
+           // if (!IsPoly2D) poly2d = toProjectedPolygon();
+
+            PolygonTriangulator triangulator = new PolygonTriangulator();
+            if (!triangulator.CreateTriangles(poly2d)) 
+            {
+                errMessage = triangulator.errMessage;
+                return null; 
+            }           
+            
+
+            Vector32 p1 = new Vector32();
+            Vector32 p2 = new Vector32();
+            Vector32 p3 = new Vector32();
+            float z = (float)points[0].Z;
+            float v = (float)points[0].V;
+            int n = 0;
+
+            List<Vector32> tri_points = triangulator.toTriangleCoords();
+            for(int i = 0; i < tri_points.Count/3; i++ )
+            {
+                p1 = tri_points[3*i];
+                p2 = tri_points[3 * i+1];
+                p3 = tri_points[3 * i+2];
+                if (poly2d.polygonSlicer != null)
+                {
+                    p1 = poly2d.polygonSlicer.toTracedPoint(new Vector64(p1.X, p1.Y, 0));
+                    p2 = poly2d.polygonSlicer.toTracedPoint(new Vector64(p2.X, p2.Y, 0));
+                    p3 = poly2d.polygonSlicer.toTracedPoint(new Vector64(p3.X, p3.Y, 0));
+                }
+                triangles.AddPoint(p1);
+                triangles.AddPoint(p2);
+                triangles.AddPoint(p3);
+                n = triangles.points.Count;
+                triangles.AddTriangleIndex(n - 3, n - 2, n - 1);
+            }
+            
+            triangles.UpdateRange();
+
+            for (int i = 0; i < triangles.points.Count; i++)
+            {
+                triangles.AddTexture(GetTextureCoord(triangles.points[i]));
+            }
+
+            triangledObject = triangles;
+            return triangledObject;
+        }
+        /*
         public TriangleObj Triangulate(bool update = true)
         {
             if ( triangledObject != null && update == false) 
@@ -4567,7 +5389,7 @@ namespace DataCollection
             triangledObject = triangles;
             return triangledObject;
         }
-       
+       */
         /// <summary>
         /// 简单凸多边形三角剖分，在XOY平面内剖分
         /// </summary>
@@ -4752,27 +5574,8 @@ namespace DataCollection
             }
             return true;
         }
-
-        public override bool SaveAs(BinaryWriter br)
-        {
-            SaveObjHeader(br);
-            br.Write(points.Count);
-            foreach (Vector32 p in points)
-            {
-                br.Write(p.x);
-                br.Write(p.y);
-                br.Write(p.z);
-            }
-            br.Write(IsClosed);
-            br.Write(IsFill);
-            br.Write(ColorRGBA.ParseRGB(fillColor));
-            br.Write(ColorRGBA.ParseRGB(lineColor));
-            br.Write(PropertyValue);
-            br.Write((int)axis);
-            br.Write(lineWidth);
-            return true;
-        }
-        public override bool LoadFrom(BinaryReader br)
+        
+        public bool LoadFrom123(BinaryReader br)
         {
             points.Clear();
             LoadObjHeader(br);
@@ -4799,7 +5602,66 @@ namespace DataCollection
             return true;
         }
 
-        public override bool SaveAs(string path)
+        public override bool SaveAs(BinaryWriter br)
+        {            
+            SaveObjHeader(br);
+            br.Write(points.Count);
+            foreach (Vector32 p in points)
+            {
+                br.Write(p.x);
+                br.Write(p.y);
+                br.Write(p.z);
+            }
+            br.Write(IsClosed);
+            br.Write(IsFill);
+            br.Write(ColorRGBA.ParseRGB(fillColor));
+            br.Write(ColorRGBA.ParseRGB(lineColor));
+            br.Write(PropertyValue);
+            br.Write((int)axis);
+            br.Write(lineWidth);
+
+            //added 2023-1-16
+            br.Write(SmoothDraw);
+            br.Write(ShowLine);
+            br.Write((int)dashStyle);
+            fillMethod.Save(br);
+
+            return true;
+        }
+        
+        public override bool LoadFrom(BinaryReader br)
+        {
+            if (C3DData.DataVersion <= 1.23f) return LoadFrom123(br);
+
+            points.Clear();
+            LoadObjHeader(br);
+            int n = br.ReadInt32();
+            float x, y, z;
+            for (int i = 0; i < n; i++)
+            {
+                x = br.ReadSingle();
+                y = br.ReadSingle();
+                z = br.ReadSingle();
+                Add(x, y, z);
+            }
+
+            IsClosed = br.ReadBoolean();
+            IsFill = br.ReadBoolean();
+
+            fillColor = ColorRGBA.RGB(br.ReadInt32());
+            lineColor = ColorRGBA.RGB(br.ReadInt32());
+
+            PropertyValue = br.ReadDouble();
+            axis = (AxisEnum)br.ReadInt32();
+            lineWidth = br.ReadSingle();
+            //added 2023 - 1 - 16
+            SmoothDraw = br.ReadBoolean();
+            ShowLine = br.ReadBoolean();
+            dashStyle = (DashStyle)br.ReadInt32();
+            fillMethod.Load(br);
+            return true;
+        }
+        public override bool SaveAs(string path,int version = 0)
         {
             BinaryWriter br;
             try
@@ -4996,10 +5858,8 @@ namespace DataCollection
                 {
                     if (p.x < minx) minx = p.x;
                     if (p.x > maxx) maxx = p.x;
-
                     if (p.y < miny) miny = p.y;
                     if (p.y > maxy) maxy = p.y;
-
                     if (p.z < minz) minz = p.z;
                     if (p.z > maxz) maxz = p.z;
                 }
@@ -5036,48 +5896,44 @@ namespace DataCollection
         /// <param name="val">采样点值</param>
         /// <param name="errbase">采样容差分母</param>
         /// <returns>本次采样点数</returns>
-        public List<Vector64> SampleBoudary(double _step, double errbase = 1000)
+        public List<Vector64> SampleBoudary(double _step, double errbase = 1000,int sampNum = 100)
         {
             List<Vector64> lists = new List<Vector64>();
             if (points.Count < 2) return lists;
 
-            double total_len = Vector64.GetLength(points);
-            double step = total_len / 200;
+            double len;
+            double total_len = Vector64.GetLength(points,-1,IsClosed);
+            double step = total_len / sampNum;
             if (_step < step) step = _step;
 
             //误差容差，小于这个容差的点默认为0
             double err = step / errbase;
-
-            Vector64 p, p1, p2;
-
-            p1 = points[0];
-
-            //第1点
-            lists.Add(p1);
-
-            double len;
-            p1 = points[0];
-
+            Vector64 p, p1, p2; 
+            
             int num = points.Count;
-            if (IsClosed) num++;
-
+            if ( IsClosed ) num++;
+            p1 = points[0];            
             for (int i = 1; i < num; i++) //中间的采样点数
             {
-                if (i < points.Count) p2 = points[i];
-                else p2 = points[0];
-
+                if (i == points.Count) p2 = points[0];
+                else p2 = points[i];
                 len = p1.Distance(p2);//线段长度
-
+                
+                if(len <= step) lists.Add(p1);
+                
                 //len > step: 线段p1 - p2 分段采样
-                while (len >= step)
+                while ( len > step )
                 {
                     p = p1 + (p2 - p1) * step / len;
                     lists.Add(p);
                     p1 = p;
                     len -= step;
                 }
-                if (Math.Abs(len) <= err) continue;//忽略该点
-                else lists.Add(p2);
+
+                //添加最后一段
+                if ( Math.Abs(len) > err && i == points.Count) 
+                    lists.Add(p2);
+                                
                 p1 = p2;
             }
 
@@ -5190,6 +6046,68 @@ namespace DataCollection
         public override void Clear()
         {
             points.Clear();
+        }
+        /// <summary>
+        /// 计算点到多边形的最短距离
+        /// </summary>
+        /// <param name="point">待计算的点</param>
+        /// <param name="polygon">多边形顶点列表（按顺时针/逆时针顺序）</param>
+        /// <returns>点到多边形的最短距离</returns>        
+        public override double GetNearestDistance(Vector64 point)
+        {
+            // 边界检查：空多边形直接返回无穷大
+            if (Count < 3) return double.NaN;                
+
+            // 步骤1：判断点是否在多边形内部，内部则距离为0
+            if (IsPointInsidePoly(point.X,point.Y))return 0.0;
+
+            // 步骤2：点在外部，计算到每条边的最短距离
+            double minDistance = double.MaxValue;
+            int vertexCount = Count;
+
+            // 遍历所有边（最后一条边是 polygon[vertexCount-1] -> polygon[0]）
+            for (int i = 0; i < vertexCount; i++)
+            {
+                Vector64 a = points[i];
+                Vector64 b = points[(i + 1) % vertexCount];
+                double distance = DistanceToLineSegment(point, a, b);
+
+                if (distance < minDistance)
+                    minDistance = distance;
+            }
+
+            return minDistance;
+        }
+        /// <summary>
+        /// 计算点到线段的最短距离（核心几何计算）
+        /// </summary>
+        /// <param name="p">待计算的点</param>
+        /// <param name="a">线段起点</param>
+        /// <param name="b">线段终点</param>
+        /// <returns>点到线段的最短距离</returns>
+        private double DistanceToLineSegment(Vector64 p, Vector64 a, Vector64 b)
+        {
+            // 向量AB
+            Vector64 ab = b - a;
+            // 向量AP
+            Vector64 ap = p - a;
+
+            // 计算投影参数t：t = (AP · AB) / |AB|²
+            double dotProduct = ap.X * ab.X + ap.Y * ab.Y;
+            if (dotProduct <= 0) // 投影在A点左侧，最短距离是PA
+                return p.Distance(a);
+
+            double abLengthSquared = ab.X * ab.X + ab.Y * ab.Y;
+            if (abLengthSquared <= 0) // 线段退化为点
+                return p.Distance(a);
+
+            double t = dotProduct / abLengthSquared;
+            if (t >= 1) // 投影在B点右侧，最短距离是PB
+                return p.Distance(b);
+
+            // 投影在线段内部，计算投影点Q并返回PQ距离
+            Vector64 q = new Vector64(a.X + t * ab.X, a.Y + t * ab.Y,0);
+            return p.Distance(q);
         }
         //点在多边形内判断，2D版本
         // taken from https://wrf.ecse.rpi.edu//Research/Short_Notes/pnpoly.html
@@ -5467,21 +6385,27 @@ namespace DataCollection
         //x = x0 + at
         //y = y0 + bt
         //z = z0 + ct
+        public string Name = "Untitled";//线段名称
+        public int Id = 0; //线段编号
         public Vector64 p1;
         public Vector64 p2;
         public CLine()
         {
 
         }
-        public CLine(Vector64 _p1, Vector64 _p2)
+        public CLine(Vector64 _p1, Vector64 _p2,int id = -1, string name = "Untitled")
         {
             p1 = _p1;
             p2 = _p2;
+            Id = id;
+            Name = name;
         }
-        public CLine(Vector32 _p1, Vector32 _p2)
+        public CLine(Vector32 _p1, Vector32 _p2, int id=-1,string name = "Untitled")
         {
             p1 = new Vector64(_p1.x, _p1.y, _p1.z);
             p2 = new Vector64(_p2.x, _p2.y, _p2.z);
+            Id = id;
+            Name = name;
         }
         /// <summary>
         /// 线方向，单位矢量
@@ -5494,15 +6418,15 @@ namespace DataCollection
                 return v.Normalize();
             }
         }
-        public double a
+        public double XDirection
         {
             get { return p2.x - p1.x; }
         }
-        public double b
+        public double YDirection
         {
             get { return p2.y - p1.y; }
         }
-        public double c
+        public double ZDirection
         {
             get { return p2.z - p1.z; }
         }
@@ -5518,6 +6442,13 @@ namespace DataCollection
         {
             get { return p1.z; }
         }
+        public double Length 
+        {
+            get 
+            {
+                return p1.Distance(p2,2);
+            }
+        }
         static public bool IsZero(double val, double zero = 1.0E-20)
         {
             double v = val;
@@ -5525,6 +6456,45 @@ namespace DataCollection
             if (v <= zero) return true;
             else return false;
         }
+        public bool IsPointOnLine(Vector64 p, double tolerance = 1e-8)
+        {
+            // 1. 检查点是否在包围盒内
+            double minX = Math.Min(p1.X, p2.X) - tolerance;
+            double maxX = Math.Max(p1.X, p2.X) + tolerance;
+            double minY = Math.Min(p1.Y, p2.Y) - tolerance;
+            double maxY = Math.Max(p1.Y, p2.Y) + tolerance;
+
+            if (p.X < minX || p.X > maxX || p.Y < minY || p.Y > maxY)
+                return false;
+
+            // 2. 向量叉乘判断共线性（面积法）
+            double cross = (p2.X - p1.X) * (p.Y - p1.Y) - (p2.Y - p1.Y) * (p.X - p1.X);
+            return Math.Abs(cross) < tolerance;
+        }
+        /// <summary>
+        /// 计算点到线段的垂直距离（带符号，区分左右/上下）
+        /// </summary>
+        public double GetSignedDistanceToPoint(Vector64 p)
+        {
+            // 向量AB
+            double abX = p2.X - p1.X;
+            double abY = p2.Y - p1.Y;
+            // 向量AP
+            double apX = p.X - p1.X;
+            double apY = p.Y - p1.Y;
+
+            // 叉乘结果的符号表示点在直线的哪一侧
+            double cross = abX * apY - abY * apX;
+            // 线段长度
+            double len = Math.Sqrt(abX * abX + abY * abY);
+
+            if (len < 1e-8) // 线段退化为点
+                return p.Distance(p1);
+
+            // 带符号的垂直距离
+            return cross / len;
+        }
+
         /// <summary>
         /// p点是否在线段p1p2上，通过距离来判断
         /// </summary>
@@ -5628,7 +6598,7 @@ namespace DataCollection
 
             double sq2 = (dx * dx) + (dy * dy);
 
-            if (sq2 == 0) return p1; //直线坍缩为点
+            if ( Math.Abs(sq2) <= 1e-8) return p1; //直线坍缩为点
 
             double u = (p.x - p1.x) * (p1.x - p2.x) +
                        (p.y - p1.y) * (p1.y - p2.y);
@@ -5729,7 +6699,7 @@ namespace DataCollection
             s10_y = p1_y - p0_y;
             s32_x = p3_x - p2_x;
             s32_y = p3_y - p2_y;
-            p = new Vector64(0, 0, 0);
+            p = new Vector64(double.NaN, double.NaN, 0);
             denom = s10_x * s32_y - s32_x * s10_y;
             if (denom == 0)//平行或共线
                 return false;
@@ -5793,23 +6763,105 @@ namespace DataCollection
             return true;
         }
         // two extended lines intersection
-        /*
-        public bool GetIntersectionExt(CLine line,out Vector32 p)
+
+
+        /// <summary>
+        /// 计算两条线段的交点
+        /// </summary>
+        /// <param name="p1">L1起点</param>
+        /// <param name="p2">L1终点</param>
+        /// <param name="p3">L2起点</param>
+        /// <param name="p4">L2终点</param>
+        /// <param name="intersection">输出交点坐标（无交点时为默认值）</param>
+        /// <param name="epsilon">浮点精度阈值（默认1e-8）</param>
+        /// <returns>是否存在有效交点</returns>
+        public static bool CalculateIntersection(CLine line1,CLine line2,out Vector64 intersection,double epsilon = 1e-8)
         {
-            p = new Vector32(0, 0, 0);
-            //if ( !IsRectIntersect(line) ) return false;
-            double a1 = line.a;
-            double b1 = line.b;
-            double c1 = line.c;
-            double b0 = a1 * b - a * b1;
-            if (b0 == 0) return false;
-            double t = (b1 * (x0 - line.x0) + (y0 - line.y0)) / b0;
-            p.x = (float)(x0 + a * t);
-            p.y = (float)(y0 + b * t);
-            p.z = (float)(z0 + c * t);
-            return true;
+            Vector64 p1 = line1.p1;
+            Vector64 p2 = line1.p2;
+            Vector64 p3 = line2.p1;
+            Vector64 p4 = line2.p2;
+            intersection = new Vector64(double.NaN, double.NaN, 0);
+
+            // 1. 计算向量与分母（判断是否平行）
+            double dx1 = p2.X - p1.X;
+            double dy1 = p2.Y - p1.Y;
+            double dx2 = p4.X - p3.X;
+            double dy2 = p4.Y - p3.Y;
+            double dx3 = p1.X - p3.X;
+            double dy3 = p1.Y - p3.Y;
+
+            // 分母：两线段方向向量的叉乘（denom=0 → 平行/重合）
+            double denom = dx1 * dy2 - dy1 * dx2;
+            // 分子：用于计算参数t和s
+            double tNum = dx2 * dy3 - dy2 * dx3;
+            double sNum = dx1 * dy3 - dy1 * dx3;
+
+            // 2. 处理平行/重合场景
+            if (Math.Abs(denom) < epsilon)
+            {
+                // 2.1 平行但不重合（无交点）
+                if (Math.Abs(tNum) > epsilon || Math.Abs(sNum) > epsilon)
+                    return false;
+
+                // 2.2 重合，判断是否有重叠区间
+                return GetOverlapPoint(p1, p2, p3, p4, out intersection, epsilon);
+            }
+
+            // 3. 非平行场景，计算参数t和s
+            double t = tNum / denom;
+            double s = sNum / denom;
+
+            // 4. 校验t和s是否在[0,1]范围内（交点在线段上）
+            if (t >= -epsilon && t <= 1 + epsilon && s >= -epsilon && s <= 1 + epsilon)
+            {
+                // 修正t/s到[0,1]区间（处理精度误差导致的微小越界）
+                t = MyMath.Clamp(t, 0, 1);
+                s = MyMath.Clamp(s, 0, 1);
+
+                // 计算交点坐标
+                intersection = new Vector64(p1.X + t * dx1,p1.Y + t * dy1,0,0);
+                return true;
+            }
+
+            // 5. 交点在直线上但不在线段上
+            return false;
         }
-        */
+
+        #region 辅助方法
+        /// <summary>
+        /// 判断点是否在线段上（兼容精度）
+        /// </summary>
+        private static bool IsPointOnSegment(Vector64 p, Vector64 a, Vector64 b, double epsilon)
+        {
+            // 1. 点在线段的包围盒内
+            bool inBox = (Math.Min(a.X, b.X) - epsilon <= p.X && p.X <= Math.Max(a.X, b.X) + epsilon) &&
+                          (Math.Min(a.Y, b.Y) - epsilon <= p.Y && p.Y <= Math.Max(a.Y, b.Y) + epsilon);
+            if (!inBox) return false;
+
+            // 2. 点与线段共线（叉乘为0）
+            double cross = (p.X - a.X) * (b.Y - a.Y) - (p.Y - a.Y) * (b.X - a.X);
+            return Math.Abs(cross) < epsilon;
+        }
+
+        /// <summary>
+        /// 重合线段的重叠区间交点计算（返回任意一个重叠点）
+        /// </summary>
+        private static bool GetOverlapPoint(Vector64 p1, Vector64 p2, Vector64 p3, Vector64 p4, out Vector64 overlapPoint, double epsilon)
+        {
+            overlapPoint = new Vector64();
+
+            // 检查各端点是否在对方线段上
+            if (IsPointOnSegment(p1, p3, p4, epsilon)) { overlapPoint = p1; return true; }
+            if (IsPointOnSegment(p2, p3, p4, epsilon)) { overlapPoint = p2; return true; }
+            if (IsPointOnSegment(p3, p1, p2, epsilon)) { overlapPoint = p3; return true; }
+            if (IsPointOnSegment(p4, p1, p2, epsilon)) { overlapPoint = p4; return true; }
+
+            // 无重叠区间
+            return false;
+        }
+        #endregion
+
     }
     public class Polygon3D : TriangleObj
     {        
@@ -6321,6 +7373,1025 @@ namespace DataCollection
         DownRightBack = 64,
         DownRightFront = 128
     };
+    public class CurveSimplifierFitter
+    {
+        // 数值稳定性参数
+        private const double EPS = 1e-12;
+
+        /// <summary>
+        /// 精简原始点集（道格拉斯-普克算法，增加异常处理）
+        /// </summary>
+        public List<Vector64> SimplifyPoints(List<Vector64> originalPoints, double threshold)
+        {
+            // 深度拷贝，避免修改原始数据
+            var points = new List<Vector64>(originalPoints);
+
+            // 参数校验
+            if (points == null || points.Count <= 2)
+                return new List<Vector64>(points.Where(p => p.IsValid()));
+
+            threshold = Math.Max(threshold, EPS); // 阈值≥极小值
+
+            // 过滤无效点
+            points = points.Where(p => p.IsValid()).ToList();
+            if (points.Count <= 2)
+                return new List<Vector64>(points);
+
+            return DouglasPeucker(points, 0, points.Count - 1, threshold);
+        }
+
+        /// <summary>
+        /// 道格拉斯-普克算法递归实现（增强稳定性）
+        /// </summary>
+        private List<Vector64> DouglasPeucker(List<Vector64> points, int startIdx, int endIdx, double threshold)
+        {
+            var simplified = new List<Vector64>();
+            double maxDist = 0;
+            int maxIdx = startIdx + 1;
+
+            Vector64 lineStart = points[startIdx];
+            Vector64 lineEnd = points[endIdx];
+
+            // 跳过无效点
+            if (!lineStart.IsValid() || !lineEnd.IsValid())
+            {
+                simplified.Add(lineStart);
+                simplified.Add(lineEnd);
+                return simplified;
+            }
+
+            // 找到距离线段最远的点
+            for (int i = startIdx + 1; i < endIdx; i++)
+            {
+                if (!points[i].IsValid()) continue;
+
+                double dist = Vector64.DistanceToLineSegment(points[i], lineStart, lineEnd);
+                if (dist > maxDist && !double.IsNaN(dist))
+                {
+                    maxDist = dist;
+                    maxIdx = i;
+                }
+            }
+
+            // 递归条件：最远点距离超过阈值，保留该点并递归处理左右段
+            if (maxDist > threshold && !double.IsNaN(maxDist))
+            {
+                var left = DouglasPeucker(points, startIdx, maxIdx, threshold);
+                var right = DouglasPeucker(points, maxIdx, endIdx, threshold);
+
+                // 合并时去重中间点，过滤无效点
+                simplified.AddRange(left.Take(left.Count - 1).Where(p => p.IsValid()));
+                simplified.AddRange(right.Where(p => p.IsValid()));
+            }
+            else
+            {
+                // 保留首尾点（确保有效）
+                if (lineStart.IsValid()) simplified.Add(lineStart);
+                if (lineEnd.IsValid() && lineEnd.Distance(lineStart) > EPS)
+                    simplified.Add(lineEnd);
+            }
+
+            return simplified;
+        }
+
+        /// <summary>
+        /// 基于精简后的点集拟合光滑曲线（修复NaN核心错误）
+        /// </summary>
+        public List<Vector64> FitSmoothCurve(List<Vector64> simplifiedPoints, double smoothFactor, int sampleCount = 100)
+        {
+            // 严格参数校验
+            if (simplifiedPoints == null || simplifiedPoints.Count < 2)
+                throw new ArgumentException("精简后的点集至少包含2个有效点");
+
+            // 过滤无效点
+            var validPoints = simplifiedPoints.Where(p => p.IsValid()).ToList();
+            if (validPoints.Count < 2)
+                throw new ArgumentException("有效点数量不足，无法拟合曲线");
+
+            smoothFactor = smoothFactor; // 限制在0~1
+            sampleCount = Math.Max(sampleCount, 10); // 最少10个采样点
+
+            // 步骤1：参数化（弦长参数化，修复0/0错误）
+            var tList = ParameterizePoints(validPoints);
+
+            // 步骤2：生成B样条节点向量（修复节点与t不匹配问题）
+            int degree = Math.Min(3, validPoints.Count - 1); // 动态调整阶数，避免阶数超过点数量
+            var knots = GenerateKnotVector(tList, degree, smoothFactor);
+
+            // 步骤3：求解控制点（修复矩阵奇异/NaN问题）
+            var controlPoints = SolveControlPoints(validPoints, tList, knots, degree, smoothFactor);
+
+            // 步骤4：采样生成光滑曲线（增加有效性检查）
+            return SampleBSplineCurve(controlPoints, knots, degree, sampleCount);
+        }
+
+        /// <summary>
+        /// 一键完成：精简原始点 + 拟合光滑曲线（全流程异常处理）
+        /// </summary>
+        public List<Vector64> SimplifyAndFit(List<Vector64> originalPoints, double simplifyThreshold,
+                                           double smoothFactor, int sampleCount, out List<Vector64> simplifiedPoints)
+        {
+            // 全流程try-catch，保证稳定性
+            try
+            {
+                // 第一步：精简点集
+                simplifiedPoints = SimplifyPoints(originalPoints, simplifyThreshold);
+
+                // 第二步：拟合光滑曲线
+                return FitSmoothCurve(simplifiedPoints, smoothFactor, sampleCount);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"拟合过程出错：{ex.Message}");
+                // 降级处理：返回原始点的线性插值
+                simplifiedPoints = new List<Vector64>(originalPoints.Where(p => p.IsValid()));
+                return LinearInterpolate(simplifiedPoints, sampleCount);
+            }
+        }
+
+        #region 核心拟合方法（修复NaN错误）
+        /// <summary>
+        /// 弦长参数化（修复totalLength=0导致的0/0错误）
+        /// </summary>
+        private List<double> ParameterizePoints(List<Vector64> points)
+        {
+            var tList = new List<double> { 0.0 };
+            double totalLength = 0.0;
+
+            for (int i = 1; i < points.Count; i++)
+            {
+                if (!points[i].IsValid() || !points[i - 1].IsValid())
+                {
+                    totalLength += EPS; // 避免长度为0
+                }
+                else
+                {
+                    totalLength += points[i].Distance(points[i - 1]);
+                }
+                tList.Add(totalLength);
+            }
+
+            // 修复：当总长度接近0时，使用均匀参数化
+            if (totalLength < EPS)
+            {
+                for (int i = 0; i < points.Count; i++)
+                {
+                    tList[i] = (double)i / (points.Count - 1);
+                }
+            }
+            else
+            {
+                // 归一化到0~1，增加数值保护
+                for (int i = 0; i < tList.Count; i++)
+                {
+                    tList[i] = MyMath.Clamp(tList[i] / totalLength, 0.0, 1.0);
+                }
+            }
+
+            return tList;
+        }
+
+        /// <summary>
+        /// 生成B样条节点向量（修复节点与t不匹配问题）
+        /// </summary>
+        private List<double> GenerateKnotVector(List<double> tList, int degree, double smoothFactor)
+        {
+            int n = tList.Count;
+            int m = n + degree + 1;
+            var knots = new List<double>(new double[m]);
+
+            // 首尾节点重复度=degree+1（确保边界条件）
+            for (int i = 0; i <= degree; i++)
+            {
+                knots[i] = 0.0;
+                knots[m - 1 - i] = 1.0;
+            }
+
+            // 修复：当n <= degree时，直接返回均匀节点
+            if (n <= degree)
+            {
+                for (int i = degree + 1; i < m - degree - 1; i++)
+                {
+                    knots[i] = (double)(i - degree) / (n - degree);
+                }
+                return knots;
+            }
+
+            // 中间节点：基于光滑因子调整分布，修复权重映射
+            double smoothWeight = 0.2 + smoothFactor * 0.6; // 映射到0.2~0.8，避免极端值
+            for (int i = 1; i <= n - degree - 1; i++)
+            {
+                double sum = 0.0;
+                int count = 0;
+                for (int j = i; j < i + degree; j++)
+                {
+                    if (j < tList.Count)
+                    {
+                        sum += tList[j] * smoothWeight;
+                        count++;
+                    }
+                }
+                // 修复：避免除以0
+                knots[degree + i] = count > 0 ? sum / count : (double)i / (n - degree);
+                knots[degree + i] = MyMath.Clamp(knots[degree + i], 0.0, 1.0);
+            }
+
+            return knots;
+        }
+
+        /// <summary>
+        /// 计算B样条基函数（修复NaN/Inf）
+        /// </summary>
+        private double[] ComputeBSplineBasis(double t, List<double> knots, int degree, int controlCount)
+        {
+            var basis = new double[controlCount];
+            Array.Clear(basis, 0, controlCount);
+
+            // 修复：当t超出节点范围时的处理
+            t = MyMath.Clamp(t, knots[0], knots[knots.Count - 1] - EPS);
+
+            var temp = new double[controlCount];
+
+            // 0阶基函数（增加数值保护）
+            for (int i = 0; i < controlCount; i++)
+            {
+                if (i + 1 >= knots.Count) continue;
+                basis[i] = (knots[i] <= t && t < knots[i + 1]) ? 1.0 : 0.0;
+            }
+
+            // 递推计算高阶基函数（修复分母为0）
+            for (int d = 1; d <= degree; d++)
+            {
+                Array.Copy(basis, temp, controlCount);
+                Array.Clear(basis, 0, controlCount);
+
+                for (int i = 0; i < controlCount - d; i++)
+                {
+                    if (i + d >= knots.Count || i + d + 1 >= knots.Count) continue;
+
+                    double denom1 = knots[i + d] - knots[i];
+                    double term1 = (denom1 > EPS) ? (t - knots[i]) / denom1 * temp[i] : 0.0;
+
+                    double denom2 = knots[i + d + 1] - knots[i + 1];
+                    double term2 = (denom2 > EPS) ? (knots[i + d + 1] - t) / denom2 * temp[i + 1] : 0.0;
+
+                    basis[i] = term1 + term2;
+                    // 数值保护：避免NaN/Inf
+                    if (double.IsNaN(basis[i]) || double.IsInfinity(basis[i]))
+                        basis[i] = 0.0;
+                }
+            }
+
+            return basis;
+        }
+
+        /// <summary>
+        /// 最小二乘求解控制点（修复NaN核心错误）
+        /// </summary>
+        private List<Vector64> SolveControlPoints(List<Vector64> points, List<double> tList,
+                                                List<double> knots, int degree, double smoothFactor)
+        {
+            int n = points.Count;
+            int c = Math.Min(n, 20); // 限制控制点数量，避免矩阵过大
+            double smoothWeight = smoothFactor * 0.1; // 修复：光滑权重映射（0~0.1），避免矩阵奇异
+
+            // 初始化控制点为有效点
+            var controlPoints = new List<Vector64>();
+            foreach (var p in points.Take(c))
+            {
+                controlPoints.Add(p.IsValid() ? p : new Vector64(0, 0, 0));
+            }
+
+            // 构建矩阵（增加对角占优项，避免奇异）
+            var matrix = new double[c, c];
+            var bx = new double[c];
+            var by = new double[c];
+            var bz = new double[c];
+
+            // 初始化矩阵为对角占优（增加小的对角值，避免奇异）
+            for (int i = 0; i < c; i++)
+            {
+                matrix[i, i] = EPS; // 对角加极小值，避免全0
+            }
+
+            // 填充矩阵（修复权重逻辑）
+            for (int i = 0; i < n; i++)
+            {
+                if (!points[i].IsValid()) continue;
+
+                var basis = ComputeBSplineBasis(tList[i], knots, degree, c);
+                for (int j = 0; j < c; j++)
+                {
+                    if (double.IsNaN(basis[j]) || double.IsInfinity(basis[j]))
+                        basis[j] = 0.0;
+
+                    // 修复：矩阵元素计算（拟合项 + 光滑项）
+                    matrix[i % c, j] += basis[j] * basis[j] + smoothWeight;
+                    // 数值保护
+                    if (double.IsNaN(matrix[i % c, j]))
+                        matrix[i % c, j] = EPS;
+
+                    bx[i % c] += points[i].X * basis[j];
+                    by[i % c] += points[i].Y * basis[j];
+                    bz[i % c] += points[i].Z * basis[j];
+                }
+            }
+
+            // 高斯消元求解（增加异常处理）
+            try
+            {
+                for (int dim = 0; dim < 3; dim++)
+                {
+                    double[] b = dim == 0 ? bx : (dim == 1 ? by : bz);
+                    double[] solution = GaussianElimination(matrix, b);
+
+                    for (int i = 0; i < Math.Min(c, solution.Length); i++)
+                    {
+                        // 数值保护：限制解的范围
+                        double val = MyMath.Clamp(solution[i], -1e6, 1e6);
+                        if (double.IsNaN(val) || double.IsInfinity(val))
+                            val = controlPoints[i].X; // 降级为原始值
+
+                        if (dim == 0) controlPoints[i] = new Vector64(val, controlPoints[i].Y, controlPoints[i].Z);
+                        else if (dim == 1) controlPoints[i] = new Vector64(controlPoints[i].X, val, controlPoints[i].Z);
+                        else controlPoints[i] = new Vector64(controlPoints[i].X, controlPoints[i].Y, val);
+                    }
+                }
+            }
+            catch (Exception)
+            {
+                // 降级：直接使用原始点作为控制点
+                controlPoints = new List<Vector64>(points.Take(c));
+            }
+
+            // 过滤无效控制点
+            return controlPoints.Where(p => p.IsValid()).ToList();
+        }
+
+        /// <summary>
+        /// 高斯消元法求解线性方程组（增强数值稳定性）
+        /// </summary>
+        private double[] GaussianElimination(double[,] matrix, double[] b)
+        {
+            int n = b.Length;
+            var aug = new double[n, n + 1];
+
+            // 构建增广矩阵（增加数值保护）
+            for (int i = 0; i < n; i++)
+            {
+                for (int j = 0; j < n; j++)
+                {
+                    aug[i, j] = double.IsNaN(matrix[i, j]) ? EPS : matrix[i, j];
+                }
+                aug[i, n] = double.IsNaN(b[i]) ? 0.0 : b[i];
+            }
+
+            // 前向消元（增加主元选择的稳定性）
+            for (int i = 0; i < n; i++)
+            {
+                // 选主元（增加绝对值保护）
+                int pivot = i;
+                double maxVal = Math.Abs(aug[i, i]);
+                for (int j = i; j < n; j++)
+                {
+                    double val = Math.Abs(aug[j, i]);
+                    if (val > maxVal + EPS)
+                    {
+                        maxVal = val;
+                        pivot = j;
+                    }
+                }
+
+                // 交换行
+                if (pivot != i)
+                {
+                    for (int j = i; j <= n; j++)
+                    {
+                        (aug[i, j], aug[pivot, j]) = (aug[pivot, j], aug[i, j]);
+                    }
+                }
+
+                // 修复：主元为0时，增加极小值
+                if (Math.Abs(aug[i, i]) < EPS)
+                {
+                    aug[i, i] = EPS;
+                }
+
+                // 消元
+                for (int j = i + 1; j < n; j++)
+                {
+                    double factor = aug[j, i] / aug[i, i];
+                    // 数值保护：限制因子范围
+                    factor = MyMath.Clamp(factor, -1e6, 1e6);
+
+                    for (int k = i; k <= n; k++)
+                    {
+                        aug[j, k] -= factor * aug[i, k];
+                        // 数值保护
+                        if (double.IsNaN(aug[j, k]))
+                            aug[j, k] = 0.0;
+                    }
+                }
+            }
+
+            // 回代求解（增加数值保护）
+            var solution = new double[n];
+            for (int i = n - 1; i >= 0; i--)
+            {
+                double sum = 0.0;
+                for (int j = i + 1; j < n; j++)
+                {
+                    sum += aug[i, j] * solution[j];
+                }
+
+                // 修复：分母为0
+                double denom = aug[i, i];
+                if (Math.Abs(denom) < EPS)
+                    denom = EPS;
+
+                solution[i] = (aug[i, n] - sum) / denom;
+                // 数值保护：限制解的范围
+                solution[i] = MyMath.Clamp(solution[i], -1e6, 1e6);
+                if (double.IsNaN(solution[i]) || double.IsInfinity(solution[i]))
+                    solution[i] = 0.0;
+            }
+
+            return solution;
+        }
+
+        /// <summary>
+        /// 采样生成B样条曲线（增加有效性检查）
+        /// </summary>
+        private List<Vector64> SampleBSplineCurve(List<Vector64> controlPoints,
+                                                List<double> knots, int degree, int sampleCount)
+        {
+            var curvePoints = new List<Vector64>();
+            int c = controlPoints.Count;
+
+            // 修复：控制点不足时，返回线性插值
+            if (c < 2)
+            {
+                return LinearInterpolate(controlPoints, sampleCount);
+            }
+
+            // 均匀采样t∈[0,1]
+            for (int i = 0; i < sampleCount; i++)
+            {
+                double t = (double)i / (sampleCount - 1);
+                var basis = ComputeBSplineBasis(t, knots, degree, c);
+
+                // 加权计算采样点（增加数值保护）
+                Vector64 p = new Vector64();
+                double totalWeight = 0.0;
+                for (int j = 0; j < c; j++)
+                {
+                    if (!controlPoints[j].IsValid() || double.IsNaN(basis[j]))
+                        continue;
+
+                    p = p + controlPoints[j] * basis[j];
+                    totalWeight += basis[j];
+                }
+
+                // 归一化权重，避免偏移
+                if (totalWeight > EPS)
+                {
+                    p = p * (1.0 / totalWeight);
+                }
+
+                // 确保点有效
+                if (!p.IsValid())
+                {
+                    p = new Vector64(0, 0, 0);
+                }
+
+                curvePoints.Add(p);
+            }
+
+            return curvePoints;
+        }
+
+        /// <summary>
+        /// 降级方案：线性插值（当B样条拟合失败时）
+        /// </summary>
+        private List<Vector64> LinearInterpolate(List<Vector64> points, int sampleCount)
+        {
+            var result = new List<Vector64>();
+            if (points.Count < 2)
+            {
+                // 单点时，返回重复点
+                Vector64 p = points.Count > 0 ? points[0] : new Vector64(0, 0, 0);
+                for (int i = 0; i < sampleCount; i++)
+                    result.Add(p);
+                return result;
+            }
+
+            // 线性插值
+            double step = (double)(points.Count - 1) / (sampleCount - 1);
+            for (int i = 0; i < sampleCount; i++)
+            {
+                double t = i * step;
+                int idx = (int)Math.Floor(t);
+                if (idx >= points.Count - 1)
+                {
+                    result.Add(points.Last());
+                    continue;
+                }
+
+                double frac = t - idx;
+                Vector64 p1 = points[idx];
+                Vector64 p2 = points[idx + 1];
+                Vector64 p = new Vector64(
+                    p1.X + (p2.X - p1.X) * frac,
+                    p1.Y + (p2.Y - p1.Y) * frac,
+                    p1.Z + (p2.Z - p1.Z) * frac
+                );
+                result.Add(p);
+            }
+
+            return result;
+        }
+        #endregion
+    }
+    public class TrajectoryGenerator
+    {
+        // 数值稳定性阈值
+        private const double EPS = 1e-12;
+
+        /// <summary>
+        /// 生成点集的主趋势轨迹线
+        /// </summary>
+        /// <param name="originalPoints">原始空间点集</param>
+        /// <param name="trajectoryPointCount">轨迹线输出点数（默认50）</param>
+        /// <param name="linearityThreshold">线性判断阈值（0~1，越小越严格，默认0.1）</param>
+        /// <returns>代表点集走向的轨迹线点序列</returns>
+        /// <exception cref="ArgumentException">输入点集无效</exception>
+        public List<Vector64> GenerateTrajectory(List<Vector64> originalPoints,
+                                               int trajectoryPointCount = 50,
+                                               double linearityThreshold = 0.1)
+        {
+            // 步骤1：预处理点集（过滤无效点、去重、排序）
+            var processedPoints = PreprocessPoints(originalPoints);
+            if (processedPoints.Count < 2)
+                throw new ArgumentException("有效点数量不足，无法生成轨迹线（至少需要2个有效点）");
+
+            // 步骤2：判断点集的主趋势（线性/曲线）
+            bool isLinear = IsLinearTrend(processedPoints, linearityThreshold);
+
+            // 步骤3：根据趋势生成轨迹线
+            List<Vector64> trajectory;
+            if (isLinear)
+            {
+                // 线性走向：拟合空间直线，采样生成轨迹
+                trajectory = GenerateLinearTrajectory(processedPoints, trajectoryPointCount);
+            }
+            else
+            {
+                // 曲线走向：保留特征点+移动平均，生成平滑且走向一致的轨迹
+                trajectory = GenerateCurveTrajectory(processedPoints, trajectoryPointCount);
+            }
+
+            return trajectory;
+        }
+
+        #region 核心处理逻辑
+        /// <summary>
+        /// 点集预处理（过滤无效点、去重、按路径排序）
+        /// </summary>
+        private List<Vector64> PreprocessPoints(List<Vector64> originalPoints)
+        {
+            if (originalPoints == null) return new List<Vector64>();
+
+            // 1. 过滤无效点
+            var validPoints = originalPoints.Where(p => p.IsValid()).ToList();
+            if (validPoints.Count == 0) return new List<Vector64>();
+
+            // 2. 去重（距离小于EPS的点视为同一点）
+            var uniquePoints = new List<Vector64>();
+            foreach (var p in validPoints)
+            {
+                if (!uniquePoints.Any(up => up.Distance(p) < EPS))
+                {
+                    uniquePoints.Add(p);
+                }
+            }
+
+            // 3. 按路径排序（从第一个点开始，依次找最近点，模拟路径走向）
+            var sortedPoints = new List<Vector64> { uniquePoints[0] };
+            var remainingPoints = new List<Vector64>(uniquePoints.Skip(1));
+
+            while (remainingPoints.Count > 0)
+            {
+                var lastPoint = sortedPoints.Last();
+                // 找最近的点
+                var nearestPoint = remainingPoints.OrderBy(p => p.Distance(lastPoint)).First();
+                sortedPoints.Add(nearestPoint);
+                remainingPoints.Remove(nearestPoint);
+            }
+
+            return sortedPoints;
+        }
+
+        /// <summary>
+        /// 判断点集是否为线性走向（核心：拟合直线后计算点到直线的平均距离）
+        /// </summary>
+        /// <param name="points">预处理后的点集</param>
+        /// <param name="threshold">线性阈值（0~1，平均距离/总长度 < 阈值则为线性）</param>
+        /// <returns>是否为线性走向</returns>
+        private bool IsLinearTrend(List<Vector64> points, double threshold)
+        {
+            // 拟合空间直线（最小二乘法）
+            Vector64 lineStart, lineEnd;
+            FitLineLeastSquares(points, out lineStart, out lineEnd);
+
+            // 计算所有点到直线的平均距离
+            double totalDistance = 0;
+            foreach (var p in points)
+            {
+                totalDistance += DistanceToLine(p, lineStart, lineEnd);
+            }
+            double avgDistance = totalDistance / points.Count;
+
+            // 计算点集的总长度（首尾点距离）
+            double totalLength = lineStart.Distance(lineEnd);
+            if (totalLength < EPS) totalLength = 1; // 避免除以0
+
+            // 平均距离占总长度的比例 < 阈值 → 线性走向
+            return (avgDistance / totalLength) < MyMath.Clamp(threshold, 0.01, 1.0);
+        }
+
+        /// <summary>
+        /// 最小二乘法拟合空间直线（输出直线的首尾点）
+        /// </summary>
+        private void FitLineLeastSquares(List<Vector64> points, out Vector64 lineStart, out Vector64 lineEnd)
+        {
+            // 计算点集的中心点
+            double avgX = points.Average(p => p.X);
+            double avgY = points.Average(p => p.Y);
+            double avgZ = points.Average(p => p.Z);
+            Vector64 centroid = new Vector64(avgX, avgY, avgZ);
+
+            // 计算协方差矩阵
+            double xx = 0, xy = 0, xz = 0, yy = 0, yz = 0, zz = 0;
+            foreach (var p in points)
+            {
+                double dx = p.X - avgX;
+                double dy = p.Y - avgY;
+                double dz = p.Z - avgZ;
+                xx += dx * dx;
+                xy += dx * dy;
+                xz += dx * dz;
+                yy += dy * dy;
+                yz += dy * dz;
+                zz += dz * dz;
+            }
+
+            // 构造特征值问题（简化版：找主方向）
+            double[] eigenVector = new double[3];
+            // 计算主方向（简化版，适用于大多数场景）
+            double maxVariance = 0;
+            // X方向方差
+            if (xx > maxVariance) { maxVariance = xx; eigenVector = new[] { 1.0, 0.0, 0.0 }; }
+            // Y方向方差
+            if (yy > maxVariance) { maxVariance = yy; eigenVector = new[] { 0.0, 1.0, 0.0 }; }
+            // Z方向方差
+            if (zz > maxVariance) { maxVariance = zz; eigenVector = new[] { 0.0, 0.0, 1.0 }; }
+
+            // 构造直线的方向向量
+            Vector64 dir = new Vector64(eigenVector[0], eigenVector[1], eigenVector[2]).Normalize();
+            // 计算直线的首尾点（沿主方向延伸，覆盖所有点）
+            double maxDist = points.Max(p => Math.Abs((p - centroid).X * dir.X + (p - centroid).Y * dir.Y + (p - centroid).Z * dir.Z));
+
+            lineStart = centroid - dir * maxDist;
+            lineEnd = centroid + dir * maxDist;
+        }
+
+        /// <summary>
+        /// 计算点到空间直线的垂直距离
+        /// </summary>
+        private double DistanceToLine(Vector64 p, Vector64 lineStart, Vector64 lineEnd)
+        {
+            Vector64 v = lineEnd - lineStart;
+            Vector64 w = p - lineStart;
+
+            double c1 = w.X * v.X + w.Y * v.Y + w.Z * v.Z;
+            double c2 = v.X * v.X + v.Y * v.Y + v.Z * v.Z;
+            if (c2 < EPS) return w.Distance(new Vector64(0, 0, 0));
+
+            double b = c1 / c2;
+            Vector64 pb = lineStart + v * b;
+            return p.Distance(pb);
+        }
+
+        /// <summary>
+        /// 生成线性走向的轨迹线（沿拟合直线等间距采样）
+        /// </summary>
+        private List<Vector64> GenerateLinearTrajectory(List<Vector64> points, int pointCount)
+        {
+            // 重新拟合直线（确保覆盖所有点）
+            Vector64 lineStart, lineEnd;
+            FitLineLeastSquares(points, out lineStart, out lineEnd);
+
+            // 等间距采样
+            List<Vector64> trajectory = new List<Vector64>();
+            Vector64 dir = lineEnd - lineStart;
+            double step = 1.0 / (pointCount - 1);
+
+            for (int i = 0; i < pointCount; i++)
+            {
+                double t = i * step;
+                Vector64 p = lineStart + dir * t;
+                trajectory.Add(p);
+            }
+
+            return trajectory;
+        }
+
+        /// <summary>
+        /// 生成曲线走向的轨迹线（保留特征点+移动平均，保证走向）
+        /// </summary>
+        private List<Vector64> GenerateCurveTrajectory(List<Vector64> points, int pointCount)
+        {
+            // 步骤1：提取关键特征点（道格拉斯-普克算法，保留曲线走向）
+            var keyPoints = DouglasPeucker(points, 0, points.Count - 1, GetAdaptiveThreshold(points));
+            if (keyPoints.Count < 2) keyPoints = points;
+
+            // 步骤2：移动平均平滑（避免毛刺，保留走向）
+            var smoothedKeyPoints = MovingAverageSmooth(keyPoints, windowSize: 3);
+
+            // 步骤3：等间距插值生成指定数量的轨迹点
+            return InterpolateCurve(smoothedKeyPoints, pointCount);
+        }
+
+        /// <summary>
+        /// 道格拉斯-普克算法提取关键特征点（保留曲线走向，删除冗余点）
+        /// </summary>
+        private List<Vector64> DouglasPeucker(List<Vector64> points, int startIdx, int endIdx, double threshold)
+        {
+            double maxDist = 0;
+            int maxIdx = startIdx + 1;
+
+            Vector64 start = points[startIdx];
+            Vector64 end = points[endIdx];
+
+            // 找距离线段最远的点
+            for (int i = startIdx + 1; i < endIdx; i++)
+            {
+                double dist = DistanceToLine(points[i], start, end);
+                if (dist > maxDist)
+                {
+                    maxDist = dist;
+                    maxIdx = i;
+                }
+            }
+
+            // 递归保留特征点
+            if (maxDist > threshold)
+            {
+                var left = DouglasPeucker(points, startIdx, maxIdx, threshold);
+                var right = DouglasPeucker(points, maxIdx, endIdx, threshold);
+                return left.Take(left.Count - 1).Concat(right).ToList();
+            }
+            else
+            {
+                return new List<Vector64> { start, end };
+            }
+        }
+
+        /// <summary>
+        /// 自适应计算道格拉斯-普克阈值（基于点集密度）
+        /// </summary>
+        private double GetAdaptiveThreshold(List<Vector64> points)
+        {
+            // 计算点集的平均间距
+            double totalDist = 0;
+            for (int i = 1; i < points.Count; i++)
+            {
+                totalDist += points[i].Distance(points[i - 1]);
+            }
+            double avgDist = totalDist / (points.Count - 1);
+            // 阈值=平均间距的1/2，保证保留核心特征
+            return avgDist * 0.5;
+        }
+
+        /// <summary>
+        /// 移动平均平滑（保留走向，消除小毛刺）
+        /// </summary>
+        private List<Vector64> MovingAverageSmooth(List<Vector64> points, int windowSize)
+        {
+            if (points.Count <= windowSize) return points;
+
+            var smoothed = new List<Vector64>();
+            // 首尾点保留
+            smoothed.Add(points[0]);
+
+            // 中间点移动平均
+            for (int i = windowSize / 2; i < points.Count - windowSize / 2; i++)
+            {
+                double sumX = 0, sumY = 0, sumZ = 0;
+                int count = 0;
+                for (int j = i - windowSize / 2; j <= i + windowSize / 2; j++)
+                {
+                    sumX += points[j].X;
+                    sumY += points[j].Y;
+                    sumZ += points[j].Z;
+                    count++;
+                }
+                smoothed.Add(new Vector64(sumX / count, sumY / count, sumZ / count));
+            }
+
+            // 尾点保留
+            smoothed.Add(points.Last());
+            return smoothed;
+        }
+
+        /// <summary>
+        /// 曲线插值（等间距采样，保证轨迹点数量）
+        /// </summary>
+        private List<Vector64> InterpolateCurve(List<Vector64> keyPoints, int pointCount)
+        {
+            // 计算关键特征点的累计长度
+            var cumLength = new List<double> { 0 };
+            double totalLength = 0;
+            for (int i = 1; i < keyPoints.Count; i++)
+            {
+                totalLength += keyPoints[i].Distance(keyPoints[i - 1]);
+                cumLength.Add(totalLength);
+            }
+
+            // 等间距采样
+            List<Vector64> trajectory = new List<Vector64>();
+            double step = totalLength / (pointCount - 1);
+
+            for (int i = 0; i < pointCount; i++)
+            {
+                double targetLength = i * step;
+                // 找到目标长度所在的线段
+                int segIdx = 0;
+                for (int j = 1; j < cumLength.Count; j++)
+                {
+                    if (cumLength[j] >= targetLength)
+                    {
+                        segIdx = j - 1;
+                        break;
+                    }
+                }
+
+                // 插值计算当前点
+                if (segIdx >= keyPoints.Count - 1)
+                {
+                    trajectory.Add(keyPoints.Last());
+                }
+                else
+                {
+                    double segLen = cumLength[segIdx + 1] - cumLength[segIdx];
+                    double t = segLen < EPS ? 0 : (targetLength - cumLength[segIdx]) / segLen;
+                    Vector64 p1 = keyPoints[segIdx];
+                    Vector64 p2 = keyPoints[segIdx + 1];
+                    Vector64 interpolated = new Vector64(
+                        p1.X + (p2.X - p1.X) * t,
+                        p1.Y + (p2.Y - p1.Y) * t,
+                        p1.Z + (p2.Z - p1.Z) * t
+                    );
+                    trajectory.Add(interpolated);
+                }
+            }
+
+            return trajectory;
+        }
+        #endregion
+    }
+    public class CurveExtensionCalculator
+    {
+        private const double EPS = 1e-12; // 数值稳定性阈值
+
+        /// <summary>
+        /// 计算空间曲线的前后延长点（各1个）
+        /// </summary>
+        /// <param name="curvePoints">原始曲线点集（已按曲线顺序排序，≥5个有效点）</param>
+        /// <param name="extensionRatio">延长距离比例（基于末端平均间距，默认1.0）</param>
+        /// <param name="frontExtensionPoint">输出：前端延长点（起点向前）</param>
+        /// <param name="backExtensionPoint">输出：后端延长点（终点向后）</param>
+        /// <exception cref="ArgumentException">输入点集无效</exception>
+        public void CalculateExtensionPoints(List<Vector64> curvePoints,
+                                            out Vector64 frontExtensionPoint,
+                                            out Vector64 backExtensionPoint,
+                                            double extensionRatio = 1.0)
+        {
+            // 步骤1：预处理点集（过滤无效点、校验数量）
+            var processedPoints = PreprocessCurvePoints(curvePoints);
+            if (processedPoints.Count < 5)
+                throw new ArgumentException("曲线点集需包含至少5个有效点");
+
+            // 步骤2：计算自适应延长距离（基于末端点间距）
+            double extensionDistance = CalculateAdaptiveExtensionDistance(processedPoints, extensionRatio);
+
+            // 步骤3：计算前端延长点（起点向前）
+            frontExtensionPoint = CalculateFrontExtensionPoint(processedPoints, extensionDistance);
+
+            // 步骤4：计算后端延长点（终点向后）
+            backExtensionPoint = CalculateBackExtensionPoint(processedPoints,   extensionDistance);
+        }
+
+        #region 核心计算逻辑
+        /// <summary>
+        /// 曲线点集预处理（过滤无效点、去重、校验顺序）
+        /// </summary>
+        private List<Vector64> PreprocessCurvePoints(List<Vector64> curvePoints)
+        {
+            if (curvePoints == null) return new List<Vector64>();
+
+            // 1. 过滤无效点
+            var validPoints = curvePoints.Where(p => p.IsValid()).ToList();
+            if (validPoints.Count == 0) return new List<Vector64>();
+
+            // 2. 去重（距离小于EPS的点视为同一点）
+            var uniquePoints = new List<Vector64>();
+            foreach (var p in validPoints)
+            {
+                if (!uniquePoints.Any(up => up.Distance(p) < EPS))
+                {
+                    uniquePoints.Add(p);
+                }
+            }
+
+            return uniquePoints;
+        }
+
+        /// <summary>
+        /// 计算自适应延长距离（基于末端3个点的平均间距）
+        /// </summary>
+        private double CalculateAdaptiveExtensionDistance(List<Vector64> processedPoints, double extensionRatio)
+        {
+            // 前端平均间距（前3个点）
+            double frontAvgDist = 0;
+            for (int i = 1; i < 3; i++)
+            {
+                frontAvgDist += processedPoints[i].Distance(processedPoints[i - 1]);
+            }
+            frontAvgDist /= 2;
+
+            // 后端平均间距（后3个点）
+            double backAvgDist = 0;
+            for (int i = processedPoints.Count - 2; i < processedPoints.Count; i++)
+            {
+                backAvgDist += processedPoints[i].Distance(processedPoints[i - 1]);
+            }
+            backAvgDist /= 2;
+
+            // 延长距离 = 平均间距 * 比例（保证≥EPS）
+            double avgDist = (frontAvgDist + backAvgDist) / 2;
+            return Math.Max(avgDist * MyMath.Clamp(extensionRatio, 0.1, 10.0), EPS);
+        }
+
+        /// <summary>
+        /// 计算前端延长点（起点向前，基于前3个点的切线趋势）
+        /// </summary>
+        private Vector64 CalculateFrontExtensionPoint(List<Vector64> processedPoints, double extensionDistance)
+        {
+            // 取前3个点，拟合局部切线方向
+            Vector64 p0 = processedPoints[0];
+            Vector64 p1 = processedPoints[1];
+            Vector64 p2 = processedPoints[2];
+
+            // 计算前两个向量
+            Vector64 v1 = p1 - p0;
+            Vector64 v2 = p2 - p1;
+
+            // 拟合前端切线方向（加权平均，更贴近起点）
+            Vector64 frontDir = (v1 * 2 + v2).Normalize(); // v1权重更高，保证方向贴合起点
+
+            // 前端延长点 = 起点 - 切线方向 * 延长距离（向前延长）
+            Vector64 frontExtension = p0 - frontDir * extensionDistance;
+
+            return frontExtension;
+        }
+
+        /// <summary>
+        /// 计算后端延长点（终点向后，基于后3个点的切线趋势）
+        /// </summary>
+        private Vector64 CalculateBackExtensionPoint(List<Vector64> processedPoints, double extensionDistance)
+        {
+            // 取后3个点，拟合局部切线方向
+            Vector64 pn_2 = processedPoints[processedPoints.Count - 3];
+            Vector64 pn_1 = processedPoints[processedPoints.Count - 2];
+            Vector64 pn = processedPoints[processedPoints.Count - 1];
+
+            // 计算后两个向量
+            Vector64 vn_2 = pn_1 - pn_2;
+            Vector64 vn_1 = pn - pn_1;
+
+            // 拟合后端切线方向（加权平均，更贴近终点）
+            Vector64 backDir = (vn_2 + vn_1 * 2).Normalize(); // vn_1权重更高，保证方向贴合终点
+
+            // 后端延长点 = 终点 + 切线方向 * 延长距离（向后延长）
+            Vector64 backExtension = pn + backDir * extensionDistance;
+
+            return backExtension;
+        }
+        #endregion
+        
+    }
+    
     public class C3DLine : C3DObjectBase
     {       
         public List<Vector64> points = new List<Vector64>();        
@@ -6382,6 +8453,10 @@ namespace DataCollection
             }
         }
         
+        [TypeConverter(typeof(ExpandableObjectConverter))]
+        [CategoryAttribute("Arrow"), DisplayNameAttribute("Arrow3D Style")]        
+        public Arrow3D Arrow { get; set; }=new Arrow3D(new Vector64(),new Vector64());
+
         public Color GetColor(double v) 
         {
             if ( EnableColorLevel ) return ColorScale.GetColor(v);
@@ -6393,7 +8468,8 @@ namespace DataCollection
         {
             get { return lineStyle.Width; }
             set { lineStyle.Width = value;RenderMode = RenderingUpdateMode.Redraw; }
-        }        
+        }
+        
         /*
         [CategoryAttribute("DOT"), DisplayNameAttribute("Show Dot")]
         public bool IsShowDot { get; set; } = false;
@@ -6464,6 +8540,31 @@ namespace DataCollection
             maxy += offy;
             maxz += offz;
         }
+
+
+        public C3DLine toSmoothLine(double smoothFactor = 0.8,int sampleCount = 100 )
+        {
+            C3DLine line = new C3DLine(Name);
+
+            var curveProcessor = new CurveSimplifierFitter();
+
+            // 3. 配置参数（极端参数测试）
+            double simplifyThreshold = 0.15; // 精简阈值
+            // 4. 一键完成：精简+拟合
+            List<Vector64> simplifiedPoints;
+            var smoothCurve = curveProcessor.SimplifyAndFit(
+                points,
+                simplifyThreshold,
+                smoothFactor,
+                sampleCount,
+                out simplifiedPoints
+            );
+            line.AddPoint(smoothCurve);
+            line.UpdateRange();
+            smoothCurve.Clear();
+            return line;
+        }
+
         /// <summary>
         /// 简化点，将直线上冗余点去掉
         /// </summary>
@@ -6720,7 +8821,9 @@ namespace DataCollection
                     {
                         for(int i=0;i<count;i++)
                         {
-                            AddPoint(Vector64.Parse(AscIIProfile.ReadLine(sr), 4));
+                            string text = AscIIProfile.ReadLine(sr);
+                            if(text != null && text.Length > 1)
+                                AddPoint(Vector64.Parse(text, 4));
                         }
                     }
                 }
@@ -6767,6 +8870,10 @@ namespace DataCollection
                     br.Write(p.V);
                 }
                 _ColorScale.WriteBinary(br);
+
+                //added 2025-12-26
+                Arrow.Save(br);
+
                 return true;
             }
             catch (Exception e)
@@ -6796,6 +8903,9 @@ namespace DataCollection
                     points.Add(new Vector64(x,y,z,v));
                 }
                 ColorScale.LoadBinary(br);
+                
+                Arrow.Load(br);//added 2025-12-26
+
                 UpdateRange();
                 return true;
             }
@@ -6846,7 +8956,7 @@ namespace DataCollection
             line.points.Clear();
 
             //采样间隔
-            double step = GetLength() / (ptNum - 1);
+            double step = GetLength(3) / (ptNum - 1);
 
             //第1点
             line.AddPoint(points[0]);
@@ -7231,7 +9341,7 @@ namespace DataCollection
             }
         }
 
-        public double GetLength(int index = -1)
+        public double CreateLenthes(int index = -1)
         {
             if (points.Count < 1) return 0;
 
@@ -7245,29 +9355,42 @@ namespace DataCollection
 
         public double Length
         {
-            get { return GetLength(); }
+            get { return GetLength(3); }
+        }
+        public double Length2D
+        {
+            get { return GetLength(2); }
         }
 
-        public double GetLength(List<Vector64> pp, int index = -1)
+        public double GetLength(int dimension)
         {
-            if (index == 0) return 0;
-            int end = pp.Count - 1;
-            if (index >= 0) end = index;
-
+            if (Count < 2) return 0;
             Vector32 p1, p2;
-            double sum = 0, len;
-            for (int i = 1; i <= end; i++)
+            double sum = 0, len = 0;
+            for (int i = 0; i <Count-1; i++)
             {
-                p1 = pp[i - 1];
-                p2 = pp[i];
-                len = Math.Sqrt((p1.x - p2.x) * (p1.x - p2.x) +
+                p1 = points[i];
+                p2 = points[i + 1];
+                if (dimension == 3)
+                {
+                    len = Math.Sqrt((p1.x - p2.x) * (p1.x - p2.x) +
                             (p1.y - p2.y) * (p1.y - p2.y) +
                             (p1.z - p2.z) * (p1.z - p2.z));
+                }
+                else if (dimension == 2)
+                {
+                    len = Math.Sqrt((p1.x - p2.x) * (p1.x - p2.x) +
+                            (p1.y - p2.y) * (p1.y - p2.y) );
+                }
+                else if (dimension == 1)
+                {
+                    len = Math.Sqrt((p1.x - p2.x) * (p1.x - p2.x));
+                }
                 sum += len;
             }
             return sum;
         }
-
+        
         /*
          public C3DLine Smooth()
          {
@@ -7849,9 +9972,343 @@ namespace DataCollection
         }
         
     }//Cone
-    public class Arrow3D : Cone
+    /// <summary>
+    /// 三维箭头生成器（含PLY导出）
+    /// </summary>
+    [TypeConverter(typeof(ExpandableObjectConverter))]
+    public class Arrow3D
     {
+        public Vector64 Start = new Vector64();
+        public Vector64 End = new Vector64();
+        
+        ArrowStyle _ArrowStyle = ArrowStyle.Right;
+        [CategoryAttribute("Arrow"), DisplayNameAttribute("Style")]
+        [Editor(typeof(ArrowStyleEditor), typeof(UITypeEditor)), TypeConverter(typeof(ArrowStyleConverter))]
+        public ArrowStyle arrowStyle
+        {
+            get { return _ArrowStyle; }
+            set { _ArrowStyle = value;}
+        }
+        
+        [CategoryAttribute("Arrow"), DisplayNameAttribute("Color")]
+        public Color Color { get; set; } = Color.Black;
 
+        // 箭头核心参数（可自定义）
+        [Category("Arrow"), DisplayName("HeadLengthRatio")]
+        public double _arrowHeadLengthRatio { get; set; } = 0.3;    // 箭头头部长度占总长度比例
+        [Category("Arrow"), DisplayName("HeadWidthRatio")]
+        public double _arrowHeadWidthRatio { get; set; } = 0.12;    // 箭头头部宽度占总长度比例
+        [Category("Arrow"), DisplayName("ShaftRadiusRatio")]
+        public double _arrowShaftRadiusRatio { get; set; } = 0.01;  // 箭头杆半径占总长度比例
+        [Category("Arrow"), DisplayName("SideCount")]
+        public int _sideCount { get; set; } = 8;                    // 侧面数量（≥3）
+
+        [Category("Arrow"), DisplayName("延长点距倍数")]
+        public double drawExtentScale { get; set; } = 1.0;
+
+        public bool Save(BinaryWriter wr)
+        {
+            wr.Write(Start.X); wr.Write(Start.Y); wr.Write(Start.Z);
+            wr.Write(End.X); wr.Write(End.Y); wr.Write(End.Z);
+            wr.Write((int)_ArrowStyle);
+            wr.Write(Color.ToArgb());
+            wr.Write(_arrowHeadLengthRatio);
+            wr.Write(_arrowHeadWidthRatio);
+            wr.Write(_arrowShaftRadiusRatio);            
+            wr.Write(drawExtentScale);
+            wr.Write(_sideCount);
+            return true;
+        }
+        public bool Load(BinaryReader br)
+        {
+            double x = br.ReadDouble();
+            double y = br.ReadDouble();
+            double z = br.ReadDouble();
+            Start = new Vector64(x,y,z);
+            x = br.ReadDouble();
+            y = br.ReadDouble();
+            z = br.ReadDouble();
+            End = new Vector64(x, y, z);
+            _ArrowStyle = (ArrowStyle)br.ReadInt32();
+            Color = Color.FromArgb(br.ReadInt32());
+            _arrowHeadLengthRatio = br.ReadDouble();
+            _arrowHeadWidthRatio = br.ReadDouble();
+            _arrowShaftRadiusRatio = br.ReadDouble();
+            drawExtentScale = br.ReadDouble();
+            _sideCount = br.ReadInt32();
+
+            return true;
+        }
+        /// <summary>
+        /// 构造函数（新增侧面数量参数）
+        /// </summary>
+        /// <param name="sideCount">侧面数量（≥3，默认8）</param>
+        /// <param name="headLengthRatio">头部长度比例（0.1-0.3）</param>
+        /// <param name="headWidthRatio">头部宽度比例（0.1-0.2）</param>
+        /// <param name="shaftRadiusRatio">杆半径比例（0.02-0.05）</param>
+        public Arrow3D(Vector64 start, Vector64 end,
+                                int sideCount = 8,
+                                double headLengthRatio = 0.3,
+                                double headWidthRatio = 0.12,
+                                double shaftRadiusRatio = 0.01)
+        {
+            Start = start; End = end;
+            // 强制保证侧面数量≥3
+            _sideCount = sideCount < 3 ? 3 : sideCount;
+            _arrowHeadLengthRatio = headLengthRatio;
+            _arrowHeadWidthRatio = headWidthRatio;
+            _arrowShaftRadiusRatio = shaftRadiusRatio;
+        }
+
+        /// <summary>
+        /// 生成可配置侧面数量的圆润三维箭头
+        /// </summary>
+        public TriangleObj GenerateSmoothArrow()
+        {
+            Vector64 startPoint = Start, endPoint = End;
+            TriangleObj tri = new TriangleObj();
+
+            // 基础校验// throw new ArgumentException("起点和终点不能重合！");
+            if (Math.Abs((startPoint - endPoint).Length) < 1e-6)
+            {
+                return tri;
+            } 
+
+            // ===================== 步骤1：计算基础向量和参数 =====================
+            Vector64 dirVector = endPoint - startPoint; // 从起点到终点的方向向量
+            double totalLength = dirVector.Length;   // 箭头总长度
+            Vector64 dirUnit = Vector64.Normalize(dirVector); // 单位方向向量
+
+            // 箭头关键参数（基于总长度计算）
+            double arrowHeadLength = totalLength * _arrowHeadLengthRatio; // 箭头头部长度
+            double arrowHeadWidth = totalLength * _arrowHeadWidthRatio;   // 箭头头部宽度
+            double shaftRadius = totalLength * _arrowShaftRadiusRatio;    // 箭头杆半径
+
+            // 箭头头部基准点（从终点向起点回退头部长度）
+            Vector64 headBasePoint = endPoint - (dirUnit * arrowHeadLength);
+
+            // ===================== 步骤2：生成正交基向量（确保圆周均分） =====================
+            Vector64 orthoVec1, orthoVec2;
+            CreateOrthonormalBasis(dirUnit, out orthoVec1, out orthoVec2);
+
+            // ===================== 步骤3：动态生成圆周顶点（核心：按侧面数量均分） =====================
+            List<Vector64> shaftStartVertices = new List<Vector64>(); // 箭头杆起点圆周顶点
+            List<Vector64> shaftEndVertices = new List<Vector64>();   // 箭头杆终点圆周顶点
+            List<Vector64> headSideVertices = new List<Vector64>();   // 箭头头部侧点
+
+            // 按侧面数量均分圆周（角度步长 = 2π / 侧面数）
+            double angleStep = 2 * Math.PI / _sideCount;
+            for (int i = 0; i < _sideCount; i++)
+            {
+                double angle = i * angleStep;
+                // 计算当前角度的单位圆周坐标（cosθ, sinθ）
+                double cosA = Math.Cos(angle);
+                double sinA = Math.Sin(angle);
+
+                // --- 生成箭头杆顶点 ---
+                // 起点圆周顶点（半径=shaftRadius）
+                Vector64 shaftStart = startPoint + (orthoVec1 * cosA * shaftRadius) + (orthoVec2 * sinA * shaftRadius);
+                shaftStartVertices.Add(shaftStart);
+                // 终点圆周顶点（半径=shaftRadius，位置在头部基准点）
+                Vector64 shaftEnd = headBasePoint + (orthoVec1 * cosA * shaftRadius) + (orthoVec2 * sinA * shaftRadius);
+                shaftEndVertices.Add(shaftEnd);
+
+                // --- 生成箭头头部侧点（半径更大，更圆润） ---
+                Vector64 headSide = headBasePoint + (orthoVec1 * cosA * arrowHeadWidth) + (orthoVec2 * sinA * arrowHeadWidth);
+                headSideVertices.Add(headSide);
+            }
+            
+            // ===================== 汇总所有顶点 =====================
+            // 1. 箭头杆起点顶点（sideCount个）
+            tri.AddPoints(shaftStartVertices);
+            // 2. 箭头杆终点顶点（sideCount个）
+            tri.AddPoints(shaftEndVertices);
+            // 3. 箭头头部尖点（1个）
+            tri.AddPoint(endPoint);
+            // 4. 箭头头部侧点（sideCount个）
+            tri.AddPoints(headSideVertices);
+
+            // ===================== 动态生成面（按侧面数量） =====================
+            int shaftStartCount = _sideCount;          // 杆起点顶点数
+            int shaftEndCount = _sideCount;            // 杆终点顶点数
+            int headTipIndex = shaftStartCount + shaftEndCount; // 尖点索引
+
+            // --- 1. 箭头杆的侧面（每个侧面拆分为2个三角面） ---
+            for (int i = 0; i < _sideCount; i++)
+            {
+                int nextI = (i + 1) % _sideCount; // 下一个顶点索引（循环）
+
+                // 当前杆起点顶点索引
+                int sStartI = i;
+                // 当前杆终点顶点索引
+                int sEndI = shaftStartCount + i;
+                // 下一个杆起点顶点索引
+                int sStartNext = nextI;
+                // 下一个杆终点顶点索引
+                int sEndNext = shaftStartCount + nextI;
+
+                // 生成两个三角面（逆时针顺序）
+                tri.AddTriangleIndex(sStartI, sEndI, sEndNext);
+                tri.AddTriangleIndex(sStartI, sEndNext, sStartNext);
+            }
+
+            // --- 2. 箭头头部的三角面（尖点指向侧点） ---
+            for (int i = 0; i < _sideCount; i++)
+            {
+                int nextI = (i + 1) % _sideCount;
+                // 头部侧点索引
+                int headSideI = headTipIndex + 1 + i;
+                int headSideNext = headTipIndex + 1 + nextI;
+
+                // 尖点 → 当前侧点 → 下一个侧点
+                tri.AddTriangleIndex( headTipIndex, headSideI, headSideNext );
+            }
+
+            // --- 3. 箭头头部与杆的过渡面 ---
+            for (int i = 0; i < _sideCount; i++)
+            {
+                int nextI = (i + 1) % _sideCount;
+                // 杆终点顶点索引
+                int sEndI = shaftStartCount + i;
+                int sEndNext = shaftStartCount + nextI;
+                // 头部侧点索引
+                int headSideI = headTipIndex + 1 + i;
+                int headSideNext = headTipIndex + 1 + nextI;
+
+                // 过渡面（三角面）
+                tri.AddTriangleIndex( sEndI, headSideI, headSideNext );
+                tri.AddTriangleIndex(sEndI, headSideNext, sEndNext );
+            }
+            tri.color = ConvertColor.Convert(Color);
+            shaftStartVertices.Clear();
+            shaftEndVertices.Clear();
+            headSideVertices.Clear();
+
+            return tri;
+        }
+
+
+
+        /// <summary>
+        /// 生成正交基向量（确保箭头在三维空间对称）
+        /// </summary>
+        private void CreateOrthonormalBasis(Vector64 dir, out Vector64 ortho1, out Vector64 ortho2)
+        {
+            // 找到第一个垂直向量
+            if (Math.Abs(dir.X) > Math.Abs(dir.Y))
+                ortho1 = new Vector64(-dir.Z, 0, dir.X);
+            else
+                ortho1 = new Vector64(0, dir.Z, -dir.Y);
+
+            ortho1 = Vector64.Normalize(ortho1);
+            // 第二个垂直向量 = 方向向量 × 第一个垂直向量
+            ortho2 = Vector64.Normalize(Vector64.Cross(dir, ortho1));
+        }
+
+        /// <summary>
+        /// 生成三维箭头的所有顶点和面
+        /// </summary>        
+        /// <param name="vertices">输出：箭头所有顶点</param>
+        /// <param name="faces">输出：箭头所有面（顶点索引列表）</param>
+        //public TriangleObj GenerateArrow()
+        //{
+        //    Vector64 p1 = Start;
+        //    Vector64 p2 = End;
+        //    // 异常处理：P1和P2重合
+        //    if (Math.Abs(p1.X - p2.X) < 1e-6 && Math.Abs(p1.Y - p2.Y) < 1e-6 && Math.Abs(p1.Z - p2.Z) < 1e-6)
+        //    {
+        //        throw new ArgumentException("起点P1和终点P2不能重合！");
+        //    }
+
+        //    // 步骤1：计算基础向量
+        //    Vector64 vecP1P2 = p2 - p1;
+        //    double totalLength = Math.Sqrt(vecP1P2.X * vecP1P2.X + vecP1P2.Y * vecP1P2.Y + vecP1P2.Z * vecP1P2.Z);
+        //    Vector64 u = Vector64.Normalize(vecP1P2); // P1-P2单位方向向量
+
+        //    // 步骤2：生成垂直向量（用于箭头杆和头部的宽度）
+        //    Vector64 v = GetPerpendicularVector(u);  // 垂直向量1
+        //    Vector64 w = Vector64.Normalize(Vector64.Cross(u, v)); // 垂直向量2（与v正交）
+
+        //    // 步骤3：计算关键参数
+        //    double arrowHeadLength = totalLength * _arrowLengthRatio; // 箭头头部长度
+        //    double arrowHeadWidth = arrowHeadLength * _arrowWidthRatio; // 箭头头部宽度
+        //    double shaftRadius = totalLength * _shaftRadiusRatio; // 箭头杆半径
+        //    Vector64 arrowBasePoint = new Vector64( // 箭头头部基准点（P2往P1回退）
+        //        p2.X - u.X * arrowHeadLength,
+        //        p2.Y - u.Y * arrowHeadLength,
+        //        p2.Z - u.Z * arrowHeadLength
+        //    );
+
+        //    // ===================== 生成顶点 =====================
+        //    // 1. 箭头杆顶点（4个：P1的上下左右）
+        //    Vector64 shaftP1_1 = new Vector64(p1.X + v.X * shaftRadius, p1.Y + v.Y * shaftRadius, p1.Z + v.Z * shaftRadius);
+        //    Vector64 shaftP1_2 = new Vector64(p1.X + w.X * shaftRadius, p1.Y + w.Y * shaftRadius, p1.Z + w.Z * shaftRadius);
+        //    Vector64 shaftP1_3 = new Vector64(p1.X - v.X * shaftRadius, p1.Y - v.Y * shaftRadius, p1.Z - v.Z * shaftRadius);
+        //    Vector64 shaftP1_4 = new Vector64(p1.X - w.X * shaftRadius, p1.Y - w.Y * shaftRadius, p1.Z - w.Z * shaftRadius);
+
+        //    // 2. 箭头杆末端顶点（箭头基准点的上下左右）
+        //    Vector64 shaftP2_1 = new Vector64(arrowBasePoint.X + v.X * shaftRadius, arrowBasePoint.Y + v.Y * shaftRadius, arrowBasePoint.Z + v.Z * shaftRadius);
+        //    Vector64 shaftP2_2 = new Vector64(arrowBasePoint.X + w.X * shaftRadius, arrowBasePoint.Y + w.Y * shaftRadius, arrowBasePoint.Z + w.Z * shaftRadius);
+        //    Vector64 shaftP2_3 = new Vector64(arrowBasePoint.X - v.X * shaftRadius, arrowBasePoint.Y - v.Y * shaftRadius, arrowBasePoint.Z - v.Z * shaftRadius);
+        //    Vector64 shaftP2_4 = new Vector64(arrowBasePoint.X - w.X * shaftRadius, arrowBasePoint.Y - w.Y * shaftRadius, arrowBasePoint.Z - w.Z * shaftRadius);
+
+        //    // 3. 箭头头部顶点（4个：尖点+3个基准侧点）
+        //    Vector64 arrowTip = p2; // 箭头尖点
+        //    Vector64 arrowHead_1 = new Vector64(arrowBasePoint.X + v.X * arrowHeadWidth, arrowBasePoint.Y + v.Y * arrowHeadWidth, arrowBasePoint.Z + v.Z * arrowHeadWidth);
+        //    Vector64 arrowHead_2 = new Vector64(arrowBasePoint.X + w.X * arrowHeadWidth, arrowBasePoint.Y + w.Y * arrowHeadWidth, arrowBasePoint.Z + w.Z * arrowHeadWidth);
+        //    Vector64 arrowHead_3 = new Vector64(arrowBasePoint.X - v.X * arrowHeadWidth, arrowBasePoint.Y - v.Y * arrowHeadWidth, arrowBasePoint.Z - v.Z * arrowHeadWidth);
+        //    Vector64 arrowHead_4 = new Vector64(arrowBasePoint.X - w.X * arrowHeadWidth, arrowBasePoint.Y - w.Y * arrowHeadWidth, arrowBasePoint.Z - w.Z * arrowHeadWidth);
+
+        //    TriangleObj tri = new TriangleObj();
+        //    // 0-3：箭头杆起点顶点
+        //    tri.AddPoint(shaftP1_1); tri.AddPoint(shaftP1_2); tri.AddPoint(shaftP1_3); tri.AddPoint(shaftP1_4);
+        //    // 4-7：箭头杆末端顶点
+        //    tri.AddPoint(shaftP2_1); tri.AddPoint(shaftP2_2); tri.AddPoint(shaftP2_3); tri.AddPoint(shaftP2_4);
+        //    // 添加所有顶点到列表（按顺序，索引从0开始）
+        //    tri.AddPoint(arrowTip); // 8：箭头尖点    
+        //    // 9-12：箭头头部侧点
+        //    tri.AddPoint(arrowHead_1); tri.AddPoint(arrowHead_2); tri.AddPoint(shaftP2_3); tri.AddPoint(arrowHead_4);
+        //    // ===================== 生成面（三角面/四边形面） =====================
+        //    // 1. 箭头杆的4个矩形面（拆分为三角面）
+        //    // 面1：shaftP1_1(0) → shaftP2_1(4) → shaftP2_2(5) → shaftP1_2(1)
+        //    tri.AddTriangleIndex( 0,4,5);
+        //    tri.AddTriangleIndex( 0, 5, 1 );
+        //    // 面2：shaftP1_2(1) → shaftP2_2(5) → shaftP2_3(6) → shaftP1_3(2)
+        //    tri.AddTriangleIndex(1, 5, 6 );
+        //    tri.AddTriangleIndex(1, 6, 2 );
+        //    // 面3：shaftP1_3(2) → shaftP2_3(6) → shaftP2_4(7) → shaftP1_4(3)
+        //    tri.AddTriangleIndex(2, 6, 7 );
+        //    tri.AddTriangleIndex( 2, 7, 3 );
+        //    // 面4：shaftP1_4(3) → shaftP2_4(7) → shaftP2_1(4) → shaftP1_1(0)
+        //    tri.AddTriangleIndex( 3, 7, 4 );
+        //    tri.AddTriangleIndex(3, 4, 0 );
+        //    // 2. 箭头头部的4个三角面（尖点指向各侧点）
+        //    tri.AddTriangleIndex(8, 9, 10 );  // 尖点(8) → arrowHead_1(9) → arrowHead_2(10)
+        //    tri.AddTriangleIndex(8, 10, 11 ); // 尖点(8) → arrowHead_2(10) → arrowHead_3(11)
+        //    tri.AddTriangleIndex(8, 11, 12 ); // 尖点(8) → arrowHead_3(11) → arrowHead_4(12)
+        //    tri.AddTriangleIndex(8, 12, 9 );  // 尖点(8) → arrowHead_4(12) → arrowHead_1(9)
+
+        //    // 3. 箭头头部与杆连接的过渡面（4个三角面）
+        //    tri.AddTriangleIndex(4, 9, 5 );   // shaftP2_1(4) → arrowHead_1(9) → shaftP2_2(5)
+        //    tri.AddTriangleIndex(5, 10, 6 );  // shaftP2_2(5) → arrowHead_2(10) → shaftP2_3(6)
+        //    tri.AddTriangleIndex(6, 11, 7 );  // shaftP2_3(6) → arrowHead_3(11) → shaftP2_4(7)
+        //    tri.AddTriangleIndex(7, 12, 4 );  // shaftP2_4(7) → arrowHead_4(12) → shaftP2_1(4)
+        //    tri.UpdateRange();
+        //    return tri;
+        //}
+
+        /// <summary>
+        /// 生成垂直于指定单位向量的固定向量
+        /// </summary>
+        private Vector64 GetPerpendicularVector(Vector64 u)
+        {
+            if (Math.Abs(u.X) < 0.9)
+                return Vector64.Normalize(Vector64.Cross(u, new Vector64(1, 0, 0)));
+            else if (Math.Abs(u.Y) < 0.9)
+                return Vector64.Normalize(Vector64.Cross(u, new Vector64(0, 1, 0)));
+            else
+                return Vector64.Normalize(Vector64.Cross(u, new Vector64(0, 0, 1)));
+        }
     }
     public class Arrow2D : Symbol3D
     {
@@ -7957,6 +10414,207 @@ namespace DataCollection
             HeadFace.AddPoint(aptArrowHead[2]);
             HeadFace.AddTriangleIndex(0, 1, 2);
         }//void Create()
+
+        /// <summary>
+        /// 计算从P1指向P2的箭头三个顶点坐标（所有点共面）
+        /// </summary>
+        /// <param name="p1">起点</param>
+        /// <param name="p2">终点（箭头尖点）</param>
+        /// <param name="arrowLengthRatio">箭头长度占总长度的比例（默认1/8）</param>
+        /// <param name="arrowWidthRatio">箭头宽度占箭头长度的比例（默认1/2）</param>
+        /// <returns>箭头三个顶点：[0]尖点(P2)、[1]左侧点、[2]右侧点</returns>
+        public Vector64[] CalculateArrowPoints(double arrowLengthRatio = 0.125,
+                                               double arrowWidthRatio = 0.5)
+        {
+            Vector64 p1 = Start, p2 = End;
+            // 异常处理：P1和P2重合时返回空
+            if (p1.X == p2.X && p1.Y == p2.Y && p1.Z == p2.Z)
+            {
+                throw new ArgumentException("起点P1和终点P2不能重合！");
+            }
+
+            // 步骤1：计算P1到P2的方向向量和总长度
+            Vector64 vecP1P2 = p2 - p1;
+            double totalLength = Math.Sqrt(vecP1P2.X * vecP1P2.X + vecP1P2.Y * vecP1P2.Y + vecP1P2.Z * vecP1P2.Z);
+
+            // 步骤2：计算箭头头部的长度（总长度 * 比例）
+            double arrowLength = totalLength * arrowLengthRatio;
+            if (arrowLength < 0.01) // 避免箭头过短
+            {
+                arrowLength = 0.01;
+            }
+
+            // 步骤3：归一化P1-P2方向向量（单位向量）
+            Vector64 u = new Vector64(
+                vecP1P2.X / totalLength,
+                vecP1P2.Y / totalLength,
+                vecP1P2.Z / totalLength
+            );
+
+            // 步骤4：生成唯一的垂直向量（确保所有点共面的核心）
+            // 选择固定参考点（优先X轴，否则Y轴，最后Z轴），生成垂直于P1-P2的向量
+            Vector64 refVec = GetPerpendicularVector(u);
+            // 归一化垂直向量
+            double refVecLen = Math.Sqrt(refVec.X * refVec.X + refVec.Y * refVec.Y + refVec.Z * refVec.Z);
+            Vector64 v = new Vector64(
+                refVec.X / refVecLen,
+                refVec.Y / refVecLen,
+                refVec.Z / refVecLen
+            );
+
+            // 步骤5：计算箭头头部的基准点（P2 往 P1 方向回退 arrowLength 距离）
+            Vector64 basePoint = new Vector64(
+                p2.X - u.X * arrowLength,
+                p2.Y - u.Y * arrowLength,
+                p2.Z - u.Z * arrowLength
+            );
+
+            // 步骤6：计算箭头的两个侧点（仅在v向量的正负方向偏移，确保共面）
+            double arrowWidth = arrowLength * arrowWidthRatio;
+            // 左侧点：基准点 + v向量 * 宽度
+            Vector64 leftPoint = new Vector64(
+                basePoint.X + v.X * arrowWidth,
+                basePoint.Y + v.Y * arrowWidth,
+                basePoint.Z + v.Z * arrowWidth
+            );
+            // 右侧点：基准点 - v向量 * 宽度（与左侧点对称，共面）
+            Vector64 rightPoint = new Vector64(
+                basePoint.X - v.X * arrowWidth,
+                basePoint.Y - v.Y * arrowWidth,
+                basePoint.Z - v.Z * arrowWidth
+            );
+
+            // 验证所有点是否共面（可选，用于调试）
+            bool isCoplanar = CheckCoplanar(p1, p2, leftPoint, rightPoint);
+            if (!isCoplanar)
+            {
+                throw new Exception("计算异常：箭头顶点未共面！");
+            }
+
+            // 返回箭头三个顶点：左侧点、尖点(P2),右侧点
+            return new[] { leftPoint, p2, rightPoint };
+        }
+
+        /// <summary>
+        /// 生成垂直于指定单位向量的固定向量（确保共面）
+        /// </summary>
+        private Vector64 GetPerpendicularVector(Vector64 u)
+        {
+            // 优先选择与X轴垂直的向量，若u接近X轴则选Y轴，否则选Z轴
+            if (Math.Abs(u.X) < 0.9)
+            {
+                // 与X轴单位向量(1,0,0)叉乘，得到垂直于u的向量
+                return Vector64.Cross(u, new Vector64(1, 0, 0));
+            }
+            else if (Math.Abs(u.Y) < 0.9)
+            {
+                // 与Y轴单位向量(0,1,0)叉乘
+                return Vector64.Cross(u, new Vector64(0, 1, 0));
+            }
+            else
+            {
+                // 与Z轴单位向量(0,0,1)叉乘
+                return Vector64.Cross(u, new Vector64(0, 0, 1));
+            }
+        }
+
+        /// <summary>
+        /// 验证四个点是否共面（核心：混合积为0）
+        /// </summary>
+        private bool CheckCoplanar(Vector64 p1, Vector64 p2, Vector64 p3, Vector64 p4)
+        {
+            // 构造三个向量：p1p2, p1p3, p1p4
+            Vector64 vec1 = p2 - p1;
+            Vector64 vec2 = p3 - p1;
+            Vector64 vec3 = p4 - p1;
+
+            // 混合积 = vec1 · (vec2 × vec3)，若混合积为0则共面
+            Vector64 cross = Vector64.Cross(vec2, vec3);
+            double dot = Vector64.Dot(vec1, cross);
+
+            // 考虑浮点误差，允许极小的偏差
+            return Math.Abs(dot) < 1e-6;
+        }
+        ///// <summary>
+        ///// 计算从P1指向P2的箭头三个顶点坐标
+        ///// </summary>
+        ///// <param name="p1">起点</param>
+        ///// <param name="p2">终点（箭头尖点）</param>
+        ///// <param name="arrowLengthRatio">箭头长度占总长度的比例（默认1/8）</param>
+        ///// <param name="arrowWidthRatio">箭头宽度占箭头长度的比例（默认1/2）</param>
+        ///// <returns>箭头三个顶点：[0]尖点(P2)、[1]左侧点、[2]右侧点</returns>
+        //public Vector64[] CalculateFlatArrowPoints(double arrowLengthRatio = 0.125,
+        //                                                  double arrowWidthRatio = 0.5)
+        //{
+        //    Vector64 p1 = Start;
+        //    Vector64 p2 = End;
+        //    // 异常处理：P1和P2重合时返回空
+        //    if (p1.X == p2.X && p1.Y == p2.Y && p1.Z == p2.Z)
+        //    {
+        //        return null;
+        //    }
+
+        //    // 步骤1：计算P1到P2的方向向量和总长度
+        //    double dx = p2.X - p1.X;
+        //    double dy = p2.Y - p1.Y;
+        //    double dz = p2.Z - p1.Z;
+        //    double totalLength = Math.Sqrt(dx * dx + dy * dy + dz * dz);
+
+        //    // 步骤2：计算箭头头部的长度（总长度 * 比例）
+        //    double arrowLength = totalLength * arrowLengthRatio;
+        //    if (arrowLength < 0.01) // 避免箭头过短
+        //    {
+        //        arrowLength = 0.01;
+        //    }
+
+        //    // 步骤3：归一化方向向量（单位向量）
+        //    double ux = dx / totalLength;
+        //    double uy = dy / totalLength;
+        //    double uz = dz / totalLength;
+
+        //    // 步骤4：构造垂直于方向向量的两个正交向量（用于确定箭头两侧）
+        //    // 先找一个不平行于方向向量的参考向量（优先X轴，否则Y轴）
+        //    double rx = Math.Abs(ux) > 0.1 ? 0 : 1;
+        //    double ry = Math.Abs(uy) > 0.1 ? 0 : 1;
+        //    double rz = Math.Abs(uz) > 0.1 ? 0 : 1;
+
+        //    // 第一个垂直向量：参考向量 × 方向向量
+        //    double vx = ry * uz - rz * uy;
+        //    double vy = rz * ux - rx * uz;
+        //    double vz = rx * uy - ry * ux;
+        //    // 归一化垂直向量
+        //    double vLen = Math.Sqrt(vx * vx + vy * vy + vz * vz);
+        //    vx /= vLen;
+        //    vy /= vLen;
+        //    vz /= vLen;
+
+        //    // 第二个垂直向量：方向向量 × 第一个垂直向量（正交）
+        //    double wx = uy * vz - uz * vy;
+        //    double wy = uz * vx - ux * vz;
+        //    double wz = ux * vy - uy * vx;
+
+        //    // 步骤5：计算箭头头部的基准点（P2 往 P1 方向回退 arrowLength 距离）
+        //    double baseX = p2.X - ux * arrowLength;
+        //    double baseY = p2.Y - uy * arrowLength;
+        //    double baseZ = p2.Z - uz * arrowLength;
+
+        //    // 步骤6：计算箭头的两个侧点（基准点向两侧偏移）
+        //    double arrowWidth = arrowLength * arrowWidthRatio;
+        //    // 左侧点
+        //    Vector64 leftPoint = new Vector64(
+        //        baseX + vx * arrowWidth,
+        //        baseY + vy * arrowWidth,
+        //        baseZ + vz * arrowWidth  );
+        //    // 右侧点
+        //    Vector64 rightPoint = new Vector64(
+        //        baseX + wx * arrowWidth,
+        //        baseY + wy * arrowWidth,
+        //        baseZ + wz * arrowWidth  );
+
+        //    // 返回箭头三个顶点：尖点(P2)、左侧点、右侧点
+        //    return new[] { leftPoint, p2, rightPoint };
+        //}
+
     }//Cone
 
     public class CCylinder : TriangleObj

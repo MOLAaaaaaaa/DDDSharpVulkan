@@ -5,6 +5,8 @@ using System.Text;
 using System.Threading.Tasks;
 using System.IO;
 using System.Text.RegularExpressions;
+using System.Security.Cryptography;
+
 namespace DataCollection
 {
     public class stringRow
@@ -151,8 +153,19 @@ namespace DataCollection
         public int PageNum = 500;
         public int Pages = 0;
         public long TotalRows = 0;
+        public long MaxLinesCount = 1000000; 
         public List<FilePage> PageData = new List<FilePage>();
-        
+
+        public Encoding encoding = Encoding.UTF8;
+        public int CodePage 
+        { 
+            get { return encoding.CodePage; }
+            set
+            {
+                encoding = Encoding.GetEncoding(value);
+            }
+        }
+       
         public bool IsNullValue(double value, double nullvalue, double zero = 0.0001)
         {
             if (value == nullvalue) return true;
@@ -183,6 +196,9 @@ namespace DataCollection
             Titles.Clear();
             PageData.Clear();
             pData.Clear();
+            Pages = 0;
+            TotalRows = 0;
+            errMessage = "";
         }
 
        /// <summary>
@@ -204,8 +220,8 @@ namespace DataCollection
 
                 FilePage page = new FilePage(0,PageNum);
                 page.StartStreamPosition = 0;
-
-                BinaryReader sr = new BinaryReader(new FileStream(path, FileMode.Open, FileAccess.Read), Encoding.Default);
+                                
+                BinaryReader sr = new BinaryReader(new FileStream(path, FileMode.Open, FileAccess.Read), encoding);
                 long filelength = sr.BaseStream.Length;
 
                 long lastPos = 0; //上一行位置
@@ -223,7 +239,7 @@ namespace DataCollection
                     //换行符号"\r\n"
                     if ( bytes.Count > 0 ) 
                     {
-                        line = Encoding.Default.GetString(bytes.ToArray());
+                        line = encoding.GetString(bytes.ToArray());
                         
                         bytes.Clear();
 
@@ -288,7 +304,8 @@ namespace DataCollection
         {           
             byte c;
             List<byte> bytes = new List<byte>();
-            string text;
+            string text;            
+
             while(sr.BaseStream.CanRead)
             {
                 c = sr.ReadByte();
@@ -296,7 +313,7 @@ namespace DataCollection
                 {
                     if (bytes.Count > 0)
                     {
-                        text = Encoding.Default.GetString(bytes.ToArray());
+                        text = encoding.GetString(bytes.ToArray());
                         bytes.Clear();
                         return text;
                     }
@@ -305,20 +322,17 @@ namespace DataCollection
             }
             return null;
         }
-        public virtual bool Load(string path)
+        public virtual bool Load(string path, Encoding _encoding = null )
         {
-            try
-            {
-                StreamReader sr = new StreamReader(new FileStream(path, FileMode.Open, FileAccess.Read), Encoding.Default);
-                bool ret = Load(sr);
-                sr.Close();
-                return ret;
-            }
-            catch (Exception ex)
-            {
-                errMessage = ex.Message;
-                return false;
-            }
+            StreamReader sr;
+            
+            if (_encoding != null) encoding = _encoding;
+            sr = new StreamReader(new FileStream(path, FileMode.Open, FileAccess.Read),
+                      encoding);
+
+            bool ret = Load(sr);
+            sr.Close();
+            return ret;
         }
         /// <summary>
         /// 载入数据，一次性载入全部，按文本方式读取
@@ -336,6 +350,11 @@ namespace DataCollection
                 while ((line = sr.ReadLine()) != null)
                 {
                     if (line.Length < 1) continue;//空行
+                    if (line.Length > 50000)  //识别错误
+                    {
+                        errMessage = "not a recognized format or not a recognized Encoding.";
+                        return false;
+                    }
                     line = line.Trim(trimChars);
                     if (line.Length < 1) continue;
                     if (IsRemarkedLine(line)) continue; //注释行
@@ -354,6 +373,11 @@ namespace DataCollection
                     if (i % Interval == 0) ProcessLine(line);
 
                     i++;
+                    if (i >= MaxLinesCount) 
+                    {
+                        errMessage = "Exceed max lines count as " + MaxLinesCount;
+                        break; 
+                    }
                 }
                 
                 TotalRows = pData.Count;
@@ -372,13 +396,13 @@ namespace DataCollection
             if ( TotalRows < 1 ) return false;
             try 
             {
-                StreamWriter sr = new StreamWriter(new FileStream(path, FileMode.Create, FileAccess.Write), Encoding.Default);
+                StreamWriter sr = new StreamWriter(new FileStream(path, FileMode.Create, FileAccess.Write), encoding);
                 stringRow rows;
                 string line;
 
                 if( Titles.Count > 0 )
                 {
-                    if( !IsDefaultTitle() )
+                   // if( !IsDefaultTitle() )
                     {
                         line = "";
                         for(int i=0;i<Titles.Count;i++)
@@ -469,7 +493,7 @@ namespace DataCollection
             Titles.Clear();
             string[] ss = line.Split(splitChars, StringSplitOptions.RemoveEmptyEntries);
 
-            string colstring = "Column ";
+            string colstring = "Column_";
             char c = 'A';
             for (int i = 0; i < ss.Length; i++)
             {
@@ -527,6 +551,7 @@ namespace DataCollection
         public int ProcessLine(string line)
         {
             string[] ss = line.Split(splitChars, StringSplitOptions.RemoveEmptyEntries);
+            //string[] ss = line.Split(splitChars);
             stringRow row = new stringRow();
             for (int i = 0; i < ss.Length; i++)
             {

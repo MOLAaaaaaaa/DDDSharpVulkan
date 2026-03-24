@@ -23,7 +23,7 @@ namespace DDDSharp
         {
             RegisterAndEncrypt.RegisterVerify reg = new RegisterAndEncrypt.RegisterVerify(C3DData.UserID);
             if ( reg.ReadFromRegister() )
-                LableAuthorization.Text = "this product had been Authorised to " + C3DData.UserID;
+                LableAuthorization.Text = "This product had been authorised to " + C3DData.UserID;
             else 
             {
                 Text = "About 3D Surfer --Unregistered version";
@@ -32,6 +32,8 @@ namespace DDDSharp
 
             LabelDevice.Text = C3DData.graphics3D.GetGraphicName();
             LabelEngine.Text = C3DData.graphics3D.engine.ToString();
+            VersionLabel.Text = "Version V" + C3DData.Version + ".";
+            VersionLabel.Text += "20260101";
         }
 
         private void button1_Click(object sender, EventArgs e)

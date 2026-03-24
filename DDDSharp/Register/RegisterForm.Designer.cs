@@ -54,7 +54,6 @@ namespace DDDSharp
             this.textBoxID.Location = new System.Drawing.Point(127, 29);
             this.textBoxID.Margin = new System.Windows.Forms.Padding(3, 4, 3, 4);
             this.textBoxID.Name = "textBoxID";
-            this.textBoxID.ReadOnly = true;
             this.textBoxID.Size = new System.Drawing.Size(242, 28);
             this.textBoxID.TabIndex = 1;
             // 
@@ -127,9 +126,9 @@ namespace DDDSharp
             this.label3.AutoSize = true;
             this.label3.Location = new System.Drawing.Point(39, 108);
             this.label3.Name = "label3";
-            this.label3.Size = new System.Drawing.Size(49, 19);
+            this.label3.Size = new System.Drawing.Size(79, 19);
             this.label3.TabIndex = 9;
-            this.label3.Text = "Name";
+            this.label3.Text = "Company";
             // 
             // RegisterForm
             // 

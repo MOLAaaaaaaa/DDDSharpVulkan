@@ -214,10 +214,12 @@ namespace Graphics3D
                 CVulkan.ReleaseBufferMemory(device, ref indexBufferMemory);
                 CVulkan.ReleaseBuffer(device, ref vertexBuffer);
                 CVulkan.ReleaseBufferMemory(device, ref vertexBufferMemory);
-                //CVulkan.ReleaseBufferMemory(device, ref textureImageMemory);
-                //CVulkan.ReleaseImage(device, ref textureImage);
-                //CVulkan.ReleaseImageView(device, ref textureImageView);
-                //CVulkan.ReleaseSampler(device, ref textureSampler);
+                
+                CVulkan.ReleaseBufferMemory(device, ref textureImageMemory);
+                CVulkan.ReleaseImage(device, ref textureImage);
+                CVulkan.ReleaseImageView(device, ref textureImageView);
+                CVulkan.ReleaseSampler(device, ref textureSampler);               
+                
                 if (textureBitmap != null)
                 {
                     textureBitmap.Dispose();
@@ -246,6 +248,10 @@ namespace Graphics3D
             CVulkan.ReleaseImage(device, ref textureImage);
             CVulkan.ReleaseBufferMemory(device, ref textureImageMemory);            
             CVulkan.ReleaseImageView(device, ref textureImageView);
+            textureSampler = null;
+            textureImage = null;
+            textureImageMemory = null;
+            textureImageView = null;
         }
         //deal with model matrix,translate,rotate,scale
         public override bool UpdateUniformBuffer()
@@ -476,11 +482,19 @@ namespace Graphics3D
         }
         static public void ReleaseBufferMemory(VkDevice _device, ref VkDeviceMemory memory)
         {
-            if (memory != null)
+            try 
             {
-                VulkanAPI.vkFreeMemory(_device, memory);
-                memory = null;
+                if (memory != null)
+                {
+                    VulkanAPI.vkFreeMemory(_device, memory);
+                    memory = null;
+                }
             }
+            catch(Exception ex) 
+            {
+                string messge = ex.Message;
+            }
+            
         }
         static public void ReleaseImage(VkDevice _device, ref VkImage image)
         {
@@ -713,9 +727,15 @@ namespace Graphics3D
         {
             string filename = obj as string;
             Bitmap bmp = LoadTexture(filename);
-            if (bmp == null) return false;
-            textureBitmap = bmp;
-            if (!CreateTextureImageContext()) return false;
+            if (bmp == null) return false;       
+            
+            if ( !CreateTextureImageContext(bmp)) 
+            {
+                bmp.Dispose();
+                return false;
+            }
+            bmp.Dispose();
+
             CModelDescriptor md = model as CModelDescriptor;
             md.ReleaseTextureContent();
             md.textureImage = textureImage;
@@ -735,16 +755,45 @@ namespace Graphics3D
             textureBitmap = null;
             bEnableTexture = enabled;
         }
-        private bool CreateTextureImageContext()
+        private bool CreateTextureImageContext(Bitmap bmp)
         {
-            if (textureBitmap != null)//texture enabled
+            ClearTextureImageContext();
+            try 
             {
-                if (!createTextureImage(out textureImage,out textureImageMemory)) return false;
-                if (!createTextureImageView()) return false;
-                if (!createTextureSampler()) return false;
-                return true;
+                if (bmp.Width > maxTextureImageSize)
+                {
+                    int width = maxTextureImageSize;
+                    int height = (int)(width * (double)bmp.Height / (double)bmp.Width);
+                    textureBitmap = ResizeImage(bmp, width, height);
+                }
+                else if (bmp.Height > maxTextureImageSize)
+                {
+                    int height = maxTextureImageSize;
+                    int width = (int)(height * (double)bmp.Width / (double)bmp.Height);
+                    textureBitmap = ResizeImage(bmp, width, height);
+                }
+                else
+                {
+                    textureBitmap = new Bitmap(bmp);
+                }
+
+                if (textureBitmap != null)//texture enabled
+                {
+                    if (!createTextureImage(out textureImage, out textureImageMemory)) return false;
+                    if (!createTextureImageView()) return false;
+                    if (!createTextureSampler()) return false;
+                    return true;
+                }
             }
-            return true;
+            catch(Exception ex) 
+            {
+                bEnableTexture = false;
+                if (textureBitmap != null) textureBitmap.Dispose();
+                textureBitmap = null;
+                errMessage = ex.Message;                
+                return false;
+            }
+            return false;
         }
         public override void VertexArray(Vertex3D[] vertices)
         {
@@ -939,9 +988,11 @@ namespace Graphics3D
 
 
         public override void DrawString(string text, Font font, Color color, float size,
-                                        Vector64 start, Vector64 direct,Vector64 up, 
+                                        Vector64 start, Vector64 direct,Vector64 up,                                        
                                         TextHorizontalAlignment horAlignment = TextHorizontalAlignment.Left, 
-                                        TextVerticalAlignment verAlignment = TextVerticalAlignment.Center)
+                                        TextVerticalAlignment verAlignment = TextVerticalAlignment.Center,
+                                        bool horizontalFlip = false,
+                                        bool verticalFlip = false)
         {
             PushMatrix();            
 
@@ -950,16 +1001,20 @@ namespace Graphics3D
             byte b = (byte)(color.B);
             Color backcolor = Color.FromArgb(0,r, g, b);
             BitmapString bm = new BitmapString(text, font, color, backcolor);
-
-            EnableTexture(true);
-            BindTexture(bm.Draw());
             
-            double width = text.Length * size * 0.1;
-            double height = width * textureBitmap.Height / (double)textureBitmap.Width;
+            EnableTexture(true);
+            Bitmap bmp = bm.Draw();
+            if (horizontalFlip) bmp.RotateFlip(RotateFlipType.Rotate180FlipX);
+            if (verticalFlip) bmp.RotateFlip(RotateFlipType.Rotate180FlipY);
+            
+            double width = bmp.Width * size * 0.01;
+            double height = width * bmp.Height / (double)bmp.Width;
+            BindTexture(bmp);            
+           
             //      |
-            //      p1-----p2
-            //      |      |
-            //      p0-----p3-->
+            //      p1(0,0)-----p2(1,0)
+            //      |            |
+            //      p0(0,1)-----p3(1,1)-->
             Vector64 p0, p1, p2, p3;
             if (verAlignment == TextVerticalAlignment.Top)
             {
@@ -1062,16 +1117,22 @@ namespace Graphics3D
         /// <param name="direct">字体顶端单位方向向量</param>        
         public override void DrawString(string text, Font font, Color color, 
                                         Vector64 start, Vector64 end, Vector64 direct,
-                                        Color transparent,
+                                        Color transparent,                                        
                                         TextHorizontalAlignment horAlignment = TextHorizontalAlignment.Left,
-                                        TextVerticalAlignment verAlignment = TextVerticalAlignment.Center )
+                                        TextVerticalAlignment verAlignment = TextVerticalAlignment.Center,
+                                        bool horizontalFlip = false,
+                                        bool verticalFlip = false)
         {
            
             PushMatrix();
             
             BitmapString bm = new BitmapString(text, font, color, transparent);
-            EnableTexture(true);                   
-            BindTexture( bm.Draw() );
+            EnableTexture(true);
+            Bitmap bmp = bm.Draw();
+            if (horizontalFlip) bmp.RotateFlip( RotateFlipType.Rotate180FlipX);
+            if (verticalFlip) bmp.RotateFlip(RotateFlipType.Rotate180FlipY);
+
+            BindTexture( bmp );            
 
             double width = start.Distance(end);
             double height = width * textureBitmap.Height / (double)textureBitmap.Width;
@@ -2107,33 +2168,41 @@ namespace Graphics3D
 
         public bool IsDeviceSupport()
         {
-            if (vkInstance == null)
+            try 
             {
-                if (!CreateVKInstance())
+                if (vkInstance == null)
                 {
+                    if (!CreateVKInstance())
+                    {
+                        return false;
+                    }
+                }
+
+                if (vulkanSurface == null)
+                {
+                    if (!createSurface())
+                    {
+                        return false;
+                    }
+                }
+
+                if (!pickPhysicalDevice())
+                {
+                    if (vkInstance != null)
+                    {
+                        VulkanAPI.vkDestroyInstance(vkInstance);
+                        vkInstance = null;
+                    }
                     return false;
                 }
-            }
 
-            if (vulkanSurface == null)
-            {
-                if (!createSurface())
-                {
-                    return false;
-                }
+                return true;
             }
-
-            if (!pickPhysicalDevice())
+            catch(Exception ex) 
             {
-                if (vkInstance != null)
-                {
-                    VulkanAPI.vkDestroyInstance(vkInstance);
-                    vkInstance = null;
-                }
+                errMessage = ex.Message;
                 return false;
-            }
-            
-            return true;
+            }            
         }
         private VkDebugReportCallbackEXT debugReportCallback;
         private vkDebugReportCallback debugReport;
@@ -3017,15 +3086,11 @@ namespace Graphics3D
         public override Bitmap LoadTexture(String fileName, bool flip = true,bool forceoftwo = false)
         {
             return base.LoadTexture(fileName,flip,forceoftwo);
-        }
-
+        }        
         public override int BindTexture(Bitmap bmp, DataCollection.TextureMagFilter mode = DataCollection.TextureMagFilter.GL_LINEAR)
         {
-            ClearTextureImageContext();
-            
-            textureBitmap = bmp;
             textureMode = mode;
-            if (CreateTextureImageContext()) return 1;
+            if (CreateTextureImageContext(bmp)) return 1;            
             else return 0;
             //MyTexture.maxTextureSize = GetMax2DTextureImageSize();
             //textureBitmap = MyTexture.CreateCompitableBitmap(bmp);
@@ -3326,7 +3391,7 @@ namespace Graphics3D
             return format;
         }
         private bool createTextureImage(out VkImage image,out VkDeviceMemory memory)
-        {
+        {            
             image = null;
             memory = null;
             if (textureBitmap == null)
@@ -5130,20 +5195,11 @@ namespace Graphics3D
         }
         public void ClearTextureImageContext()
         {
-            if (textureBitmap != null)
-            { 
-                textureBitmap.Dispose();
-                textureBitmap = null;
-            }
+            if (textureBitmap != null) { textureBitmap.Dispose(); textureBitmap = null; }
             //CVulkan.ReleaseSampler(device, ref textureSampler);
             CVulkan.ReleaseImage(device, ref textureImage);
-            //CVulkan.ReleaseBufferMemory(device, ref textureImageMemory);            
-            //CVulkan.ReleaseImageView(device, ref textureImageView);
-            
-            textureSampler = null;
-            textureImageMemory = null;
-            textureImageView = null;
-            //textureImage = null;
+            //CVulkan.ReleaseBufferMemory(device, ref textureImageMemory);
+            CVulkan.ReleaseImageView(device, ref textureImageView);
         }
         public void Clearup()
         {
@@ -5175,7 +5231,7 @@ namespace Graphics3D
                 VulkanAPI.vkFreeMemory(device, textureImageMemory);
                 textureImageMemory = null;
             }
-            if (descriptorSet != null)
+            if (descriptorSet != null) 
             {
                 VulkanAPI.vkFreeDescriptorSets(device, descriptorPool, new[] { descriptorSet });
                 descriptorSet = null;

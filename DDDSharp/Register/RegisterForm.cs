@@ -325,6 +325,7 @@ namespace DDDSharp
 
             RegisterVerify reg = new RegisterVerify(C3DData.UserID);
             reg.userid = C3DData.UserID;
+            reg.password = us.Password;
             if( !reg.CreateLicense(us.EncryptKey(us.Keyword)) )
             {
                 MessageBox.Show("registration failed." + reg.ErrMsg);

@@ -1,20 +1,212 @@
-﻿using System;
-using System.IO;
+﻿using GlmNet;
+using MathNet.Numerics.LinearAlgebra;
+using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using System.ComponentModel;
 using System.Drawing;
-using System.Security.Cryptography;
-using System.Globalization;
-using System.Xml;
-using GlmNet;
-using TextReaderWriter;
 using System.Drawing.Design;
+using System.Globalization;
+using System.IO;
+using System.Linq;
+using System.Numerics;
+using System.Security.Cryptography;
+using System.Text;
+using System.Threading.Tasks;
+using System.Xml;
+using TextReaderWriter;
 
 namespace DataCollection
 {
+    /// <summary>
+    /// 规则网格曲面投影计算工具类（修正版）
+    /// </summary>
+    public static class MeshSurfaceProjector
+    {
+        /// <summary>
+        /// 计算平面点(x,y)在规则网格曲面上的三维投影坐标（双线性插值）
+        /// 修正点：1. 逐行逐列提取网格坐标 2. 修正插值顶点/权重对应 3. 支持递增/递减网格 4. 增强异常处理
+        /// </summary>
+        /// <param name="grid">规则网格曲面的顶点数组，[行, 列] 对应Row×Col（行=Y维度，列=X维度）</param>
+        /// <param name="targetX">目标点平面X坐标</param>
+        /// <param name="targetY">目标点平面Y坐标</param>
+        /// <returns>投影后的三维坐标Vector64(x,y,z)</returns>
+        /// <exception cref="ArgumentNullException">网格数组为空</exception>
+        /// <exception cref="ArgumentException">网格行列数不合法</exception>
+        public static Vector64 ProjectToSurface(CMesh grid, Vector64 p2d)
+        {
+            double targetX = p2d.X, targetY = p2d.Y;
+            int rowCount = grid.nRow;
+            int colCount = grid.nCol;            
+
+            // 2. 提取所有网格顶点的X/Y坐标（逐行逐列）
+            double[,] gridX = new double[rowCount, colCount];
+            double[,] gridY = new double[rowCount, colCount];
+            double[,] gridZ = new double[rowCount, colCount];
+            for (int r = 0; r < rowCount; r++)
+            {
+                for (int c = 0; c < colCount; c++)
+                {
+                    gridX[r, c] = grid[r, c].X;
+                    gridY[r, c] = grid[r, c].Y;
+                    gridZ[r, c] = grid[r, c].Z;
+                }
+            }
+
+            // 3. 提取行列的X/Y轴坐标（规则网格：列X单调，行Y单调）
+            double[] colXAxis = GetAxisValues(gridX, isColAxis: true);  // 列X轴坐标（取第一行的X，规则网格所有行的列X一致）
+            double[] rowYAxis = GetAxisValues(gridY, isColAxis: false); // 行Y轴坐标（取第一列的Y，规则网格所有列的行Y一致）
+            if (colXAxis.Length != colCount || rowYAxis.Length != rowCount)
+                throw new InvalidOperationException("规则网格的列X/行Y轴坐标提取失败（非规则网格）");
+
+            // 4. 查找目标点所在的网格单元索引（支持递增/递减轴）
+            (int colIdx, bool isXIncreasing) = FindAxisIndex(colXAxis, targetX);
+            (int rowIdx, bool isYIncreasing) = FindAxisIndex(rowYAxis, targetY);
+
+            // 5. 边界钳位：确保索引在有效区间 [0, count-2]
+            colIdx = MyMath.Clamp(colIdx, 0, colCount - 2);
+            rowIdx = MyMath.Clamp(rowIdx, 0, rowCount - 2);
+
+            // 6. 获取当前网格单元的四个顶点（核心修正：顶点索引对应）
+            // 顶点定义：
+            // Q00: (rowIdx, colIdx)     左下/左上（取决于Y轴递增方向）
+            // Q01: (rowIdx, colIdx+1)   右下/右上
+            // Q10: (rowIdx+1, colIdx)   左上/左下
+            // Q11: (rowIdx+1, colIdx+1) 右上/右下
+            double x0 = colXAxis[colIdx];
+            double x1 = colXAxis[colIdx + 1];
+            double y0 = rowYAxis[rowIdx];
+            double y1 = rowYAxis[rowIdx + 1];
+
+            double z00 = gridZ[rowIdx, colIdx];
+            double z01 = gridZ[rowIdx, colIdx + 1];
+            double z10 = gridZ[rowIdx + 1, colIdx];
+            double z11 = gridZ[rowIdx + 1, colIdx + 1];
+
+            // 7. 计算双线性插值权重（修正：适配递增/递减轴）
+            double tx = CalculateWeight(targetX, x0, x1, isXIncreasing); // X方向权重 [0,1]
+            double ty = CalculateWeight(targetY, y0, y1, isYIncreasing); // Y方向权重 [0,1]
+            tx = double.IsNaN(tx) ? 0 : MyMath.Clamp(tx, 0, 1); // 限制权重范围，避免外插过度
+            ty = double.IsNaN(ty) ? 0 : MyMath.Clamp(ty, 0, 1);
+
+            // 8. 双线性插值计算Z值（核心修正：插值公式）
+            double zInterp = BilinearInterpolation(z00, z01, z10, z11, tx, ty);
+            double val = grid[rowIdx, colIdx].V;
+            // 9. 返回投影坐标（X/Y为目标点，Z为插值结果）
+            return new Vector64(targetX, targetY, zInterp,val);
+        }
+
+        #region 辅助方法（核心修正）
+        /// <summary>
+        /// 提取规则网格的轴坐标（列X轴/行Y轴）
+        /// </summary>
+        private static double[] GetAxisValues(double[,] gridVals, bool isColAxis)
+        {
+            int rowCount = gridVals.GetLength(0);
+            int colCount = gridVals.GetLength(1);
+            double[] axis = new double[isColAxis ? colCount : rowCount];
+
+            if (isColAxis)
+            {
+                // 列轴（X）：取第一行的所有列值（规则网格所有行的列值一致）
+                for (int c = 0; c < colCount; c++) axis[c] = gridVals[0, c];
+                // 验证所有行的列值一致（规则网格校验）
+                for (int r = 1; r < rowCount; r++)
+                {
+                    for (int c = 0; c < colCount; c++)
+                    {
+                        if (Math.Abs(gridVals[r, c] - axis[c]) > 1e-8)
+                            throw new ArgumentException("输入网格非规则网格（列轴值不统一）");
+                    }
+                }
+            }
+            else
+            {
+                // 行轴（Y）：取第一列的所有行值（规则网格所有列的行值一致）
+                for (int r = 0; r < rowCount; r++) axis[r] = gridVals[r, 0];
+                // 验证所有列的行值一致（规则网格校验）
+                for (int c = 1; c < colCount; c++)
+                {
+                    for (int r = 0; r < rowCount; r++)
+                    {
+                        if (Math.Abs(gridVals[r, c] - axis[r]) > 1e-8)
+                            throw new ArgumentException("输入网格非规则网格（行轴值不统一）");
+                    }
+                }
+            }
+            return axis;
+        }
+
+        /// <summary>
+        /// 查找目标值在轴坐标中的区间索引（支持递增/递减）
+        /// </summary>
+        private static (int index, bool isIncreasing) FindAxisIndex(double[] axis, double target)
+        {
+            int count = axis.Length;
+            if (count < 2) return (0, true);
+
+            // 判断轴递增/递减
+            bool isIncreasing = axis[1] > axis[0] + 1e-8;
+            bool isDecreasing = axis[1] < axis[0] - 1e-8;
+
+            // 线性查找区间（二分查找可优化效率）
+            int idx = 0;
+            if (isIncreasing)
+            {
+                for (int i = 0; i < count - 1; i++)
+                {
+                    if (target >= axis[i] && target <= axis[i + 1])
+                    {
+                        idx = i;
+                        break;
+                    }
+                    else if (target < axis[0]) { idx = 0; break; }
+                    else if (target > axis[count - 1]) { idx = count - 2; break; }
+                }
+            }
+            else if (isDecreasing)
+            {
+                for (int i = 0; i < count - 1; i++)
+                {
+                    if (target <= axis[i] && target >= axis[i + 1])
+                    {
+                        idx = i;
+                        break;
+                    }
+                    else if (target > axis[0]) { idx = 0; break; }
+                    else if (target < axis[count - 1]) { idx = count - 2; break; }
+                }
+            }
+            return (idx, isIncreasing);
+        }
+
+        /// <summary>
+        /// 计算插值权重（适配递增/递减轴）
+        /// </summary>
+        private static double CalculateWeight(double target, double val0, double val1, bool isIncreasing)
+        {
+            double delta = val1 - val0;
+            if (Math.Abs(delta) < 1e-10) return 0; // 轴值无变化，权重为0
+
+            double weight = isIncreasing
+                ? (target - val0) / delta
+                : (val0 - target) / delta;
+            return weight;
+        }
+
+        /// <summary>
+        /// 双线性插值核心公式（标准公式）
+        /// </summary>
+        private static double BilinearInterpolation(double z00, double z01, double z10, double z11, double tx, double ty)
+        {
+            // 步骤1：X方向插值（两行）
+            double zRow0 = z00 * (1 - tx) + z01 * tx; // 上/下行X插值
+            double zRow1 = z10 * (1 - tx) + z11 * tx; // 下/上行X插值
+            // 步骤2：Y方向插值（最终Z）
+            double zFinal = zRow0 * (1 - ty) + zRow1 * ty;
+            return zFinal;
+        }
+        #endregion
+    }
     //object based on triangles    
     public class CMesh : C3DObjectBase
     {
@@ -22,7 +214,35 @@ namespace DataCollection
         public int nCol = 0;
         public Vector64[] pData = null;
         public double xStep = 0;
-        public double yStep = 0;        
+        public double yStep = 0;
+
+        public struct IntersectionStruct 
+        {
+            public Vector64 P1;
+            public Vector64 P2;
+            public bool IsValid(int id) 
+            {
+                if (id == 1) 
+                { 
+                    if (double.IsNaN(P1.X) || double.IsNaN(P1.Y)|| double.IsNaN(P1.Z)) return false;
+                }
+                else //if (id == 1)
+                {
+                    if (double.IsNaN(P2.X) || double.IsNaN(P2.Y) || double.IsNaN(P2.Z)) return false;
+                }
+                return true;
+            }
+            public IntersectionStruct(Vector64 _p1, Vector64 _p2)
+            {
+                P1 = _p1;
+                P2 = _p2;
+            }
+        }
+        int[,] IntersectionIndices = null;
+        public List<IntersectionStruct> CoordIntersections =new List<IntersectionStruct>();
+        public List<Vector64> Boundaries = new List<Vector64>();
+        public ClockDirection Clockwise = ClockDirection.None;
+        public List<int>[] EdgeTables = null;     
         //contour lines
         public MarchingCubes2D marchingCube = new MarchingCubes2D();
 
@@ -128,6 +348,20 @@ namespace DataCollection
             return tex;
         }
 
+        public override bool TopographyBlank(CMesh mesh)
+        {
+            for(int i=0;i<pData.Length;i++)            
+            {
+                Vector64 p = pData[i];
+                double z = mesh.GetValue(p.X, p.Y);
+                if (p.Z > mesh.GetValue(p.X, p.Y))
+                {
+                    p.V = double.NaN;
+                    pData[i] = p;                   
+                }
+            }
+            return true;
+        }
         public bool IsColorScaleUpdated()
         {
             if (EnableColorLevel)
@@ -158,7 +392,8 @@ namespace DataCollection
         public CMesh()
         {
             type = ShapeEnum.Mesh;
-            Version = 1.3f; //2022-9-27 updated
+            Version = 1.3f; //2022-9-27 updated            
+            InitEdgeTable();
         }
         public CMesh(int row, int col)
         {
@@ -167,7 +402,380 @@ namespace DataCollection
             type = ShapeEnum.Mesh;           
             pData = new Vector64[row * col];
             Version = 1.3f; //2022-9-27 updated
+            InitEdgeTable();
         }
+
+        /// <summary>
+        /// 2----6----3
+        /// |         |
+        /// 5         7
+        /// |         |
+        /// 0----4----1
+        /// </summary>
+        void InitEdgeTable()
+        {
+            EdgeTables = new List<int>[16];
+            EdgeTables[0] = new List<int> { };
+            EdgeTables[1] = new List<int> { 0, 4, 5 };
+            EdgeTables[2] = new List<int> { 1, 7, 4 };
+            EdgeTables[3] = new List<int> { 0, 1, 7, 5 };
+            EdgeTables[4] = new List<int> { 2, 5, 6 };
+            EdgeTables[5] = new List<int> { 2,0, 4, 6 };
+            EdgeTables[6] = new List<int> { 1, 7, 6, 2, 5, 4 };
+            EdgeTables[7] = new List<int> { 0, 1, 7, 6, 2 };
+            EdgeTables[8] = new List<int> { 3, 6, 7 };
+            EdgeTables[9] = new List<int> { 0, 4, 7, 3, 6, 5 };
+            EdgeTables[10] = new List<int> { 1, 3, 6, 4 };
+            EdgeTables[11] = new List<int> { 1, 3, 6, 5, 0 };
+            EdgeTables[12] = new List<int> { 3, 2, 5, 7 };
+            EdgeTables[13] = new List<int> { 2, 0, 4, 7, 3 };
+            EdgeTables[14] = new List<int> { 3, 2, 5, 4, 1 };
+            EdgeTables[15] = new List<int> { 0, 1, 3, 2 };
+        }
+        /// <summary>
+        /// 2----6----3
+        /// |         |
+        /// 5         7
+        /// |         |
+        /// 0----4----1
+        /// <summary>
+        /// 获取节点或边的坐标
+        /// </summary>
+        /// <param name="irow"></param>
+        /// <param name="icol"></param>
+        /// <param name="id">0---7</param>
+        /// <returns></returns>
+        public Vector64 GetEdgePoint(int irow,int icol,int id)
+        {
+            Vector64 p = new Vector64(double.NaN, double.NaN, double.NaN, double.NaN);
+            Vector64 p1, p2;
+            switch (id)
+            {
+                case 0: return this[irow, icol];
+                case 1: return this[irow, icol+1];
+                case 2: return this[irow+1, icol];
+                case 3: return this[irow+1, icol+1];
+                case 4:
+                    if (IsHaveIntersection(irow, icol,AxisEnum.xAxis)) p = CoordIntersections[IntersectionIndices[irow, icol]].P1;
+                    else //没有找到交点就取中点
+                    {
+                        p1 = this[irow, icol];
+                        p2 = this[irow, icol + 1];
+                        p = (p1 + p2) / 2;
+                        if (!IsBlanked(p1)) p.V = p1.V;
+                        else p.V = p2.V;
+                    }
+                    break;
+                case 5:
+                    if (IsHaveIntersection(irow, icol, AxisEnum.yAxis)) p = CoordIntersections[IntersectionIndices[irow, icol]].P2;
+                    else 
+                    {
+                        p1 = this[irow, icol];
+                        p2 = this[irow+1, icol];
+                        p = (p1 + p2) / 2;
+                        if (!IsBlanked(p1)) p.V = p1.V;
+                        else p.V = p2.V;
+                    }
+                    break;
+                case 6:
+                    if (IsHaveIntersection(irow + 1, icol, AxisEnum.xAxis)) p = CoordIntersections[IntersectionIndices[irow + 1, icol]].P1;
+                    else 
+                    {
+                        p1 = this[irow+1, icol];
+                        p2 = this[irow+1, icol + 1];
+                        p = (p1 + p2) / 2;
+                        if (!IsBlanked(p1)) p.V = p1.V;
+                        else p.V = p2.V;
+                    }
+                    break;
+                case 7:
+                    if (IsHaveIntersection(irow, icol+1, AxisEnum.yAxis ))p = CoordIntersections[IntersectionIndices[irow, icol+1]].P2;
+                    else
+                    {
+                        p1 = this[irow, icol+1];
+                        p2 = this[irow + 1, icol + 1];
+                        p = (p1 + p2) / 2;
+                        if (!IsBlanked(p1)) p.V = p1.V;
+                        else p.V = p2.V;
+                    }
+                    break;
+                default: break;
+            }
+            if ( !IsValidPoint(p,4) && !IsInRange(p.X, p.Y) )
+                throw new Exception("no valid points");
+            
+            return p;
+        }
+        /// <summary>
+        /// 获取网格单元Mesh水平连接三角形点
+        /// </summary>
+        /// <param name="irow"></param>
+        /// <param name="icol"></param>
+        /// <param name="itype"></param>
+        /// <returns></returns>
+        public List<Vector64> GetCellHorizEdgeTablePoints(int irow,int icol,int itype)
+        {
+            List<Vector64> edgepoints = new List<Vector64>();
+            List<int> indices = EdgeTables[itype];
+            for (int i = 0; i < indices.Count; i++ )
+            {
+                edgepoints.Add(GetEdgePoint(irow, icol, indices[i]));
+            }
+            return edgepoints;
+        }
+        /// <summary>
+        /// 获取网格单元Mesh垂向连接三角形点
+        /// </summary>
+        /// <param name="irow"></param>
+        /// <param name="icol"></param>
+        /// <param name="itype"></param>
+        /// <returns></returns>
+        public List<Vector64> GetCellVerticalEdgeTablePoints(int irow, int icol, int itype)
+        {
+            List<Vector64> edgepoints = new List<Vector64>();
+            List<int> indices = EdgeTables[itype];
+            for (int i = 0; i < indices.Count; i++)
+            {
+                edgepoints.Add(GetEdgePoint(irow, icol, indices[i]));
+
+            }
+            return edgepoints;
+        }
+        bool GetGridState(int irow, int icol,int id)
+        {
+            if (id == 0) return IsBlanked(this[irow, icol]);
+            else if (id == 1) return IsBlanked(this[irow, icol+1]);
+            else if (id == 2) return IsBlanked(this[irow+1, icol]);
+            else if (id == 3) return IsBlanked(this[irow+1, icol+1]);
+            return false;
+        }
+        public int GetGridType(int irow, int icol)
+        {
+            int iType = 0;
+            for (int k = 0; k < 4; k++)
+            {
+                if ( !GetGridState(irow,icol,k) )
+                {
+                    iType |= (1 << k);
+                }
+            }
+            return iType;
+        }
+        /// <summary>
+        /// 直线与平面求交,得到直线在曲面上的投影
+        /// </summary>
+        /// <param name="line"></param>
+        /// <returns></returns>
+        public C3DLine CreateIntersectionLine(CLine line)
+        {
+            double step = Math.Min(xStep, yStep) * 0.5;
+            int nstep = (int)(line.Length / step + 0.1);
+            step = line.Length / nstep;
+            C3DLine line3d = new C3DLine();
+            for ( int i = 0; i < nstep; i++ )
+            {
+                Vector64 p = line.p1 + (line.p2 - line.p1) * (double) i / (nstep - 1);
+                double z = GetValue(p.X, p.Y);
+                p.Z = z;
+                line3d.AddPoint(p);
+            }
+            return line3d;
+        }
+        /// <summary>
+        /// 转换成Mesh的三角形连接
+        /// </summary>
+        /// <returns></returns>
+        public TriangleObj toBlankedTriangleObj()
+        {
+            TriangleObj obj = new TriangleObj(Name);
+            obj.CopyHeaderFrom(this);
+            int count = 0;
+            if (EdgeTables == null) InitEdgeTable();
+            for (int i = 0; i < nRow-1; i++)
+            {
+                for (int j = 0; j < nCol-1; j++)
+                {
+                    int itype = GetGridType(i, j);
+                    if (itype == 0) continue;
+                    List<Vector64> edgepoints = GetCellHorizEdgeTablePoints(i, j, itype);
+                    if (edgepoints.Count == 0) continue;
+                    count = obj.points.Count;
+
+                    if (edgepoints.Count == 3) 
+                    {                        
+                        obj.AddTriangleIndex(count, count+1, count+2);
+                    }
+                    else if (edgepoints.Count == 4)
+                    {                        
+                        obj.AddTriangleIndex(count, count + 1, count + 2);
+                        obj.AddTriangleIndex(count, count + 2, count + 3);
+                    }
+                    else if (edgepoints.Count == 5)
+                    {
+                        obj.AddTriangleIndex(count, count + 1, count + 2);
+                        obj.AddTriangleIndex(count, count + 2, count + 3);
+                        obj.AddTriangleIndex(count, count + 3, count + 4);
+                    }
+                    else if (edgepoints.Count == 6)
+                    {
+                        obj.AddTriangleIndex(count, count + 1, count + 5);
+                        obj.AddTriangleIndex(count + 1, count + 2, count + 5);
+                        obj.AddTriangleIndex(count + 2, count + 4, count + 5);
+                        obj.AddTriangleIndex(count + 2, count + 3, count + 4);
+                    }
+                    obj.AddPoints(edgepoints);
+                    if (EnableColorLevel)
+                    {
+                        for (int k = 0; k < edgepoints.Count; k++)
+                        {
+                            obj.AddPointColor(GetColor(edgepoints[k].V));
+                        }
+                    }
+                    edgepoints.Clear();
+                }
+            }
+            
+            obj.IsUniformColor = !EnableColorLevel;
+            obj.color = ConvertColor.Convert(ObjColor);
+            return obj;
+        }
+        /// <summary>
+        /// 2----6----3
+        /// |         |
+        /// 5         7
+        /// |         |
+        /// 0----4----1
+        bool IsGridPointOnEdge(int p,int irow,int icol)
+        {
+            if (p == 0 && (irow == 0 || icol == 0)) return true;
+            if (p == 1 && (irow == 0 || icol == nCol-2)) return true;
+            if (p == 2 && (irow == nRow-2 || icol == 0)) return true;
+            if (p == 3 && (irow == nRow-2 || icol == nCol - 2)) return true;
+            return false;
+        }
+        bool KeepGridPoint(int p, int irow, int icol)
+        {
+            if (p <= 3) return IsGridPointOnEdge(p, irow, icol);
+            else return true;
+        }
+        /// <summary>
+        /// 转换成垂向两层侧边三角网连接
+        /// </summary>
+        /// <param name="bottom"></param>
+        /// <returns></returns>
+        public TriangleObj toBlankedTriangleObj(CMesh bottom)
+        {
+            TriangleObj obj = new TriangleObj(Name);
+            obj.CopyHeaderFrom(this);
+            int count = 0;
+            if (EdgeTables == null) return obj;
+            for (int i = 0; i < nRow - 1; i++)
+            {
+                for (int j = 0; j < nCol - 1; j++)
+                {
+                    int itype = GetGridType(i, j);
+                    if (itype == 0) continue;
+                    List<Vector64> edgepoints1 = GetCellVerticalEdgeTablePoints(i, j, itype);
+                    List<Vector64> edgepoints2 = bottom.GetCellVerticalEdgeTablePoints(i, j, itype);
+                    if (edgepoints1.Count == 0 || edgepoints2.Count == 0) continue;
+                    count = obj.points.Count;
+                    if(itype == 15)
+                    {
+                        if (i == 0 || j == 0 || i == nRow - 2 || j == nCol - 2)
+                        {
+                            obj.AddPoints(edgepoints1);
+                            obj.AddPoints(edgepoints2);
+                            if (EnableColorLevel)
+                            {
+                                for (int k = 0; k < edgepoints1.Count; k++)
+                                    obj.AddPointColor(GetColor(edgepoints1[k].V));
+                                for (int k = 0; k < edgepoints1.Count; k++)
+                                    obj.AddPointColor(GetColor(edgepoints2[k].V));
+                            }
+
+                            if (i == 0)
+                            {
+                                obj.AddTriangleIndex(count, count + 4, count + 1);
+                                obj.AddTriangleIndex(count + 1, count + 4, count + 5);
+                            }
+                            if (j == nCol - 2)
+                            {
+                                obj.AddTriangleIndex(count + 1, count + 5, count + 2);
+                                obj.AddTriangleIndex(count + 2, count + 5, count + 6);
+                            }
+                            if (i == nRow - 2)
+                            {
+                                obj.AddTriangleIndex(count + 2, count + 6, count + 3);
+                                obj.AddTriangleIndex(count + 3, count + 6, count + 7);
+                            }
+                            if (j == 0)
+                            {
+                                obj.AddTriangleIndex(count + 3, count + 7, count + 0);
+                                obj.AddTriangleIndex(count + 0, count + 7, count + 4);
+                            }
+                        }                        
+                    }
+                    else 
+                    {                        
+                        int c = 0;
+                        for (int k = 0; k < edgepoints1.Count; k++)
+                        {
+                            if (KeepGridPoint(EdgeTables[itype][k], i, j))
+                            {
+                                obj.AddPoint(edgepoints1[k]);
+                                obj.AddPoint(edgepoints2[k]);
+                                if (EnableColorLevel) obj.AddPointColor(GetColor(edgepoints1[k].V));
+                                if (EnableColorLevel) obj.AddPointColor(GetColor(edgepoints2[k].V));
+                                c++;
+                            }
+                        }
+                        if (c >= 2 && c < edgepoints1.Count )
+                        {
+                            obj.AddTriangleIndex(count, count + 1, count + 2);
+                            obj.AddTriangleIndex(count + 2, count + 1, count + 3);
+                        }
+                        if (c >= 3 && c < edgepoints1.Count)
+                        {
+                            obj.AddTriangleIndex(count + 2, count + 3, count + 4);
+                            obj.AddTriangleIndex(count + 4, count + 3, count + 5);
+                        }
+                        if (c >= 4 && c < edgepoints1.Count)
+                        {
+                            obj.AddTriangleIndex(count + 4, count + 5, count + 6);
+                            obj.AddTriangleIndex(count + 6, count + 5, count + 7);
+                        }
+                        if (c >= 5 && c < edgepoints1.Count)
+                        {
+                            obj.AddTriangleIndex(count + 6, count + 7, count + 8);
+                            obj.AddTriangleIndex(count + 8, count + 7, count + 9);
+                        }
+                        if (c >= 6 && c < edgepoints1.Count)
+                        {
+                            obj.AddTriangleIndex(count + 8, count + 9, count + 10);
+                            obj.AddTriangleIndex(count + 10, count + 9, count + 11);
+                        }
+                        if (c == edgepoints1.Count) //最后的封闭曲面
+                        {
+                            obj.AddTriangleIndex(count + 2 * (c - 1), count + 2 * (c - 1) + 1, count + 0);
+                            obj.AddTriangleIndex(count + 0, count + 2 * (c - 1) + 1, count + 1);
+                        }
+                    }          
+                    
+                    edgepoints1.Clear();
+                    edgepoints2.Clear();
+                }
+            }
+
+            obj.IsUniformColor = !EnableColorLevel;
+            obj.color = ConvertColor.Convert(ObjColor);
+            return obj;
+        }
+        public Vector64 this[int row,int col]
+        {
+            get { return pData[row * nCol + col]; }
+            set { pData[row * nCol + col] = value; }
+        }
+
         public Vector64 GetPoint(int row, int col)
         {
             return pData[row * nCol + col];
@@ -195,6 +803,285 @@ namespace DataCollection
             if (x < minx || x > maxx || y < miny || y > maxy)
                 return false;
             else return true;
+        }
+        public Color GetColor(int irow,int icol) 
+        {
+            if (!EnableColorLevel) return ObjColor;
+            else 
+            {
+                int i = irow, j = icol;
+                MyMath.Clamp(i, 0, nRow-1);
+                MyMath.Clamp(j, 0, nCol - 1);
+                Vector64 p = this[i, j];
+                return GetColor(p.V);
+            }
+        }
+        public bool TrimWith(Polygon2D poly,bool keepOuter)
+        {
+            //Set Blanked
+            for (int i = 0; i < nRow; i++)
+            {
+                for (int j = 0; j < nCol; j++)
+                {
+                    Vector64 p = this[i, j];
+                    bool blank = false;
+                    if (poly.IsPointInsidePoly(p))
+                    {
+                        if (keepOuter) blank = true;
+                    }
+                    else
+                    {
+                        if (!keepOuter) blank = true;
+                    }
+                    if (blank) { p.V = double.NaN; this[i, j] = p; }
+                }
+            }
+            CreateBoundaries(poly);
+            return true;
+        }
+        bool IsValidPoint(Vector64 p,int num = 2)
+        {
+            bool valid = true;
+            if (num >= 1) valid &= !double.IsNaN(p.X);
+            if (num >= 2) valid &= !double.IsNaN(p.Y);
+            if (num >= 3) valid &= !double.IsNaN(p.Z);
+            if (num >= 4) valid &= !double.IsNaN(p.V);
+            return valid;
+        }
+        public bool IsHaveIntersection(int irow,int icol, AxisEnum axis)
+        {
+            if (IntersectionIndices == null) return false;
+            int id = IntersectionIndices[irow,icol];
+            if (id < 0) return false;
+            if (CoordIntersections.Count <= id) return false;
+            if (axis == AxisEnum.xAxis && IsValidPoint(CoordIntersections[id].P1)) return true;
+            else if(axis == AxisEnum.yAxis && IsValidPoint(CoordIntersections[id].P2)) return true;
+            return false;            
+        }
+        public IntersectionStruct GetIntersection(int irow, int icol)
+        {
+            int id = IntersectionIndices[irow, icol];
+            return CoordIntersections[id];
+        }
+        /// <summary>
+        /// 求线段与网格线的交点
+        /// </summary>
+        /// <param name="line"></param>
+        /// <param name="intersection"></param>
+        /// <returns></returns>
+        public List<Vector64> GetIntersection(CLine line)
+        {
+            List<Vector64> points = new List<Vector64>();
+            Vector64 p, p1, p2,s1,s2;
+            CLine line1 = new CLine();
+            CLine line2 = new CLine();
+            for (int i = 0; i < nRow-1; i++)
+            {                
+                for (int j = 0; j < nCol-1; j++)
+                {
+                    p = this[i, j];
+                    p1 = this[i, j + 1];
+                    p2 = this[i + 1, j];
+                    line1.p1 = p;   line1.p2 = p1;
+                    line2.p1 = p;   line2.p2 = p2;
+                    // p2
+                    // |
+                    // p------->p1
+                    bool section1 = false;
+                    bool section2 = false;
+                    if (CLine.CalculateIntersection(line, line1,out s1)) //X axis
+                    {
+                        s1.Z = p.Z + (p1.Z - p.Z) * s1.Distance2D(p) / p1.Distance2D(p);
+                        if(!IsBlanked(p))s1.V = p.V;
+                        else s1.V = p1.V;
+                        section1 = true;
+                        points.Add(s1); 
+                    }
+                    if (CLine.CalculateIntersection(line, line2, out s2))  //Y axis
+                    {
+                        s2.Z = p.Z + (p2.Z - p.Z) * s2.Distance2D(p) / p2.Distance2D(p);
+                        if (!IsBlanked(p)) s2.V = p.V;
+                        else s2.V = p2.V;                        
+                        section2 = true;
+                        points.Add(s2); 
+                    }
+                    if(section1 || section2)
+                    {
+                        IntersectionIndices[i, j] = CoordIntersections.Count;                        
+                        CoordIntersections.Add(new IntersectionStruct(s1, s2));
+                    }
+                }
+            }
+
+            //points.OrderBy(s => s.Distance2D(line.p1));
+            points = SortPoints(points,line.p1);
+            return points;
+        }
+        List<Vector64>SortPoints(List<Vector64>list1, Vector64 p0)
+        {
+            for(int i=0; i<list1.Count; i++)
+            {
+                Vector64 s1 = list1[i];
+                s1.V = s1.Distance2D(p0);
+                list1[i] = s1;
+            }
+            list1.Sort((a, b) => { return a.V.CompareTo(b.V); });
+            return list1;
+        }
+
+        /// <summary>
+        /// 计算平面点(x,y)在规则网格曲面上的三维投影坐标
+        /// 核心：双线性插值（内插优先，外插基于边缘单元扩展）
+        /// </summary>
+        /// <param name="grid">规则网格曲面的顶点数组，[行, 列] 对应Row×Col</param>
+        /// <param name="targetX">目标点平面X坐标</param>
+        /// <param name="targetY">目标点平面Y坐标</param>
+        /// <returns>投影后的三维坐标Vector64(x,y,z)</returns>
+        /// <exception cref="ArgumentNullException">网格数组为空</exception>
+        /// <exception cref="ArgumentException">网格行列数不合法</exception>
+        public Vector64 GetProjectCoord(Vector64 p2d)
+        {
+            double targetX = p2d.X, targetY = p2d.Y;
+            int rowCount = nRow;
+            int colCount = nCol;            
+            // 2. 提取网格的X/Y范围，确定目标点所在的网格单元索引
+            // 步骤2.1：获取网格的行列X/Y坐标（规则网格假设行列方向X/Y单调）
+            double[] colXs = new double[colCount]; // 每列的X坐标（取第一行的X值，规则网格行列对齐）
+            double[] rowYs = new double[rowCount]; // 每行的Y坐标（取第一列的Y值，规则网格行列对齐）
+            for (int col = 0; col < colCount; col++) colXs[col] = this[0, col].X;
+            for (int row = 0; row < rowCount; row++) rowYs[row] = this[row, 0].Y;
+
+            // 步骤2.2：找到目标点所在的列区间 [colIdx, colIdx+1]
+            int colIdx = FindGridIndex(colXs, targetX);
+            // 步骤2.3：找到目标点所在的行区间 [rowIdx, rowIdx+1]
+            int rowIdx = FindGridIndex(rowYs, targetY);
+
+            // 3. 处理边界：若目标点在网格外，取边缘单元（外插）
+            colIdx = MyMath.Clamp(colIdx, 0, colCount - 2);
+            rowIdx = MyMath.Clamp(rowIdx, 0, rowCount - 2);
+
+            // 4. 获取当前网格单元的四个顶点（Q11:左下, Q12:左上, Q21:右下, Q22:右上）
+            Vector64 Q11 = this[rowIdx, colIdx];     // (rowIdx, colIdx)
+            Vector64 Q12 = this[rowIdx, colIdx + 1]; // (rowIdx, colIdx+1)
+            Vector64 Q21 = this[rowIdx + 1, colIdx]; // (rowIdx+1, colIdx)
+            Vector64 Q22 = this[rowIdx + 1, colIdx + 1]; // (rowIdx+1, colIdx+1)
+
+            // 5. 双线性插值计算Z值
+            // 步骤5.1：计算X方向的插值权重（相对colIdx的X偏移）
+            double x1 = Q11.X;
+            double x2 = Q12.X;
+            double tx = (targetX - x1) / (x2 - x1); // 0≤tx≤1（内插），tx<0或tx>1（外插）
+            tx = double.IsNaN(tx) ? 0 : tx; // 处理x1=x2的极端情况
+
+            // 步骤5.2：计算Y方向的插值权重（相对rowIdx的Y偏移）
+            double y1 = Q11.Y;
+            double y2 = Q21.Y;
+            double ty = (targetY - y1) / (y2 - y1); // 0≤ty≤1（内插），ty<0或ty>1（外插）
+            ty = double.IsNaN(ty) ? 0 : ty; // 处理y1=y2的极端情况
+
+            // 步骤5.3：双线性插值公式
+            // 先在X方向插值两次，再在Y方向插值
+            double z1 = Q11.Z * (1 - tx) + Q12.Z * tx; // 下边缘（rowIdx行）的X插值
+            double z2 = Q21.Z * (1 - tx) + Q22.Z * tx; // 上边缘（rowIdx+1行）的X插值
+            double targetZ = z1 * (1 - ty) + z2 * ty;  // Y方向插值得到最终Z
+            double targetV = this[rowIdx, colIdx].V;
+            // 6. 返回投影后的三维坐标
+            return new Vector64(targetX, targetY, targetZ, targetV);
+        }
+
+        /// <summary>
+        /// 查找目标值在单调数组中的区间索引（返回左边界索引）
+        /// 例如：数组[1,3,5]，目标值4 → 返回1（区间[3,5]）
+        /// </summary>
+        private int FindGridIndex(double[] sortedArray, double target)
+        {
+            // 假设数组是单调递增的（规则网格默认）
+            for (int i = 0; i < sortedArray.Length - 1; i++)
+            {
+                if (target >= sortedArray[i] && target <= sortedArray[i + 1])
+                    return i;
+            }
+            // 目标值在数组外：小于最小值返回0，大于最大值返回最后一个区间左边界
+            return target < sortedArray[0] ? 0 : sortedArray.Length - 2;
+        }
+
+        public List<Vector64>CreateBoundaries(Polygon2D poly)
+        {
+            Boundaries.Clear();
+            CoordIntersections.Clear();
+            IntersectionIndices = new int[nRow,nCol];
+            InitEdgeTable();
+            for(int i=0;i<nRow;i++)
+            { 
+                for (int j = 0; j < nCol; j++) 
+                    IntersectionIndices[i, j] = -1; 
+            }
+            Clockwise = poly.GetClockDirection();
+            List<Vector64>poly1 = new List<Vector64>();
+            for(int i=0;i<poly.Count;i++)
+            {
+                poly1.Add(MeshSurfaceProjector.ProjectToSurface(this,poly[i]));
+                //poly1.Add(poly[i]);
+            }
+            CLine line = new CLine();
+            for(int i=0;i<poly1.Count;i++)
+            {
+                line.p1 = poly1[i];
+                if(i==poly1.Count-1) line.p2 = poly1[0];
+                else line.p2 = poly1[i + 1];
+                
+                Boundaries.Add(line.p1);
+
+                List<Vector64> points = GetIntersection(line);
+                if (points.Count > 0)
+                {                    
+                    for (int k = 0; k < points.Count; k++)
+                    {
+                        if (points[k].Distance(line.p1) > 1e-8)
+                            Boundaries.Add(points[k]);
+                    }
+                    //Boundaries.AddRange(points);
+                    points.Clear();
+                }
+            }
+            
+            //Boundaries.Add(poly1[poly1.Count-1]);
+            poly1.Clear();
+            
+            //for(int i = 0;i < nCol-1;i++)
+            //{
+            //    if( GetGridType(0,i)==15 )
+            //    {
+            //        Boundaries.Add(this[0,i]);
+            //    }
+            //    if (GetGridType(nRow-2, i) == 15)
+            //    {
+            //        Boundaries.Add(this[nRow-1, i]);
+            //    }
+            //}
+            //for (int i = 1; i < nRow-2; i++)
+            //{
+            //    if (GetGridType(i, 0) == 15)
+            //    {
+            //        Boundaries.Add(this[i, 0]);
+            //    }
+            //    if (GetGridType(i, nCol-2) == 15)
+            //    {
+            //        Boundaries.Add(this[i,nCol-1]);
+            //    }
+            //}
+            //StreamWriter wr = new StreamWriter("d:\\jian\\boundaries.csv");
+            //wr.WriteLine("X,Y,Z,V");
+            //for(int i=0;i<Boundaries.Count;i++)
+            //{
+            //    wr.WriteLine(Boundaries[i].ToString());
+            //}
+            //wr.Close();
+            //List<Vector64> lists = Vector64.SortBoundaryPoints( Boundaries );
+            //List<Vector64> lists = PolygonSorter.SortPolygonPoints( Boundaries );            
+            //Boundaries.Clear();
+            //Boundaries = lists;
+            return Boundaries;
         }
         public virtual C3DLine[] CreateIntersectionLines(CMesh mesh)
         {
@@ -356,7 +1243,110 @@ namespace DataCollection
 
             return true;
         }
-        
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="p"></param>
+        /// <returns></returns>
+        public override vec2 GetTextureCoord(Vector32 p, planEnum plan = planEnum.XOY)
+        {
+            double x1 = Minx;
+            double x2 = Maxx;
+            double y1 = Miny;
+            double y2 = Maxy;
+            double x0 = p.X, y0 = p.Y;
+            float x = -1, y = -1;
+            //Z
+            //|
+            //o--->Y
+            if (plan == planEnum.YOZ)
+            {
+                x0 = p.Y;y0 = p.Z;
+                x1 = Miny; x2 = Maxy;
+                y1 = Minz; y2 = Maxz;
+            }
+            else if (plan == planEnum.XOZ)
+            {
+                x0 = p.X; y0 = p.Z;
+                x1 = Minx; x2 = Maxx;
+                y1 = Minz; y2 = Maxz;
+            }
+            if (textureStruct != null)
+            {
+                if (textureStruct.textureRect.Width > 0 &&
+                    textureStruct.textureRect.Height > 0)
+                {
+                    x1 = textureStruct.textureRect.X1;
+                    x2 = textureStruct.textureRect.X2;
+                    y1 = textureStruct.textureRect.Y1;
+                    y2 = textureStruct.textureRect.Y2;
+                }
+            }
+            if (textureStruct.textureRect.Contains(x0, y0))
+            {
+                x = (float)((x0 - x1) / (x2 - x1));
+                y = (float)((y0 - y1) / (y2 - y1));
+                if (textureStruct.FlipVertical) y = 1 - y;
+                if (textureStruct.FlipHorizontal) x = 1 - x;
+            }
+            return new vec2((float)x, (float)y);
+        }
+
+        public CMesh VerticalDerivating(int level = 1)
+        {
+            CMesh mesh = new CMesh(nRow-1,nCol-1);           
+            Vector64 p1,p2,p3,p;
+            //for(int iy = 0; iy < nRow-1;iy++)
+            //{
+            //    for (int ix = 0; ix < nCol; ix++)
+            //    {
+            //        p1 = GetPoint(iy, ix);
+            //        p2 = GetPoint(iy+1, ix);
+            //        p = p1;
+            //        p.v = p2.v - p1.v;
+            //        mesh[iy, ix] = p;
+            //    }
+            //}
+            for (int iy = 0; iy < nRow - 1; iy++)
+            {
+                for (int ix = 0; ix < nCol-1; ix++)
+                {
+                    p1 = GetPoint(iy, ix);
+                    p2 = GetPoint(iy + 1, ix);
+                    p3 = GetPoint(iy , ix+1);
+                    p = p1;
+                    Color c1 = ColorScale.GetColor(p1.v);
+                    Color c2 = ColorScale.GetColor(p2.v);
+                    Color c3 = ColorScale.GetColor(p3.v);
+                    int v1 = ConvertColor.toGray(c1);
+                    int v2 = ConvertColor.toGray(c2);
+                    int v3 = ConvertColor.toGray(c3);
+                    p.v = Math.Abs(v2 - v1) + Math.Abs(v3 - v1);
+                    mesh[iy, ix] = p;
+                }
+            }
+
+            mesh.UpdateRange();
+            return mesh;
+        }
+        public CMesh HorizontalDerivating(int level = 1)
+        {
+            CMesh mesh = new CMesh(nRow, nCol-1);
+            Vector64 p1, p2, p;
+            for (int iy = 0; iy < nRow; iy++)
+            {
+                for (int ix = 0; ix < nCol-1; ix++)
+                {
+                    p1 = GetPoint(iy, ix);
+                    p2 = GetPoint(iy, ix+1);
+                    p = p1;
+                    p.v = p2.v - p1.v;
+                    mesh[iy, ix] = p;
+                }
+            }
+            mesh.UpdateRange();
+            return mesh;
+        }
         public double GetValue(int ix,int iy)
         {
            return pData[GetVerticIndex(ix, iy)].V;
@@ -452,6 +1442,13 @@ namespace DataCollection
             if (ix < 0 || ix >= nCol) return -1;
             if (iy < 0 || iy >= nRow) return -1;
             return ix + iy * nCol;
+        }
+        public void GetVerticIndex(double x,double y,out int ix,out int iy)
+        {
+            double stepx = (Maxx - Minx) / (nCol-1);
+            double stepy = (Maxy - Miny) / (nRow-1);
+            ix = (int)((x - Minx) / stepx + 0.1);
+            iy = (int)((y - Miny) / stepy + 0.1);
         }
         /// <summary>
         /// 输入Image数据，四个角点坐标，创建Mesh
@@ -894,7 +1891,7 @@ namespace DataCollection
         {
             return ImportData(path);
         }
-        public override bool SaveAs(string path)
+        public override bool SaveAs(string path,int version=0)
         {
             return ExportData(path);
         }
@@ -988,6 +1985,29 @@ namespace DataCollection
                 //added after 2022-9-27,add isflat
                 if (Version >= 1.3f) br.Write(_IsFlat);
 
+                //added on 2026-1-9                
+                bool blanked = false;
+                if (IntersectionIndices != null) blanked = true;
+                br.Write(blanked);                
+                if (blanked)//写入裁剪
+                {
+                    for (int i = 0; i < nRow; i++)
+                        for (int j = 0; j < nCol; j++)
+                            br.Write(IntersectionIndices[i, j]);
+                }
+
+                br.Write(CoordIntersections.Count);
+                for(int i=0;i<CoordIntersections.Count;i++)
+                {
+                    IntersectionStruct sections = CoordIntersections[i];
+                    sections.P1.Write(br);
+                    sections.P2.Write(br);
+                }
+                br.Write(Boundaries.Count);
+                for (int i = 0; i < Boundaries.Count; i++)
+                {
+                    Boundaries[i].Write(br);
+                }
                 return true;
             }
             catch (Exception e)
@@ -1031,7 +2051,34 @@ namespace DataCollection
 
                 //added after 2022-9-27,add isflat
                 if(Version >= 1.3f)_IsFlat = br.ReadBoolean();
-
+                
+                if (C3DData.DataVersion >= 1.33f)//added on 2026-1-9
+                {
+                    IntersectionIndices = null;
+                    bool blanked = br.ReadBoolean();                    
+                    if (blanked)
+                    {
+                        IntersectionIndices = new int[nRow, nCol];
+                        for (int i = 0; i < nRow; i++)
+                            for (int j = 0; j < nCol; j++)
+                                IntersectionIndices[i, j] = br.ReadInt32();
+                    }
+                    CoordIntersections.Clear();
+                    int n = br.ReadInt32();
+                    for (int i = 0; i < n; i++)
+                    {
+                        Vector64 p1 = new Vector64(); p1.Load(br);
+                        Vector64 p2 = new Vector64(); p2.Load(br);
+                        CoordIntersections.Add(new IntersectionStruct(p1, p2));
+                    }
+                    Boundaries.Clear();
+                    n = br.ReadInt32();
+                    for (int i = 0; i < n; i++)
+                    {
+                        Vector64 p1 = new Vector64(); p1.Load(br);
+                        Boundaries.Add(p1);
+                    }
+                }
                 UpdateRange();
                 return true;
             }
@@ -1056,16 +2103,25 @@ namespace DataCollection
             cs.maxv = maxv;
             cs.miny = miny;
             cs.maxy = maxy;
-
             cs.minx = minx;
             cs.maxx = maxx;
             double val = 0;
+            
+            bool exportz = false;
+            if (minv >= maxv) //V值无效输出Z值
+            { 
+                exportz = true;
+                cs.minv = minz;
+                cs.maxv = maxz;
+            }
+
             cs.pData = new float[nRow * nCol];
             for (int i = 0; i < nRow; i++)
             {
                 for (int j = 0; j < nCol; j++)
                 {
-                    val = GetPoint(i, j).V;
+                    if(exportz) val = GetPoint(i, j).Z;
+                    else val = GetPoint(i, j).V;
                     if (IsBlanked(val)) cs[j, i] = CSurferGrid.blankValue;
                     else cs[j, i] = val;
                 }
@@ -1272,12 +2328,65 @@ namespace DataCollection
             nRow = 0;
             nCol = 0;
             pData = null;
+            CoordIntersections.Clear();
+            Boundaries.Clear();
+            IntersectionIndices = null;
         }
         public bool IsBlanked(Vector64 p)
         {
             return IsBlanked(p.v);
         }
-
+        public bool IsBlankedGrid(int irow,int icol)
+        {
+            if (irow < 0 || irow >= nRow) return true;
+            if (icol < 0 || icol >= nCol) return true;            
+            return IsBlanked(this[irow, icol].v);
+        }
+        public void ResetDataRange(double x1, double x2, double y1, double y2,double z1,double z2)
+        {
+            bool mx = false, my = false, mz = false;
+            if (minx != x1 || maxx != x2) mx = true;
+            if (miny != y1 || maxy != y2) my = true;
+            if (minz != z1 || maxz != z2) mz = true;
+            for (int i = 0; i < pData.Length; i++) 
+            {
+                Vector64 p = pData[i];
+                if(mx)p.X = x1 + (p.X - minx) / (maxx - minx) * (x2 - x1);
+                if(my)p.Y = y1 + (p.Y - miny) / (maxy - miny) * (y2 - y1);
+                if(mz)p.Z = p.V = z1 + (p.Z - minz) / (maxz - minz) * (z2 - z1);
+                pData[i] = p;
+            }
+            minx = x1;
+            miny = y1;
+            maxx = x2;
+            maxy = y2;
+            minz = minv = z1;
+            maxz = maxv = z2;
+            xStep = (maxx - minx) / (nCol - 1);
+            yStep = (maxy - miny) / (nRow - 1);
+            UpdateTextureRect();
+        }
+        public void UpdateTextureRect(planEnum plan = planEnum.XOY)
+        {
+            double x1 = Minx;
+            double x2 = Maxx;
+            double y1 = Miny;
+            double y2 = Maxy;
+            //Z
+            //|
+            //o--->Y
+            if (plan == planEnum.YOZ)
+            {               
+                x1 = Miny; x2 = Maxy;
+                y1 = Minz; y2 = Maxz;
+            }
+            else if (plan == planEnum.XOZ)
+            {               
+                x1 = Minx; x2 = Maxx;
+                y1 = Minz; y2 = Maxz;
+            }
+            textureStruct.textureRect = new DoubleRect(x1, y1, x2, y2);
+        }
         public override void UpdateRange()
         {
             minx = miny = minz = 0;
@@ -1325,6 +2434,7 @@ namespace DataCollection
                     if (p.v > maxv) maxv = p.v;
                 }
             }
+            UpdateTextureRect();
         }
         //---------Counter Lines ----------------
         public int IsExistISOValue(double val)

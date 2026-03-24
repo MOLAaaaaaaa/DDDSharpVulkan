@@ -99,14 +99,15 @@ namespace DDDSharp.Boreholes
                     if ( name.Length < 1 ) continue;
 
                     StratumData layer = new StratumData(name);
+                    
                     if (!double.TryParse(top, out depth)) 
                     {
-                        errinfo += "line " + (i + 1) + " " + layer.Name + ": invalid stratum parameters.\n";
+                        errinfo += "line " + (i + 1) + " " + layer.Name + ": Invalid top depth parameters.\n";
                         continue;
                     }
                     if ( !double.TryParse(thick, out thickness)) 
                     {
-                        errinfo += "line " + (i + 1) + " " + layer.Name + ": invalid stratum parameters.\n";
+                        errinfo += "line " + (i + 1) + " " + layer.Name + ": Invalid thickness parameters.\n";
                         continue;
                     }
                     layer.TopDepth = depth;

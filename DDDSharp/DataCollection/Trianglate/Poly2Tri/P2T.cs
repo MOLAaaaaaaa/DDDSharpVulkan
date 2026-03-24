@@ -29,21 +29,26 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-namespace Poly2Tri {
-	public static class P2T {
+namespace Poly2Tri 
+{
+	public static class P2T 
+	{
 		private static TriangulationAlgorithm _defaultAlgorithm = TriangulationAlgorithm.DTSweep;
 
-		public static void Triangulate(PolygonSet ps) {
+		public static void Triangulate(PolygonSet ps) 
+		{
 			TriangulationContext tcx = CreateContext(_defaultAlgorithm);
-			foreach (Polygon p in ps.Polygons) {
+			foreach (Polygon p in ps.Polygons) 
+			{
 				tcx.PrepareTriangulation(p);
 				Triangulate(tcx);
 				tcx.Clear();
 			}
 		}
 
-		public static void Triangulate(Polygon p) {
-			Triangulate(_defaultAlgorithm, p);
+		public static bool Triangulate(Polygon p) 
+		{
+			return Triangulate(_defaultAlgorithm, p);
 		}
 
 		public static void Triangulate(ConstrainedPointSet cps) {
@@ -62,23 +67,27 @@ namespace Poly2Tri {
 			}
 		}
 
-		public static void Triangulate(TriangulationAlgorithm algorithm, Triangulatable t) {
+		public static bool Triangulate(TriangulationAlgorithm algorithm, Triangulatable t) 
+		{
 			TriangulationContext tcx;
-
-			//        long time = System.nanoTime();
+			//long time = System.nanoTime();
 			tcx = CreateContext(algorithm);
 			tcx.PrepareTriangulation(t);
-			Triangulate(tcx);
-			//        logger.info( "Triangulation of {} points [{}ms]", tcx.getPoints().size(), ( System.nanoTime() - time ) / 1e6 );
+			return Triangulate(tcx);
+			//logger.info( "Triangulation of {} points [{}ms]", tcx.getPoints().size(), ( System.nanoTime() - time ) / 1e6 );
 		}
 
-		public static void Triangulate(TriangulationContext tcx) {
-			switch (tcx.Algorithm) {
-			case TriangulationAlgorithm.DTSweep:
-			default:
-				DTSweep.Triangulate((DTSweepContext)tcx);
-				break;
+		public static bool Triangulate(TriangulationContext tcx) 
+		{
+			bool ret = false;
+			switch (tcx.Algorithm) 
+			{
+				case TriangulationAlgorithm.DTSweep:
+				default:
+						ret = DTSweep.Triangulate((DTSweepContext)tcx);
+						break;
 			}
+			return ret;
 		}
 
 

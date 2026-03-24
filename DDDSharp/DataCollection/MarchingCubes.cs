@@ -99,7 +99,9 @@ namespace DataCollection
     }
     public class EDGE_POINT_INDEX
     {
-        public int[] pIndex;    // each point index in pCoordArray, -1 no point
+        //each point index in pCoordArray, -1 no point
+        //边上交点在pCoordArray中的点索引号
+        public int[] pIndex;    
         public int indexNum = 20;
         public EDGE_POINT_INDEX(int no = 20)
         {
@@ -408,28 +410,28 @@ namespace DataCollection
         public List<int> pTriangleIndex = new List<int>();             //
         //triangle normal array
         public List<FLOAT_POINT> pTriangleNormalArray = new List<FLOAT_POINT>();
-       
+        public int CoordsCount
+        {
+            get { return pCoordArray.Count; }
+        }
+        public int TriangleCount 
+        {
+            get { return pTriangleIndex.Count/3; }
+        }
         public override void UpdateRange()
         {
             FLOAT_POINT_EXT p;
+            minx = miny = minz = double.MaxValue;
+            maxx = maxy = maxz = double.MinValue;
             for (int i=0;i<pCoordArray.Count;i++)
             {
                 p = pCoordArray[i];
-                if (i == 0)
-                {
-                    minx = maxx = p.x;
-                    miny = maxy = p.y;
-                    minz = maxz = p.z;
-                }
-                else
-                {
-                    if (minx > p.x) minx = p.x;
-                    if (miny > p.y) miny = p.y;
-                    if (minz > p.z) minz = p.z;
-                    if (maxx < p.x) maxx = p.x;
-                    if (maxy < p.y) maxy = p.y;
-                    if (maxz < p.z) maxz = p.z;
-                }
+                if (!float.IsNaN(p.x) && minx > p.x) minx = p.x;
+                if (!float.IsNaN(p.y) && miny > p.y) miny = p.y;
+                if (!float.IsNaN(p.z) && minz > p.z) minz = p.z;
+                if (!float.IsNaN(p.x) && maxx < p.x) maxx = p.x;
+                if (!float.IsNaN(p.y) && maxy < p.y) maxy = p.y;
+                if (!float.IsNaN(p.z) && maxz < p.z) maxz = p.z;
             }
         }
         public CISOSurfaceExt()
@@ -447,7 +449,7 @@ namespace DataCollection
             {
                 obj.AddPoint(pCoordArray[i].x, pCoordArray[i].y, pCoordArray[i].z);
                 c = GetColor(pCoordArray[i].icolor);
-                obj.AddPointColor(c.R,c.G,c.B,c.A);
+                obj.AddPointColor(c.R / 255f, c.G / 255f, c.B / 255f, c.A/255f);
             }
             
             for (int i = 0; i < pTriangleIndex.Count / 3; i++)
@@ -654,6 +656,7 @@ namespace DataCollection
             vertEdgeDirect[9].x = 0; vertEdgeDirect[9].y = 1; vertEdgeDirect[9].z = 0;    //0-5
             vertEdgeDirect[10].x = 0; vertEdgeDirect[10].y = 1; vertEdgeDirect[10].z = 0;    //0-6
             vertEdgeDirect[11].x = 0; vertEdgeDirect[11].y = 1; vertEdgeDirect[11].z = 0;    //0-7
+
             vertEdgeRelation[0].x = 0; vertEdgeRelation[0].y = 1;
             vertEdgeRelation[1].x = 1; vertEdgeRelation[1].y = 2;
             vertEdgeRelation[2].x = 3; vertEdgeRelation[2].y = 2;
@@ -1051,6 +1054,8 @@ namespace DataCollection
         }
         protected void InitEdgePointArray()
         {
+            //已创建
+            if (pEdgePointArray1 != null && pEdgePointArray2 != null) return;
             pEdgePointArray1 = new EDGE_POINT_INDEX[xyGrid];
             pEdgePointArray2 = new EDGE_POINT_INDEX[xyGrid];
             for (int i = 0; i < xyGrid; i++)
@@ -1111,6 +1116,72 @@ namespace DataCollection
                     break;
                 case 7:
                     icur1 = icur + xyGrid + xGridNum;
+                    break;
+            }
+            return icur1;
+        }
+        /// <summary>
+        /// 根据边号来选择网格主节点(0)序号和坐标轴
+        /// </summary>
+        /// <param name="ix"></param>
+        /// <param name="iy"></param>
+        /// <param name="iz"></param>
+        /// <param name="edgeno"></param>
+        /// <returns></returns>
+        public virtual int GetVerticIndexByEdge(int ix, int iy, int iz, int edgeno,out AxisEnum axis)
+        {
+            axis = AxisEnum.xAxis;
+            int icur = ix + iy * xGridNum + iz * xyGrid;
+            int icur1 = -1;
+            switch (edgeno)
+            {
+                case 0:
+                    icur1 = icur;
+                    axis = AxisEnum.xAxis;
+                    break;
+                case 1:
+                    icur1 = icur + 1;
+                    axis = AxisEnum.zAxis;
+                    break;
+                case 2:
+                    icur1 = icur + xyGrid;
+                    axis = AxisEnum.xAxis;
+                    break;
+                case 3:
+                    icur1 = icur;
+                    axis = AxisEnum.zAxis;
+                    break;
+                case 4:
+                    icur1 = icur + xGridNum;
+                    axis = AxisEnum.xAxis;
+                    break;
+                case 5:
+                    icur1 = icur + 1 + xGridNum;
+                    axis = AxisEnum.zAxis;
+                    break;
+                case 6:
+                    icur1 = icur + xyGrid + xGridNum;
+                    axis = AxisEnum.xAxis;
+                    break;
+                case 7:
+                    icur1 = icur + xGridNum;
+                    axis = AxisEnum.zAxis;
+                    break;
+                case 8:
+                    icur1 = icur;
+                    axis = AxisEnum.yAxis;
+                    break;
+                case 9:
+                    icur1 = icur + 1;
+                    axis = AxisEnum.yAxis;
+                    break;
+                case 10:
+                    icur1 = icur + 1 + xyGrid;
+                    axis = AxisEnum.yAxis;
+                    break;
+                case 11:
+                    icur1 = icur + xyGrid;
+                    axis = AxisEnum.yAxis;
                     break;
             }
             return icur1;
@@ -2289,6 +2360,9 @@ namespace DataCollection
             for (int i = 0; i < p2DIsoSurfaces.Count; i++)
             {
                 sf = p2DIsoSurfaces[i];
+                
+                if (sf.pCoordArray.Count < 2) continue;
+
                 C3DLine line = new C3DLine();
                 line.Name = sf.isoVale.ToString();
                 line.Color = colorScale.GetColor(sf.isoVale);
@@ -2694,12 +2768,15 @@ namespace DataCollection
         //  |/---2---|/
         //  /z 
     }
+
+    #region Class of MarchingCubesExt
     //Extract the edge of the cubes
     public class MarchingCubesExt : MarchingCubes
     {
-        public CISOSurfaceExt pISOSurfaceExt = new CISOSurfaceExt();        
-        private C3DGridData p3DData;
+        public CISOSurfaceExt pISOSurfaceExt = new CISOSurfaceExt();
+        public C3DGridData p3DData = null;
         public CColorScale m_ColorScale = new CColorScale();
+        public List<vec2> pHideValues = new List<vec2>();
         public override bool SaveBinary(BinaryWriter br)
         {
             return pISOSurfaceExt.SaveBinary(br);            
@@ -2708,35 +2785,18 @@ namespace DataCollection
         {
             return pISOSurfaceExt.LoadBinary(br);            
         }
-        private void InitClosedValue(CColorScale colorscale)
+        protected void InitClosedValue(CColorScale colorscale)
         {
             pHideValues.Clear();
-
-            double v1, v2;
-            for (int i=0;i< colorscale.Count; i++)
-            {   
-                if ( !colorscale[i].Visible )
-                {
-                    if( i==0)
-                    {
-                        v1 = colorscale.GetScaledValue(0);
-                        v2 = 0.5*( colorscale.GetScaledValue(i) + colorscale.GetScaledValue(i+1) );
-                    }
-                    else if (i == colorscale.Count - 1)
-                    {
-                        v1 = 0.5 * (colorscale.GetScaledValue(i) + colorscale.GetScaledValue(i - 1)); ;
-                        v2 = colorscale.GetScaledValue(i);
-                    }
-                    else
-                    {
-                        v1 = 0.5 * (colorscale.GetScaledValue(i) + colorscale.GetScaledValue(i - 1));
-                        v2 = 0.5 * (colorscale.GetScaledValue(i) + colorscale.GetScaledValue(i + 1));
-                    }                    
-                    AddHideValue(v1, v2);
-                }
-            }
+            colorscale.CreateClosedValues();
+            pHideValues.AddRange(colorscale.closedValues);
         }
-        
+        public void ClearClosedValues() { pHideValues.Clear(); }
+        public void AddClosedValue(double v1,double v2)
+        {
+            pHideValues.Add(new vec2((float)v1, (float)v2));
+        }
+
         private double GetEdgeValue(int ix, int iy, int iz, int edno)
         {
             double[] p = new double[10];
@@ -2755,240 +2815,240 @@ namespace DataCollection
             switch (edno)
             {
                 case 0:
-                    p[no++] = p3DData.pGridData[grid[0]];//0                                                           
-                    p[no++] = p3DData.pGridData[grid[1]];//1
-                    p[no++] = (p3DData.pGridData[grid[4]] + p3DData.pGridData[grid[5]]) / 2.0;                    
-                    p[no++] = (p3DData.pGridData[grid[3]] + p3DData.pGridData[grid[2]]) / 2.0;                    
+                    p[no++] = p3DData[grid[0]];//0                                                           
+                    p[no++] = p3DData[grid[1]];//1
+                    p[no++] = (p3DData[grid[4]] + p3DData[grid[5]]) / 2.0;                    
+                    p[no++] = (p3DData[grid[3]] + p3DData[grid[2]]) / 2.0;                    
                     if ( iy > 0  )//y--
                     {
                         icur1 = grid[0] - xGridNum;
                         icur2 = grid[1] - xGridNum;
-                        p[no++] = (p3DData.pGridData[icur1] + p3DData.pGridData[icur2]) / 2.0;                        
+                        p[no++] = (p3DData[icur1] + p3DData[icur2]) / 2.0;                        
                     }
                     if ( iz > 0 )//z--
                     {
                         icur1 = grid[0] - xyGrid;
                         icur2 = grid[1] - xyGrid;
-                        p[no++] = (p3DData.pGridData[icur1] + p3DData.pGridData[icur2]) / 2.0;                        
+                        p[no++] = (p3DData[icur1] + p3DData[icur2]) / 2.0;                        
                     }
                     break;
                 case 1:
-                    p[no++] = p3DData.pGridData[grid[1]];//1
-                    p[no++] = p3DData.pGridData[grid[2]];//2
-                    p[no++] = (p3DData.pGridData[grid[5]] + p3DData.pGridData[grid[6]]) / 2.0;
-                    p[no++] = (p3DData.pGridData[grid[0]] + p3DData.pGridData[grid[3]]) / 2.0;
+                    p[no++] = p3DData[grid[1]];//1
+                    p[no++] = p3DData[grid[2]];//2
+                    p[no++] = (p3DData[grid[5]] + p3DData[grid[6]]) / 2.0;
+                    p[no++] = (p3DData[grid[0]] + p3DData[grid[3]]) / 2.0;
                     if (iy > 0)//y--
                     {
                         icur1 = grid[1] - xGridNum;
                         icur2 = grid[2] - xGridNum;
-                        p[no] = (p3DData.pGridData[icur1] + p3DData.pGridData[icur2]) / 2.0;
+                        p[no] = (p3DData[icur1] + p3DData[icur2]) / 2.0;
                         no++;
                     }
                     if (ix < xGridNum - 2)
                     {
                         icur1 = grid[1] + 1;
                         icur2 = grid[2] + 1;
-                        p[no] = (p3DData.pGridData[icur1] + p3DData.pGridData[icur2]) / 2.0;
+                        p[no] = (p3DData[icur1] + p3DData[icur2]) / 2.0;
                         no++;
                     }
                     break;
                 case 2:
-                    p[no++] = p3DData.pGridData[grid[2]];//2
-                    p[no++] = p3DData.pGridData[grid[3]];//3
-                    p[no++] = (p3DData.pGridData[grid[0]] + p3DData.pGridData[grid[1]]) / 2.0;
-                    p[no++] = (p3DData.pGridData[grid[6]] + p3DData.pGridData[grid[7]]) / 2.0;
+                    p[no++] = p3DData[grid[2]];//2
+                    p[no++] = p3DData[grid[3]];//3
+                    p[no++] = (p3DData[grid[0]] + p3DData[grid[1]]) / 2.0;
+                    p[no++] = (p3DData[grid[6]] + p3DData[grid[7]]) / 2.0;
                     if (iy > 0)//y--
                     {
                         icur1 = grid[2] - xGridNum;
                         icur2 = grid[3] - xGridNum;
-                        p[no] = (p3DData.pGridData[icur1] + p3DData.pGridData[icur2]) / 2.0;
+                        p[no] = (p3DData[icur1] + p3DData[icur2]) / 2.0;
                         no++;
                     }                    
                     if (iz < zGridNum - 2)
                     {
                         icur1 = grid[2] + xyGrid;
                         icur2 = grid[3] + xyGrid;
-                        p[no] = (p3DData.pGridData[icur1] + p3DData.pGridData[icur2]) / 2.0;
+                        p[no] = (p3DData[icur1] + p3DData[icur2]) / 2.0;
                         no++;
                     }
                     break;
                 case 3:
-                    p[no++] = p3DData.pGridData[grid[0]];//0
-                    p[no++] = p3DData.pGridData[grid[3]];//3
-                    p[no++] = (p3DData.pGridData[grid[1]] + p3DData.pGridData[grid[2]]) / 2.0;
-                    p[no++] = (p3DData.pGridData[grid[4]] + p3DData.pGridData[grid[7]]) / 2.0;
+                    p[no++] = p3DData[grid[0]];//0
+                    p[no++] = p3DData[grid[3]];//3
+                    p[no++] = (p3DData[grid[1]] + p3DData[grid[2]]) / 2.0;
+                    p[no++] = (p3DData[grid[4]] + p3DData[grid[7]]) / 2.0;
                     if (iy > 0)//y--
                     {
                         icur1 = grid[0] - xGridNum;
                         icur2 = grid[3] - xGridNum;
-                        p[no] = (p3DData.pGridData[icur1] + p3DData.pGridData[icur2]) / 2.0;
+                        p[no] = (p3DData[icur1] + p3DData[icur2]) / 2.0;
                         no++;
                     }
                     if (ix  >  0)
                     {
                         icur1 = grid[0] - 1;
                         icur2 = grid[3] - 1;
-                        p[no] = (p3DData.pGridData[icur1] + p3DData.pGridData[icur2]) / 2.0;
+                        p[no] = (p3DData[icur1] + p3DData[icur2]) / 2.0;
                         no++;
                     }
                     break;
                 case 4:
-                    p[no++] = p3DData.pGridData[grid[4]];//4
-                    p[no++] = p3DData.pGridData[grid[5]];//5
-                    p[no++] = (p3DData.pGridData[grid[0]] + p3DData.pGridData[grid[1]]) / 2.0;
-                    p[no++] = (p3DData.pGridData[grid[6]] + p3DData.pGridData[grid[7]]) / 2.0;
+                    p[no++] = p3DData[grid[4]];//4
+                    p[no++] = p3DData[grid[5]];//5
+                    p[no++] = (p3DData[grid[0]] + p3DData[grid[1]]) / 2.0;
+                    p[no++] = (p3DData[grid[6]] + p3DData[grid[7]]) / 2.0;
                     if (iz > 0)//z--
                     {
                         icur1 = grid[4] - xyGrid;
                         icur2 = grid[5] - xyGrid;
-                        p[no] = (p3DData.pGridData[icur1] + p3DData.pGridData[icur2]) / 2.0;
+                        p[no] = (p3DData[icur1] + p3DData[icur2]) / 2.0;
                         no++;
                     }
                     if (iy < yGridNum - 2)
                     {
                         icur1 = grid[4] + xGridNum;
                         icur2 = grid[5] + xGridNum;
-                        p[no] = (p3DData.pGridData[icur1] + p3DData.pGridData[icur2]) / 2.0;
+                        p[no] = (p3DData[icur1] + p3DData[icur2]) / 2.0;
                         no++;
                     }
                     break;
                 case 5:
-                    p[no++] = p3DData.pGridData[grid[5]];//5
-                    p[no++] = p3DData.pGridData[grid[6]];//6
-                    p[no++] = (p3DData.pGridData[grid[1]] + p3DData.pGridData[grid[2]]) / 2.0;
-                    p[no++] = (p3DData.pGridData[grid[4]] + p3DData.pGridData[grid[7]]) / 2.0;
+                    p[no++] = p3DData[grid[5]];//5
+                    p[no++] = p3DData[grid[6]];//6
+                    p[no++] = (p3DData[grid[1]] + p3DData[grid[2]]) / 2.0;
+                    p[no++] = (p3DData[grid[4]] + p3DData[grid[7]]) / 2.0;
                     if (ix < xGridNum -2)//x++
                     {
                         icur1 = grid[5] + 1;
                         icur2 = grid[6] + 1;
-                        p[no] = (p3DData.pGridData[icur1] + p3DData.pGridData[icur2]) / 2.0;
+                        p[no] = (p3DData[icur1] + p3DData[icur2]) / 2.0;
                         no++;
                     }
                     if (iy < yGridNum - 2)//y++
                     {
                         icur1 = grid[5] + xGridNum;
                         icur2 = grid[6] + xGridNum;
-                        p[no] = (p3DData.pGridData[icur1] + p3DData.pGridData[icur2]) / 2.0;
+                        p[no] = (p3DData[icur1] + p3DData[icur2]) / 2.0;
                         no++;
                     }
                     break;
                 case 6:
-                    p[no++] = p3DData.pGridData[grid[6]];//6
-                    p[no++] = p3DData.pGridData[grid[7]];//7
-                    p[no++] = (p3DData.pGridData[grid[2]] + p3DData.pGridData[grid[3]]) / 2.0;
-                    p[no++] = (p3DData.pGridData[grid[4]] + p3DData.pGridData[grid[5]]) / 2.0;
+                    p[no++] = p3DData[grid[6]];//6
+                    p[no++] = p3DData[grid[7]];//7
+                    p[no++] = (p3DData[grid[2]] + p3DData[grid[3]]) / 2.0;
+                    p[no++] = (p3DData[grid[4]] + p3DData[grid[5]]) / 2.0;
                     if (iy < yGridNum - 2)//y++
                     {
                         icur1 = grid[6] + xGridNum;
                         icur2 = grid[7] + xGridNum;
-                        p[no] = (p3DData.pGridData[icur1] + p3DData.pGridData[icur2]) / 2.0;
+                        p[no] = (p3DData[icur1] + p3DData[icur2]) / 2.0;
                         no++;
                     }
                     if (iz < zGridNum - 2)//z++
                     {
                         icur1 = grid[6] + xyGrid;
                         icur2 = grid[7] + xyGrid;
-                        p[no] = (p3DData.pGridData[icur1] + p3DData.pGridData[icur2]) / 2.0;
+                        p[no] = (p3DData[icur1] + p3DData[icur2]) / 2.0;
                         no++;
                     }
                     break;
                 case 7:
-                    p[no++] = p3DData.pGridData[grid[4]];//4
-                    p[no++] = p3DData.pGridData[grid[7]];//7
-                    p[no++] = (p3DData.pGridData[grid[0]] + p3DData.pGridData[grid[3]]) / 2.0;
-                    p[no++] = (p3DData.pGridData[grid[6]] + p3DData.pGridData[grid[5]]) / 2.0;
+                    p[no++] = p3DData[grid[4]];//4
+                    p[no++] = p3DData[grid[7]];//7
+                    p[no++] = (p3DData[grid[0]] + p3DData[grid[3]]) / 2.0;
+                    p[no++] = (p3DData[grid[6]] + p3DData[grid[5]]) / 2.0;
                     if (iy < yGridNum - 2)//y++
                     {
                         icur1 = grid[4] + xGridNum;
                         icur2 = grid[7] + xGridNum;
-                        p[no] = (p3DData.pGridData[icur1] + p3DData.pGridData[icur2]) / 2.0;
+                        p[no] = (p3DData[icur1] + p3DData[icur2]) / 2.0;
                         no++;
                     }
                     if (ix>0)//x--
                     {
                         icur1 = grid[4] - 1;
                         icur2 = grid[7] - 1;
-                        p[no] = (p3DData.pGridData[icur1] + p3DData.pGridData[icur2]) / 2.0;
+                        p[no] = (p3DData[icur1] + p3DData[icur2]) / 2.0;
                         no++;
                     }
                     break;
                 case 8:
-                    p[no++] = p3DData.pGridData[grid[4]];//4
-                    p[no++] = p3DData.pGridData[grid[7]];//0
-                    p[no++] = (p3DData.pGridData[grid[1]] + p3DData.pGridData[grid[5]]) / 2.0;
-                    p[no++] = (p3DData.pGridData[grid[3]] + p3DData.pGridData[grid[7]]) / 2.0;
+                    p[no++] = p3DData[grid[4]];//4
+                    p[no++] = p3DData[grid[7]];//0
+                    p[no++] = (p3DData[grid[1]] + p3DData[grid[5]]) / 2.0;
+                    p[no++] = (p3DData[grid[3]] + p3DData[grid[7]]) / 2.0;
                     if (iz >0)//z--
                     {
                         icur1 = grid[4] - xyGrid;
                         icur2 = grid[0] - xyGrid;
-                        p[no] = (p3DData.pGridData[icur1] + p3DData.pGridData[icur2]) / 2.0;
+                        p[no] = (p3DData[icur1] + p3DData[icur2]) / 2.0;
                         no++;
                     }
                     if (ix > 0)//x--
                     {
                         icur1 = grid[4] - 1;
                         icur2 = grid[0] - 1;
-                        p[no] = (p3DData.pGridData[icur1] + p3DData.pGridData[icur2]) / 2.0;
+                        p[no] = (p3DData[icur1] + p3DData[icur2]) / 2.0;
                         no++;
                     }
                     break;
                 case 9:
-                    p[no++] = p3DData.pGridData[grid[1]];//1
-                    p[no++] = p3DData.pGridData[grid[5]];//5
-                    p[no++] = (p3DData.pGridData[grid[0]] + p3DData.pGridData[grid[4]]) / 2.0;
-                    p[no++] = (p3DData.pGridData[grid[6]] + p3DData.pGridData[grid[2]]) / 2.0;
+                    p[no++] = p3DData[grid[1]];//1
+                    p[no++] = p3DData[grid[5]];//5
+                    p[no++] = (p3DData[grid[0]] + p3DData[grid[4]]) / 2.0;
+                    p[no++] = (p3DData[grid[6]] + p3DData[grid[2]]) / 2.0;
                     if (iz > 0)//z--
                     {
                         icur1 = grid[1] - xyGrid;
                         icur2 = grid[5] - xyGrid;
-                        p[no] = (p3DData.pGridData[icur1] + p3DData.pGridData[icur2]) / 2.0;
+                        p[no] = (p3DData[icur1] + p3DData[icur2]) / 2.0;
                         no++;
                     }
                     if (ix <xGridNum -2)//x++
                     {
                         icur1 = grid[1] + 1;
                         icur2 = grid[5] + 1;
-                        p[no] = (p3DData.pGridData[icur1] + p3DData.pGridData[icur2]) / 2.0;
+                        p[no] = (p3DData[icur1] + p3DData[icur2]) / 2.0;
                         no++;
                     }
                     break;
                 case 10:
-                    p[no++] = p3DData.pGridData[grid[2]];//2
-                    p[no++] = p3DData.pGridData[grid[6]];//6
-                    p[no++] = (p3DData.pGridData[grid[1]] + p3DData.pGridData[grid[5]]) / 2.0;
-                    p[no++] = (p3DData.pGridData[grid[3]] + p3DData.pGridData[grid[7]]) / 2.0;
+                    p[no++] = p3DData[grid[2]];//2
+                    p[no++] = p3DData[grid[6]];//6
+                    p[no++] = (p3DData[grid[1]] + p3DData[grid[5]]) / 2.0;
+                    p[no++] = (p3DData[grid[3]] + p3DData[grid[7]]) / 2.0;
                     if (iz <zGridNum-2)//z++
                     {
                         icur1 = grid[2] + xyGrid;
                         icur2 = grid[6] + xyGrid;
-                        p[no] = (p3DData.pGridData[icur1] + p3DData.pGridData[icur2]) / 2.0;
+                        p[no] = (p3DData[icur1] + p3DData[icur2]) / 2.0;
                         no++;
                     }
                     if (ix < xGridNum - 2)//x++
                     {
                         icur1 = grid[2] + 1;
                         icur2 = grid[6] + 1;
-                        p[no] = (p3DData.pGridData[icur1] + p3DData.pGridData[icur2]) / 2.0;
+                        p[no] = (p3DData[icur1] + p3DData[icur2]) / 2.0;
                         no++;
                     }
                     break;
                 case 11:
-                    p[no++] = p3DData.pGridData[grid[3]];//3
-                    p[no++] = p3DData.pGridData[grid[7]];//7
-                    p[no++] = (p3DData.pGridData[grid[0]] + p3DData.pGridData[grid[4]]) / 2.0;
-                    p[no++] = (p3DData.pGridData[grid[6]] + p3DData.pGridData[grid[2]]) / 2.0;
+                    p[no++] = p3DData[grid[3]];//3
+                    p[no++] = p3DData[grid[7]];//7
+                    p[no++] = (p3DData[grid[0]] + p3DData[grid[4]]) / 2.0;
+                    p[no++] = (p3DData[grid[6]] + p3DData[grid[2]]) / 2.0;
                     if (iz < zGridNum - 2)//z++
                     {
                         icur1 = grid[3] + xyGrid;
                         icur2 = grid[7] + xyGrid;
-                        p[no] = (p3DData.pGridData[icur1] + p3DData.pGridData[icur2]) / 2.0;
+                        p[no] = (p3DData[icur1] + p3DData[icur2]) / 2.0;
                         no++;
                     }
                     if (ix < xGridNum - 2)//x++
                     {
                         icur1 = grid[3] - 1;
                         icur2 = grid[7] - 1;
-                        p[no] = (p3DData.pGridData[icur1] + p3DData.pGridData[icur2]) / 2.0;
+                        p[no] = (p3DData[icur1] + p3DData[icur2]) / 2.0;
                         no++;
                     }
                     break;
@@ -3004,19 +3064,11 @@ namespace DataCollection
             }
             else return 0;
         }
-        private List<vec2> pHideValues = new List<vec2>();
-        public void AddHideValue(vec2 p)
-        {
-            pHideValues.Add(p);
-        }
-        public void AddHideValue(double v1, double v2)
-        {
-            //v1 <= v2
-            pHideValues.Add(new vec2((float)v1, (float)v2));
-        }
+
         /// <summary>
         /// get the intersecion of hidevalues and edge
         /// pHideValues Cross edge vert1,vert2
+        /// 计算pHideValues与边相交的值
         /// </summary>
         /// <param name="vert1"> value of vertex 1</param>
         /// <param name="vert2">value of vertex 2</param>
@@ -3024,71 +3076,50 @@ namespace DataCollection
         /// <param name="b2">show state of vertex 1</param>
         /// <param name="secValue">intersection value</param>
         /// <returns>false, no intersection</returns>
-        private bool GetCrossValue(double vert1, double vert2, bool b1, bool b2, out double secValue)
+        protected bool GetCrossValue(double vert1, double vert2, bool b1, bool b2, out double secValue)
         {
-            double minv = vert1;
-            double maxv = vert2;
-            if (vert1 > vert2)
+            secValue = double.NaN;
+            double mv1 = vert1;
+            double mv2 = vert2;
+            if(vert1 > vert2) { mv1 = vert2;mv2 = vert1; }
+            List<double> values = new List<double>();
+            foreach(vec2 p in pHideValues)
             {
-                minv = vert2;
-                maxv = vert1;
+                if (p.x >= mv1 && p.x <= mv2) values.Add(p.x);
+                if (p.y >= mv1 && p.y <= mv2) values.Add(p.y);
             }
-            bool ascend = false;
-            if (vert1 < vert2 && b2) ascend = true;
-            if (vert1 > vert2 && b1) ascend = true;
-
-            int i, n = 0;
-            float v1, v2;
-            float[] values = new float[pHideValues.Count * 2];
-            for (i = 0; i < pHideValues.Count; i++)
-            {
-                //v1 <= v2
-                v1 = pHideValues[i].x;
-                v2 = pHideValues[i].y;
-                if (v1 > maxv) continue;   //no intersection
-                if (v2 < minv) continue;   //no intersection
-                if (v1 >= minv) values[n++] = v1;
-                if (v2 <= maxv) values[n++] = v2;
-            }
-
-            if (ascend)
-            {
-                secValue = minv;
-                for (i = 0; i < n; i++)
-                {
-                    if (values[i] > secValue) secValue = values[i];
-                }
-            }
-            else
-            {
-                secValue = maxv;
-                for (i = 0; i < n; i++)
-                {
-                    if (values[i] < secValue) secValue = values[i];
-                }
-            }
-
-            values = null;
-
-            return n > 0;
-        }        
+            if (values.Count == 0) return false; //no section
+            bool mini = false;//
+            if (b1 && vert1 < vert2) mini = true;
+            if (b2 && vert1 > vert2) mini = true;
+            values.Sort();
+            if (mini) secValue = values[0];
+            else secValue = values[values.Count - 1];
+            values.Clear();
+            return true;
+        }
         protected override double GetVerticValue(int icur)
         {
-            return p3DData.pGridData[icur];
+            return p3DData[icur];
         }
         protected override double GetVerticValue(int ix, int iy, int iz, int verno)
         {
-            return p3DData.pGridData[GetVerticIndex(ix, iy, iz, verno)];
+            return p3DData[GetVerticIndex(ix, iy, iz, verno)];
         }
-        protected bool GetVerticShowState(int ix, int iy, int iz, int verno)
+        protected bool GetVerticShowState(C3DGridData data,int ix, int iy, int iz, int verno)
         {
-            if (p3DData.pgridShowTable[GetVerticIndex(ix, iy, iz, verno)] == 0)
+            if (data.pgridShowTable[GetVerticIndex(ix, iy, iz, verno)] == 0)
                 return false;
+            else return true;
+        }
+        protected bool GetVerticShowState(C3DGridData data,int id)
+        {
+            if (data.pgridShowTable[id] == 0)return false;
             else return true;
         }
         protected bool GetVerticShowState(int id)
         {
-            if (p3DData.pgridShowTable[id] == 0)return false;
+            if (p3DData.pgridShowTable[id] == 0) return false;
             else return true;
         }
         //获取顶点坐标
@@ -3271,7 +3302,7 @@ namespace DataCollection
         }
         */
         //get the intersection of blanked edge
-        private FLOAT_POINT_EXT GetBlankEdgeIntersetion1(int ix, int iy, int iz, 
+        protected FLOAT_POINT_EXT GetBlankEdgeIntersetion(int ix, int iy, int iz, 
                             int edge, 
                             bool blank1, bool blank2,
                             double scale,
@@ -3294,12 +3325,13 @@ namespace DataCollection
                 case 0://x 0-1
                     id = p3DData.GetVerticIndex(ix, iy, iz,0);
                     p = GetVerticCoord(ix, iy, iz, 0);
-                    if (p3DData.GetBlankedValue(id, out sect,0))
+                    if ( p3DData.GetBlankedValue(id, out sect,0) )
                     {
                         if (!crossed) { p.x = sect.x; return p; }
                         crossvalue = p.x + scale * xGridStep;
                         p.x = sect.x;
-                        if ( (blank1 && p.x < crossvalue) || (blank2 && p.x > crossvalue) )
+                        if ( (blank1 && sect.x > crossvalue) || 
+                             (blank2 && sect.x < crossvalue) )
                         {
                            p.x = (float)crossvalue;
                         }                        
@@ -3313,7 +3345,8 @@ namespace DataCollection
                         if (!crossed) { p.z = sect.z; return p; }
                         crossvalue = p.z + scale * zGridStep;
                         p.z = sect.z;
-                        if ((blank1 && p.z < crossvalue) || (blank2 && p.z > crossvalue))
+                        if ((blank1 && sect.z > crossvalue) || 
+                            (blank2 && sect.z < crossvalue))
                         {
                             p.z = (float)crossvalue;
                         }
@@ -3327,7 +3360,8 @@ namespace DataCollection
                         if (!crossed) { p.x = sect.x; return p; }
                         crossvalue = p.x + scale * xGridStep;
                         p.x = sect.x;
-                        if ((blank1 && p.x < crossvalue) || (blank2 && p.x > crossvalue))
+                        if ((blank1 && sect.x > crossvalue) || 
+                            (blank2 && sect.x < crossvalue))
                         {
                             p.x = (float)crossvalue;
                         }
@@ -3341,7 +3375,8 @@ namespace DataCollection
                         if (!crossed) { p.z = sect.z; return p; }
                         crossvalue = p.z + scale * zGridStep;
                         p.z = sect.z;
-                        if ((blank1 && p.z < crossvalue) || (blank2 && p.z > crossvalue))
+                        if ((blank1 && sect.z > crossvalue) || 
+                            (blank2 && sect.z < crossvalue))
                         {
                             p.z = (float)crossvalue;
                         }
@@ -3355,7 +3390,8 @@ namespace DataCollection
                         if (!crossed) { p.x = sect.x; return p; }
                         crossvalue = p.x + scale * xGridStep;
                         p.x = sect.x;
-                        if ((blank1 && p.x < crossvalue) || (blank2 && p.x > crossvalue))
+                        if ((blank1 && sect.x > crossvalue) || 
+                            (blank2 && sect.x < crossvalue))
                         {
                             p.x = (float)crossvalue;
                         }
@@ -3369,13 +3405,14 @@ namespace DataCollection
                         if (!crossed) { p.z = sect.z; return p; }
                         crossvalue = p.z + scale * zGridStep;
                         p.z = sect.z;
-                        if ((blank1 && p.z < crossvalue) || (blank2 && p.z > crossvalue))
+                        if ((blank1 && sect.z > crossvalue) || 
+                            (blank2 && sect.z < crossvalue))
                         {
                             p.z = (float)crossvalue;
                         }
                     }
                     break;
-                case 6://x 6-7
+                case 6://x 7-6
                     id = p3DData.GetVerticIndex(ix, iy, iz, 7);
                     p = GetVerticCoord(ix, iy, iz, 7);
                     if (p3DData.GetBlankedValue(id, out sect,0))
@@ -3383,7 +3420,8 @@ namespace DataCollection
                         if (!crossed) { p.x = sect.x; return p; }
                         crossvalue = p.x + scale * xGridStep;
                         p.x = sect.x;
-                        if ((blank1 && p.x < crossvalue) || (blank2 && p.x > crossvalue))
+                        if ((blank1 && sect.x > crossvalue) || 
+                            (blank2 && sect.x < crossvalue))
                         {
                             p.x = (float)crossvalue;
                         }
@@ -3397,7 +3435,8 @@ namespace DataCollection
                         if (!crossed) { p.z = sect.z; return p; }
                         crossvalue = p.z + scale * zGridStep;
                         p.z = sect.z;
-                        if ((blank1 && p.z < crossvalue) || (blank2 && p.z > crossvalue))
+                        if ((blank1 && sect.z > crossvalue) || 
+                            (blank2 && sect.z < crossvalue))
                         {
                             p.z = (float)crossvalue;
                         }
@@ -3411,7 +3450,8 @@ namespace DataCollection
                         if (!crossed) { p.y = sect.y; return p; }
                         crossvalue = p.y + scale * yGridStep;
                         p.y = sect.y;
-                        if ((blank1 && p.y < crossvalue) || (blank2 && p.y > crossvalue))
+                        if ((blank1 && sect.y > crossvalue) || 
+                            (blank2 && sect.y < crossvalue))
                         {
                             p.y = (float)crossvalue;
                         }
@@ -3425,7 +3465,8 @@ namespace DataCollection
                         if (!crossed) { p.y = sect.y; return p; }
                         crossvalue = p.y + scale * yGridStep;
                         p.y = sect.y;
-                        if ((blank1 && p.y < crossvalue) || (blank2 && p.y > crossvalue))
+                        if ((blank1 && sect.y > crossvalue) || 
+                            (blank2 && sect.y < crossvalue))
                         {
                             p.y = (float)crossvalue;
                         }
@@ -3439,7 +3480,8 @@ namespace DataCollection
                         if (!crossed) { p.y = sect.y; return p; }
                         crossvalue = p.y + scale * yGridStep;
                         p.y = sect.y;
-                        if ((blank1 && p.y < crossvalue) || (blank2 && p.y > crossvalue))
+                        if ((blank1 && sect.y > crossvalue) || 
+                            (blank2 && sect.y < crossvalue))
                         {
                             p.y = (float)crossvalue;
                         }
@@ -3453,7 +3495,8 @@ namespace DataCollection
                         if (!crossed) { p.y = sect.y; return p; }
                         crossvalue = p.y + scale * yGridStep;
                         p.y = sect.y;
-                        if ((blank1 && p.y < crossvalue) || (blank2 && p.y > crossvalue))
+                        if ((blank1 && sect.y > crossvalue) || 
+                            (blank2 && sect.y < crossvalue))
                         {
                             p.y = (float)crossvalue;
                         }
@@ -3555,9 +3598,12 @@ namespace DataCollection
             return (int)ret;
         }
        // */
-        private FLOAT_POINT_EXT GetEdgeCoord(int ix, int iy, int iz, int edno)
+        protected virtual FLOAT_POINT_EXT GetEdgeIntersection(int ix, int iy, int iz, int edno,out bool crossed)
         {
+            crossed = false;
+            FLOAT_POINT_EXT p = new FLOAT_POINT_EXT();
             //2 vertices value v1,v2 of this edge
+            //边的顶点编号
             int id1 = GetVerticIndex(ix, iy, iz, vertEdgeRelation[edno].x);
             int id2 = GetVerticIndex(ix, iy, iz, vertEdgeRelation[edno].y);
             double v1 = p3DData.pGridData[id1];
@@ -3587,37 +3633,24 @@ namespace DataCollection
                 m_ErrInfo += "show state2:" + b2.ToString() + " ";
                 throw new Exception(m_ErrInfo);
             }
-            #endif
-
-            FLOAT_POINT_EXT p;
-            bool crossed;
-            double scale, crossvalue;
-            if (v1 == v2)
-            {
-                crossed = false;
-                scale = 0;
-            }
-            else
+            #endif            
+            
+            double scale = 0, crossvalue;
+            if (v1 != v2)
             {
                 crossed = GetCrossValue(v1, v2, b1, b2, out crossvalue);
                 scale = (crossvalue - v1) / (v2 - v1);
             }
+            
             // one of vertices are blank value
             if (!(blank1 & blank2) && (blank1 | blank2))
             {
                 //p = GetBlankEdgeIntersetion(ix, iy, iz, edno, blank1, blank2);                
-                p = GetBlankEdgeIntersetion1(ix, iy, iz, edno, blank1, blank2, (float)scale, crossed);
-                //if (crossed)
-                {
-
-                }
-                //else
-                {
-                    if (blank1) p.icolor = (short)GetColorIndex(v2);
-                    else p.icolor = (short)GetColorIndex(v1);
-                }
+                p = GetBlankEdgeIntersetion(ix, iy, iz, edno, blank1, blank2, (float)scale, crossed);
+                if (blank1) p.icolor = (short)GetColorIndex(v2);
+                else p.icolor = (short)GetColorIndex(v1);
             }
-            else
+            else if(crossed)
             {
                 //double scale = GetNearestValue(v1, v2, b1, b2);                
                 //GetCrossValue(v1, v2, b1, b2, out crossvalue);                
@@ -3659,7 +3692,7 @@ namespace DataCollection
             pCurEdgePointArray[icur].pIndex[12+ver] = id;
             return;
         }
-        private void StoreEdgeIndex(int ix, int iy, int iz, int edge,int id)
+        protected void StoreEdgeIndex(int ix, int iy, int iz, int edge,int id)
         {
             //current cube index
             int icur = ix + iy * xGridNum;
@@ -3761,7 +3794,7 @@ namespace DataCollection
             }
             return -1;
         }
-        private int GetStoredEdgeIndex(int ix,int iy,int iz,int edge)
+        protected int GetStoredEdgeIndex(int ix,int iy,int iz,int edge)
         {
             //     |z
             //     o---4----o    
@@ -3777,7 +3810,7 @@ namespace DataCollection
 
             // check the current layer first
             int edgeIndex = pCurEdgePointArray[icur].pIndex[edge];
-            if (edgeIndex >= 0) return edgeIndex;
+            if (edgeIndex >= 0) return edgeIndex;//已存储
             
             //else check the previous Layer
             byte[] xedge= new byte[4] { 3,7,8,11};
@@ -3786,7 +3819,6 @@ namespace DataCollection
             byte[] yedge1 = new byte[4] { 4, 5, 6, 7 };
             byte[] zedge = new byte[4] { 0, 4, 8, 9 };
             byte[] zedge1 = new byte[4] { 2, 6, 11, 10 };
-            // current cube index
             
             if (ix > 0)
             {
@@ -3803,7 +3835,7 @@ namespace DataCollection
             }
             if (iy > 0)
             {
-                //37811-15910
+                //0123-4567
                 iprev = ix + (iy-1) * xGridNum;
                 for (int i = 0; i < 4; i++)
                 {
@@ -3814,9 +3846,9 @@ namespace DataCollection
                     }
                 }
             }
-            if (iz > 0)
+            if (iz > 0)//从上层网格pPrevEdgePointArray中查找
             {
-                //37811-15910
+                //0489-261110
                 iprev = ix + iy * xGridNum;
                 for (int i = 0; i < 4; i++)
                 {
@@ -3830,11 +3862,15 @@ namespace DataCollection
             
             return -1;
         }
-        private int GetCoordSize()
+        /// <summary>
+        /// 获得坐标数组长度
+        /// </summary>
+        /// <returns>坐标数组长度</returns>
+        protected int GetCoordSize()
         {
             return pISOSurfaceExt.pCoordArray.Count;
         }        
-        private void AddCoord(FLOAT_POINT_EXT p)
+        protected void AddCoordArray(FLOAT_POINT_EXT p)
         {
             pISOSurfaceExt.AddCoord(p);
         }
@@ -3887,7 +3923,7 @@ namespace DataCollection
             //Created by CreateMarchingCubeTable Project
             triTable = new int[256, 24]
             {
-               {-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
+                {-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
                 {0,8,3,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
                 {0,1,9,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
                 {1,8,3,1,9,8,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
@@ -3907,243 +3943,243 @@ namespace DataCollection
                 {4,3,0,4,7,3,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
                 {7,8,0,0,1,7,1,9,4,4,7,1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
                 {4,1,9,4,7,1,7,3,1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
-{4,7,8,1,2,10,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
-{0,4,1,10,1,4,10,4,7,2,10,7,3,2,7,-1,-1,-1,-1,-1,-1,-1,-1,-1},
-{0,2,8,7,8,2,7,2,10,4,7,10,9,4,10,-1,-1,-1,-1,-1,-1,-1,-1,-1},
-{7,3,2,10,7,2,10,4,7,9,4,10,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
-{2,3,8,8,4,2,4,7,11,11,2,4,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
-{11,4,7,11,2,4,2,0,4,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
-{1,11,2,1,7,11,9,4,7,1,9,7,0,3,8,-1,-1,-1,-1,-1,-1,-1,-1,-1},
-{4,7,11,9,4,11,9,11,2,9,2,1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
-{11,10,7,4,7,10,4,10,1,8,4,1,3,8,1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
-{11,10,7,7,10,4,4,10,1,1,0,4,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
-{0,3,8,11,10,7,7,10,4,10,9,4,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
-{4,10,9,4,7,10,7,11,10,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
-{4,9,5,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
-{3,0,9,9,5,3,5,4,8,8,3,5,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
-{0,5,4,0,1,5,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
-{8,5,4,8,3,5,3,1,5,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
-{4,9,1,1,2,4,2,10,5,5,4,2,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
-{8,5,4,8,10,5,3,2,10,8,3,10,0,9,1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
-{5,2,10,5,4,2,4,0,2,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
-{2,10,5,3,2,5,3,5,4,3,4,8,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
-{2,3,11,5,4,9,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
-{8,11,4,5,4,11,5,11,2,9,5,2,0,9,2,-1,-1,-1,-1,-1,-1,-1,-1,-1},
-{1,5,2,11,2,5,11,5,4,3,11,4,0,3,4,-1,-1,-1,-1,-1,-1,-1,-1,-1},
-{1,5,2,2,5,11,11,5,4,4,8,11,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
-{1,3,9,4,9,3,4,3,11,5,4,11,10,5,11,-1,-1,-1,-1,-1,-1,-1,-1,-1},
-{1,0,9,8,11,4,4,11,5,11,10,5,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
-{11,10,5,4,11,5,4,3,11,0,3,4,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
-{5,11,10,5,4,11,4,8,11,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
-{9,7,8,9,5,7,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
-{9,3,0,9,5,3,5,7,3,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
-{0,7,8,0,1,7,1,5,7,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
-{3,1,5,5,7,3,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
-{5,7,10,2,10,7,2,7,8,1,2,8,9,1,8,-1,-1,-1,-1,-1,-1,-1,-1,-1},
-{0,9,1,5,7,10,10,7,2,7,3,2,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
-{5,7,10,10,7,2,2,7,8,8,0,2,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
-{2,7,3,2,10,7,10,5,7,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
-{8,9,3,2,3,9,2,9,5,11,2,5,7,11,5,-1,-1,-1,-1,-1,-1,-1,-1,-1},
-{5,7,11,2,5,11,2,9,5,0,9,2,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
-{8,0,3,1,5,2,2,5,11,5,7,11,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
-{11,5,7,11,2,5,2,1,5,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
-{5,7,11,11,10,5,8,9,1,1,3,8,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
-{9,1,0,10,5,7,7,11,10,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
-{3,8,0,7,11,10,10,5,7,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
-{7,11,5,11,10,5,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
-{6,5,10,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
-{0,8,3,10,6,5,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
-{0,1,10,10,6,0,6,5,9,9,0,6,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
-{9,8,5,6,5,8,6,8,3,10,6,3,1,10,3,-1,-1,-1,-1,-1,-1,-1,-1,-1},
-{6,1,2,6,5,1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
-{2,6,3,8,3,6,8,6,5,0,8,5,1,0,5,-1,-1,-1,-1,-1,-1,-1,-1,-1},
-{9,6,5,9,0,6,0,2,6,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
-{9,8,5,5,8,6,6,8,3,3,2,6,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
-{3,11,6,6,5,3,5,10,2,2,3,5,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
-{2,0,10,5,10,0,5,0,8,6,5,8,11,6,8,-1,-1,-1,-1,-1,-1,-1,-1,-1},
-{3,9,0,3,5,9,11,6,5,3,11,5,2,1,10,-1,-1,-1,-1,-1,-1,-1,-1,-1},
-{2,1,10,9,8,5,5,8,6,8,11,6,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
-{6,3,11,6,5,3,5,1,3,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
-{8,11,6,5,8,6,5,0,8,1,0,5,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
-{6,5,9,11,6,9,11,9,0,11,0,3,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
-{6,8,11,6,5,8,5,9,8,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
-{8,4,5,5,10,8,10,6,7,7,8,10,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
-{7,3,6,10,6,3,10,3,0,5,10,0,4,5,0,-1,-1,-1,-1,-1,-1,-1,-1,-1},
-{7,10,6,7,1,10,8,0,1,7,8,1,4,5,9,-1,-1,-1,-1,-1,-1,-1,-1,-1},
-{9,4,5,7,3,6,6,3,10,3,1,10,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
-{5,1,4,8,4,1,8,1,2,7,8,2,6,7,2,-1,-1,-1,-1,-1,-1,-1,-1,-1},
-{0,4,5,5,1,0,7,3,2,2,6,7,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
-{5,9,4,0,2,8,8,2,7,2,6,7,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
-{4,5,9,6,7,3,3,2,6,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
-{5,8,4,5,3,8,10,2,3,5,10,3,6,7,11,-1,-1,-1,-1,-1,-1,-1,-1,-1},
-{7,11,6,2,0,10,10,0,5,0,4,5,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
-{8,0,3,2,1,10,4,5,9,6,7,11,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
-{6,7,11,10,2,1,4,5,9,6,10,5,1,9,4,4,2,1,4,7,2,7,11,2},
-{11,6,7,5,1,4,4,1,8,1,3,8,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
-{6,7,11,4,5,1,1,0,4,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
-{4,5,9,8,0,3,6,7,11,4,8,7,3,11,6,6,0,3,6,5,0,5,9,0},
-{6,7,11,4,5,9,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
-{4,10,6,4,9,10,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
-{9,10,0,3,0,10,3,10,6,8,3,6,4,8,6,-1,-1,-1,-1,-1,-1,-1,-1,-1},
-{10,0,1,10,6,0,6,4,0,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
-{3,1,10,6,3,10,6,8,3,4,8,6,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
-{1,4,9,1,2,4,2,6,4,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
-{9,1,0,2,6,3,3,6,8,6,4,8,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
-{2,6,4,4,0,2,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
-{8,6,4,8,3,6,3,2,6,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
-{6,4,11,3,11,4,3,4,9,2,3,9,10,2,9,-1,-1,-1,-1,-1,-1,-1,-1,-1},
-{2,0,9,9,10,2,8,11,6,6,4,8,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
-{1,10,2,6,4,11,11,4,3,4,0,3,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
-{10,2,1,11,6,4,4,8,11,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
-{1,3,9,9,3,4,4,3,11,11,6,4,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
-{0,9,1,4,8,11,11,6,4,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
-{3,4,0,3,11,4,11,6,4,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
-{4,8,6,8,11,6,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
-{7,10,6,7,8,10,8,9,10,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
-{9,10,0,0,10,3,3,10,6,6,7,3,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
-{0,1,10,8,0,10,8,10,6,8,6,7,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
-{10,3,1,10,6,3,6,7,3,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
-{8,9,1,2,8,1,2,7,8,6,7,2,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
-{1,0,9,3,2,6,6,7,3,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
-{7,2,6,7,8,2,8,0,2,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
-{6,7,2,7,3,2,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
-{6,7,11,8,9,3,3,9,2,9,10,2,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
-{11,6,7,10,2,0,0,9,10,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
-{2,1,10,11,6,7,0,3,8,2,11,3,7,8,0,0,6,7,0,1,6,1,10,6},
-{11,6,7,10,2,1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
-{7,11,6,3,8,9,9,1,3,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
-{7,11,6,1,0,9,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
-{3,8,0,7,11,6,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
-{7,11,6,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
-{6,11,7,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
-{0,8,7,7,6,0,6,11,3,3,0,6,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
-{6,11,7,9,0,1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
-{3,1,11,6,11,1,6,1,9,7,6,9,8,7,9,-1,-1,-1,-1,-1,-1,-1,-1,-1},
-{7,6,10,10,1,7,1,2,11,11,7,1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
-{10,7,6,10,8,7,1,0,8,10,1,8,2,11,3,-1,-1,-1,-1,-1,-1,-1,-1,-1},
-{10,9,6,7,6,9,7,9,0,11,7,0,2,11,0,-1,-1,-1,-1,-1,-1,-1,-1,-1},
-{3,2,11,10,9,6,6,9,7,9,8,7,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
-{2,7,6,2,3,7,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
-{7,0,8,7,6,0,6,2,0,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
-{3,7,0,9,0,7,9,7,6,1,9,6,2,1,6,-1,-1,-1,-1,-1,-1,-1,-1,-1},
-{9,8,7,6,9,7,6,1,9,2,1,6,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
-{10,7,6,10,1,7,1,3,7,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
-{0,8,7,1,0,7,1,7,6,1,6,10,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
-{10,9,6,6,9,7,7,9,0,0,3,7,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
-{7,9,8,7,6,9,6,10,9,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
-{6,8,4,6,11,8,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
-{3,6,11,3,0,6,0,4,6,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
-{4,6,9,1,9,6,1,6,11,0,1,11,8,0,11,-1,-1,-1,-1,-1,-1,-1,-1,-1},
-{3,1,11,11,1,6,6,1,9,9,4,6,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
-{11,8,2,1,2,8,1,8,4,10,1,4,6,10,4,-1,-1,-1,-1,-1,-1,-1,-1,-1},
-{11,3,2,0,4,1,1,4,10,4,6,10,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
-{4,6,10,10,9,4,11,8,0,0,2,11,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
-{2,11,3,6,10,9,9,4,6,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
-{8,2,3,8,4,2,4,6,2,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
-{0,4,6,6,2,0,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
-{3,8,0,4,6,9,9,6,1,6,2,1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
-{1,6,2,1,9,6,9,4,6,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
-{1,3,8,4,1,8,4,10,1,6,10,4,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
-{10,4,6,10,1,4,1,0,4,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
-{8,0,3,9,4,6,6,10,9,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
-{6,10,4,10,9,4,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
-{11,7,4,4,9,11,9,5,6,6,11,9,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
-{9,3,0,9,11,3,5,6,11,9,5,11,4,8,7,-1,-1,-1,-1,-1,-1,-1,-1,-1},
-{4,0,7,11,7,0,11,0,1,6,11,1,5,6,1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
-{4,8,7,3,1,11,11,1,6,1,5,6,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
-{11,1,2,11,9,1,7,4,9,11,7,9,6,10,5,-1,-1,-1,-1,-1,-1,-1,-1,-1},
-{7,4,8,0,9,1,6,10,5,2,11,3,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
-{10,5,6,4,0,7,7,0,11,0,2,11,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
-{6,10,5,7,4,8,2,11,3,6,7,11,8,3,2,2,4,8,2,10,4,10,5,4},
-{6,2,5,9,5,2,9,2,3,4,9,3,7,4,3,-1,-1,-1,-1,-1,-1,-1,-1,-1},
-{8,7,4,6,2,5,5,2,9,2,0,9,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
-{6,2,1,1,5,6,3,7,4,4,0,3,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
-{7,4,8,5,6,2,2,1,5,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
-{6,10,5,1,3,9,9,3,4,3,7,4,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
-{4,8,7,5,6,10,0,9,1,4,5,9,10,1,0,0,6,10,0,8,6,8,7,6},
-{5,6,10,7,4,0,0,3,7,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
-{7,4,8,5,6,10,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
-{6,9,5,6,11,9,11,8,9,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
-{6,11,3,5,6,3,5,3,0,5,0,9,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
-{11,8,0,1,11,0,1,6,11,5,6,1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
-{6,1,5,6,11,1,11,3,1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
-{5,6,10,11,8,2,2,8,1,8,9,1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
-{2,11,3,1,0,9,6,10,5,2,1,10,9,5,6,6,0,9,6,11,0,11,3,0},
-{6,10,5,2,11,8,8,0,2,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
-{2,11,3,6,10,5,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
-{8,9,3,3,9,2,2,9,5,5,6,2,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
-{9,2,0,9,5,2,5,6,2,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
-{0,3,8,2,1,5,5,6,2,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
-{2,1,6,1,5,6,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
-{10,5,6,9,1,3,3,8,9,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
-{9,1,0,10,5,6,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
-{3,8,0,5,6,10,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
-{10,5,6,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
-{5,11,7,5,10,11,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
-{7,5,8,0,8,5,0,5,10,3,0,10,11,3,10,-1,-1,-1,-1,-1,-1,-1,-1,-1},
-{10,11,1,0,1,11,0,11,7,9,0,7,5,9,7,-1,-1,-1,-1,-1,-1,-1,-1,-1},
-{10,11,3,3,1,10,7,5,9,9,8,7,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
-{11,1,2,11,7,1,7,5,1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
-{2,11,3,7,5,8,8,5,0,5,1,0,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
-{7,5,9,0,7,9,0,11,7,2,11,0,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
-{11,3,2,8,7,5,5,9,8,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
-{2,5,10,2,3,5,3,7,5,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
-{7,5,8,8,5,0,0,5,10,10,2,0,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
-{10,2,1,3,7,0,0,7,9,7,5,9,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
-{1,10,2,5,9,8,8,7,5,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
-{7,5,1,1,3,7,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
-{0,5,1,0,8,5,8,7,5,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
-{9,7,5,9,0,7,0,3,7,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
-{8,7,9,7,5,9,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
-{5,8,4,5,10,8,10,11,8,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
-{10,11,3,0,10,3,0,5,10,4,5,0,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
-{4,5,9,10,11,1,1,11,0,11,8,0,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
-{5,9,4,1,10,11,11,3,1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
-{5,1,4,4,1,8,8,1,2,2,11,8,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
-{3,2,11,1,0,4,4,5,1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
-{9,4,5,8,0,2,2,11,8,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
-{11,3,2,9,4,5,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
-{2,3,8,10,2,8,10,8,4,10,4,5,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
-{5,0,4,5,10,0,10,2,0,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
-{0,3,8,9,4,5,2,1,10,0,9,1,5,10,2,2,4,5,2,3,4,3,8,4},
-{5,9,4,1,10,2,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
-{8,1,3,8,4,1,4,5,1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
-{4,5,0,5,1,0,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
-{8,0,3,9,4,5,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
-{5,9,4,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
-{4,11,7,4,9,11,9,10,11,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
-{7,4,8,9,10,0,0,10,3,10,11,3,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
-{10,11,1,1,11,0,0,11,7,7,4,0,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
-{8,7,4,11,3,1,1,10,11,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
-{4,9,1,7,4,1,7,1,2,7,2,11,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
-{0,9,1,3,2,11,4,8,7,0,3,8,11,7,4,4,2,11,4,9,2,9,1,2},
-{11,0,2,11,7,0,7,4,0,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
-{11,3,2,8,7,4,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
-{3,7,4,9,3,4,9,2,3,10,2,9,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
-{4,8,7,0,9,10,10,2,0,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
-{2,1,10,0,3,7,7,4,0,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
-{8,7,4,10,2,1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
-{4,3,7,4,9,3,9,1,3,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
-{4,8,7,0,9,1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
-{0,3,4,3,7,4,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
-{8,7,4,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
-{8,9,10,10,11,8,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
-{3,10,11,3,0,10,0,9,10,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
-{0,11,8,0,1,11,1,10,11,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
-{11,3,10,3,1,10,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
-{1,8,9,1,2,8,2,11,8,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
-{3,2,11,1,0,9,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
-{2,11,0,11,8,0,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
-{11,3,2,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
-{2,9,10,2,3,9,3,8,9,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
-{0,9,2,9,10,2,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
-{0,3,8,2,1,10,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
-{1,10,2,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
-{3,8,1,8,9,1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
-{9,1,0,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
-{3,8,0,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
-{-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
-     };
+                {4,7,8,1,2,10,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
+                {0,4,1,10,1,4,10,4,7,2,10,7,3,2,7,-1,-1,-1,-1,-1,-1,-1,-1,-1},
+                {0,2,8,7,8,2,7,2,10,4,7,10,9,4,10,-1,-1,-1,-1,-1,-1,-1,-1,-1},
+                {7,3,2,10,7,2,10,4,7,9,4,10,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
+                {2,3,8,8,4,2,4,7,11,11,2,4,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
+                {11,4,7,11,2,4,2,0,4,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
+                {1,11,2,1,7,11,9,4,7,1,9,7,0,3,8,-1,-1,-1,-1,-1,-1,-1,-1,-1},
+                {4,7,11,9,4,11,9,11,2,9,2,1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
+                {11,10,7,4,7,10,4,10,1,8,4,1,3,8,1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
+                {11,10,7,7,10,4,4,10,1,1,0,4,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
+                {0,3,8,11,10,7,7,10,4,10,9,4,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
+                {4,10,9,4,7,10,7,11,10,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
+                {4,9,5,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
+                {3,0,9,9,5,3,5,4,8,8,3,5,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
+                {0,5,4,0,1,5,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
+                {8,5,4,8,3,5,3,1,5,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
+                {4,9,1,1,2,4,2,10,5,5,4,2,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
+                {8,5,4,8,10,5,3,2,10,8,3,10,0,9,1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
+                {5,2,10,5,4,2,4,0,2,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
+                {2,10,5,3,2,5,3,5,4,3,4,8,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
+                {2,3,11,5,4,9,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
+                {8,11,4,5,4,11,5,11,2,9,5,2,0,9,2,-1,-1,-1,-1,-1,-1,-1,-1,-1},
+                {1,5,2,11,2,5,11,5,4,3,11,4,0,3,4,-1,-1,-1,-1,-1,-1,-1,-1,-1},
+                {1,5,2,2,5,11,11,5,4,4,8,11,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
+                {1,3,9,4,9,3,4,3,11,5,4,11,10,5,11,-1,-1,-1,-1,-1,-1,-1,-1,-1},
+                {1,0,9,8,11,4,4,11,5,11,10,5,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
+                {11,10,5,4,11,5,4,3,11,0,3,4,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
+                {5,11,10,5,4,11,4,8,11,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
+                {9,7,8,9,5,7,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
+                {9,3,0,9,5,3,5,7,3,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
+                {0,7,8,0,1,7,1,5,7,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
+                {3,1,5,5,7,3,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
+                {5,7,10,2,10,7,2,7,8,1,2,8,9,1,8,-1,-1,-1,-1,-1,-1,-1,-1,-1},
+                {0,9,1,5,7,10,10,7,2,7,3,2,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
+                {5,7,10,10,7,2,2,7,8,8,0,2,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
+                {2,7,3,2,10,7,10,5,7,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
+                {8,9,3,2,3,9,2,9,5,11,2,5,7,11,5,-1,-1,-1,-1,-1,-1,-1,-1,-1},
+                {5,7,11,2,5,11,2,9,5,0,9,2,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
+                {8,0,3,1,5,2,2,5,11,5,7,11,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
+                {11,5,7,11,2,5,2,1,5,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
+                {5,7,11,11,10,5,8,9,1,1,3,8,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
+                {9,1,0,10,5,7,7,11,10,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
+                {3,8,0,7,11,10,10,5,7,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
+                {7,11,5,11,10,5,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
+                {6,5,10,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
+                {0,8,3,10,6,5,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
+                {0,1,10,10,6,0,6,5,9,9,0,6,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
+                {9,8,5,6,5,8,6,8,3,10,6,3,1,10,3,-1,-1,-1,-1,-1,-1,-1,-1,-1},
+                {6,1,2,6,5,1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
+                {2,6,3,8,3,6,8,6,5,0,8,5,1,0,5,-1,-1,-1,-1,-1,-1,-1,-1,-1},
+                {9,6,5,9,0,6,0,2,6,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
+                {9,8,5,5,8,6,6,8,3,3,2,6,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
+                {3,11,6,6,5,3,5,10,2,2,3,5,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
+                {2,0,10,5,10,0,5,0,8,6,5,8,11,6,8,-1,-1,-1,-1,-1,-1,-1,-1,-1},
+                {3,9,0,3,5,9,11,6,5,3,11,5,2,1,10,-1,-1,-1,-1,-1,-1,-1,-1,-1},
+                {2,1,10,9,8,5,5,8,6,8,11,6,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
+                {6,3,11,6,5,3,5,1,3,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
+                {8,11,6,5,8,6,5,0,8,1,0,5,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
+                {6,5,9,11,6,9,11,9,0,11,0,3,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
+                {6,8,11,6,5,8,5,9,8,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
+                {8,4,5,5,10,8,10,6,7,7,8,10,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
+                {7,3,6,10,6,3,10,3,0,5,10,0,4,5,0,-1,-1,-1,-1,-1,-1,-1,-1,-1},
+                {7,10,6,7,1,10,8,0,1,7,8,1,4,5,9,-1,-1,-1,-1,-1,-1,-1,-1,-1},
+                {9,4,5,7,3,6,6,3,10,3,1,10,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
+                {5,1,4,8,4,1,8,1,2,7,8,2,6,7,2,-1,-1,-1,-1,-1,-1,-1,-1,-1},
+                {0,4,5,5,1,0,7,3,2,2,6,7,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
+                {5,9,4,0,2,8,8,2,7,2,6,7,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
+                {4,5,9,6,7,3,3,2,6,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
+                {5,8,4,5,3,8,10,2,3,5,10,3,6,7,11,-1,-1,-1,-1,-1,-1,-1,-1,-1},
+                {7,11,6,2,0,10,10,0,5,0,4,5,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
+                {8,0,3,2,1,10,4,5,9,6,7,11,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
+                {6,7,11,10,2,1,4,5,9,6,10,5,1,9,4,4,2,1,4,7,2,7,11,2},
+                {11,6,7,5,1,4,4,1,8,1,3,8,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
+                {6,7,11,4,5,1,1,0,4,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
+                {4,5,9,8,0,3,6,7,11,4,8,7,3,11,6,6,0,3,6,5,0,5,9,0},
+                {6,7,11,4,5,9,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
+                {4,10,6,4,9,10,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
+                {9,10,0,3,0,10,3,10,6,8,3,6,4,8,6,-1,-1,-1,-1,-1,-1,-1,-1,-1},
+                {10,0,1,10,6,0,6,4,0,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
+                {3,1,10,6,3,10,6,8,3,4,8,6,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
+                {1,4,9,1,2,4,2,6,4,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
+                {9,1,0,2,6,3,3,6,8,6,4,8,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
+                {2,6,4,4,0,2,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
+                {8,6,4,8,3,6,3,2,6,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
+                {6,4,11,3,11,4,3,4,9,2,3,9,10,2,9,-1,-1,-1,-1,-1,-1,-1,-1,-1},
+                {2,0,9,9,10,2,8,11,6,6,4,8,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
+                {1,10,2,6,4,11,11,4,3,4,0,3,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
+                {10,2,1,11,6,4,4,8,11,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
+                {1,3,9,9,3,4,4,3,11,11,6,4,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
+                {0,9,1,4,8,11,11,6,4,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
+                {3,4,0,3,11,4,11,6,4,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
+                {4,8,6,8,11,6,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
+                {7,10,6,7,8,10,8,9,10,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
+                {9,10,0,0,10,3,3,10,6,6,7,3,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
+                {0,1,10,8,0,10,8,10,6,8,6,7,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
+                {10,3,1,10,6,3,6,7,3,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
+                {8,9,1,2,8,1,2,7,8,6,7,2,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
+                {1,0,9,3,2,6,6,7,3,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
+                {7,2,6,7,8,2,8,0,2,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
+                {6,7,2,7,3,2,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
+                {6,7,11,8,9,3,3,9,2,9,10,2,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
+                {11,6,7,10,2,0,0,9,10,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
+                {2,1,10,11,6,7,0,3,8,2,11,3,7,8,0,0,6,7,0,1,6,1,10,6},
+                {11,6,7,10,2,1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
+                {7,11,6,3,8,9,9,1,3,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
+                {7,11,6,1,0,9,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
+                {3,8,0,7,11,6,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
+                {7,11,6,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
+                {6,11,7,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
+                {0,8,7,7,6,0,6,11,3,3,0,6,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
+                {6,11,7,9,0,1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
+                {3,1,11,6,11,1,6,1,9,7,6,9,8,7,9,-1,-1,-1,-1,-1,-1,-1,-1,-1},
+                {7,6,10,10,1,7,1,2,11,11,7,1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
+                {10,7,6,10,8,7,1,0,8,10,1,8,2,11,3,-1,-1,-1,-1,-1,-1,-1,-1,-1},
+                {10,9,6,7,6,9,7,9,0,11,7,0,2,11,0,-1,-1,-1,-1,-1,-1,-1,-1,-1},
+                {3,2,11,10,9,6,6,9,7,9,8,7,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
+                {2,7,6,2,3,7,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
+                {7,0,8,7,6,0,6,2,0,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
+                {3,7,0,9,0,7,9,7,6,1,9,6,2,1,6,-1,-1,-1,-1,-1,-1,-1,-1,-1},
+                {9,8,7,6,9,7,6,1,9,2,1,6,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
+                {10,7,6,10,1,7,1,3,7,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
+                {0,8,7,1,0,7,1,7,6,1,6,10,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
+                {10,9,6,6,9,7,7,9,0,0,3,7,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
+                {7,9,8,7,6,9,6,10,9,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
+                {6,8,4,6,11,8,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
+                {3,6,11,3,0,6,0,4,6,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
+                {4,6,9,1,9,6,1,6,11,0,1,11,8,0,11,-1,-1,-1,-1,-1,-1,-1,-1,-1},
+                {3,1,11,11,1,6,6,1,9,9,4,6,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
+                {11,8,2,1,2,8,1,8,4,10,1,4,6,10,4,-1,-1,-1,-1,-1,-1,-1,-1,-1},
+                {11,3,2,0,4,1,1,4,10,4,6,10,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
+                {4,6,10,10,9,4,11,8,0,0,2,11,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
+                {2,11,3,6,10,9,9,4,6,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
+                {8,2,3,8,4,2,4,6,2,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
+                {0,4,6,6,2,0,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
+                {3,8,0,4,6,9,9,6,1,6,2,1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
+                {1,6,2,1,9,6,9,4,6,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
+                {1,3,8,4,1,8,4,10,1,6,10,4,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
+                {10,4,6,10,1,4,1,0,4,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
+                {8,0,3,9,4,6,6,10,9,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
+                {6,10,4,10,9,4,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
+                {11,7,4,4,9,11,9,5,6,6,11,9,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
+                {9,3,0,9,11,3,5,6,11,9,5,11,4,8,7,-1,-1,-1,-1,-1,-1,-1,-1,-1},
+                {4,0,7,11,7,0,11,0,1,6,11,1,5,6,1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
+                {4,8,7,3,1,11,11,1,6,1,5,6,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
+                {11,1,2,11,9,1,7,4,9,11,7,9,6,10,5,-1,-1,-1,-1,-1,-1,-1,-1,-1},
+                {7,4,8,0,9,1,6,10,5,2,11,3,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
+                {10,5,6,4,0,7,7,0,11,0,2,11,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
+                {6,10,5,7,4,8,2,11,3,6,7,11,8,3,2,2,4,8,2,10,4,10,5,4},
+                {6,2,5,9,5,2,9,2,3,4,9,3,7,4,3,-1,-1,-1,-1,-1,-1,-1,-1,-1},
+                {8,7,4,6,2,5,5,2,9,2,0,9,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
+                {6,2,1,1,5,6,3,7,4,4,0,3,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
+                {7,4,8,5,6,2,2,1,5,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
+                {6,10,5,1,3,9,9,3,4,3,7,4,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
+                {4,8,7,5,6,10,0,9,1,4,5,9,10,1,0,0,6,10,0,8,6,8,7,6},
+                {5,6,10,7,4,0,0,3,7,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
+                {7,4,8,5,6,10,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
+                {6,9,5,6,11,9,11,8,9,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
+                {6,11,3,5,6,3,5,3,0,5,0,9,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
+                {11,8,0,1,11,0,1,6,11,5,6,1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
+                {6,1,5,6,11,1,11,3,1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
+                {5,6,10,11,8,2,2,8,1,8,9,1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
+                {2,11,3,1,0,9,6,10,5,2,1,10,9,5,6,6,0,9,6,11,0,11,3,0},
+                {6,10,5,2,11,8,8,0,2,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
+                {2,11,3,6,10,5,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
+                {8,9,3,3,9,2,2,9,5,5,6,2,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
+                {9,2,0,9,5,2,5,6,2,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
+                {0,3,8,2,1,5,5,6,2,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
+                {2,1,6,1,5,6,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
+                {10,5,6,9,1,3,3,8,9,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
+                {9,1,0,10,5,6,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
+                {3,8,0,5,6,10,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
+                {10,5,6,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
+                {5,11,7,5,10,11,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
+                {7,5,8,0,8,5,0,5,10,3,0,10,11,3,10,-1,-1,-1,-1,-1,-1,-1,-1,-1},
+                {10,11,1,0,1,11,0,11,7,9,0,7,5,9,7,-1,-1,-1,-1,-1,-1,-1,-1,-1},
+                {10,11,3,3,1,10,7,5,9,9,8,7,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
+                {11,1,2,11,7,1,7,5,1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
+                {2,11,3,7,5,8,8,5,0,5,1,0,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
+                {7,5,9,0,7,9,0,11,7,2,11,0,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
+                {11,3,2,8,7,5,5,9,8,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
+                {2,5,10,2,3,5,3,7,5,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
+                {7,5,8,8,5,0,0,5,10,10,2,0,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
+                {10,2,1,3,7,0,0,7,9,7,5,9,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
+                {1,10,2,5,9,8,8,7,5,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
+                {7,5,1,1,3,7,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
+                {0,5,1,0,8,5,8,7,5,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
+                {9,7,5,9,0,7,0,3,7,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
+                {8,7,9,7,5,9,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
+                {5,8,4,5,10,8,10,11,8,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
+                {10,11,3,0,10,3,0,5,10,4,5,0,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
+                {4,5,9,10,11,1,1,11,0,11,8,0,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
+                {5,9,4,1,10,11,11,3,1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
+                {5,1,4,4,1,8,8,1,2,2,11,8,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
+                {3,2,11,1,0,4,4,5,1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
+                {9,4,5,8,0,2,2,11,8,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
+                {11,3,2,9,4,5,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
+                {2,3,8,10,2,8,10,8,4,10,4,5,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
+                {5,0,4,5,10,0,10,2,0,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
+                {0,3,8,9,4,5,2,1,10,0,9,1,5,10,2,2,4,5,2,3,4,3,8,4},
+                {5,9,4,1,10,2,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
+                {8,1,3,8,4,1,4,5,1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
+                {4,5,0,5,1,0,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
+                {8,0,3,9,4,5,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
+                {5,9,4,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
+                {4,11,7,4,9,11,9,10,11,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
+                {7,4,8,9,10,0,0,10,3,10,11,3,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
+                {10,11,1,1,11,0,0,11,7,7,4,0,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
+                {8,7,4,11,3,1,1,10,11,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
+                {4,9,1,7,4,1,7,1,2,7,2,11,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
+                {0,9,1,3,2,11,4,8,7,0,3,8,11,7,4,4,2,11,4,9,2,9,1,2},
+                {11,0,2,11,7,0,7,4,0,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
+                {11,3,2,8,7,4,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
+                {3,7,4,9,3,4,9,2,3,10,2,9,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
+                {4,8,7,0,9,10,10,2,0,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
+                {2,1,10,0,3,7,7,4,0,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
+                {8,7,4,10,2,1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
+                {4,3,7,4,9,3,9,1,3,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
+                {4,8,7,0,9,1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
+                {0,3,4,3,7,4,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
+                {8,7,4,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
+                {8,9,10,10,11,8,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
+                {3,10,11,3,0,10,0,9,10,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
+                {0,11,8,0,1,11,1,10,11,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
+                {11,3,10,3,1,10,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
+                {1,8,9,1,2,8,2,11,8,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
+                {3,2,11,1,0,9,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
+                {2,11,0,11,8,0,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
+                {11,3,2,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
+                {2,9,10,2,3,9,3,8,9,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
+                {0,9,2,9,10,2,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
+                {0,3,8,2,1,10,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
+                {1,10,2,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
+                {3,8,1,8,9,1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
+                {9,1,0,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
+                {3,8,0,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
+                {-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
+            };
             //end of triTable[256,24]           
 
         } //end of InitTable()
@@ -4152,7 +4188,7 @@ namespace DataCollection
         {
             return m_ColorScale.GetColorIndex(v);
         }
-        public void SetData(C3DGridData pdata)
+        public virtual void SetData(C3DGridData pdata)
         {
             p3DData = pdata;
             xGridNum = pdata.xNum;
@@ -4172,19 +4208,9 @@ namespace DataCollection
             zGridStep = (zMax - zMin) / (zGridNum - 1);
             xDividedStep = xGridStep / 2;
             yDividedStep = yGridStep / 2;
-            zDividedStep = zGridStep / 2;
+            zDividedStep = zGridStep / 2;            
+            m_ColorScale = pdata.ColorScale;
             pISOSurfaceExt.pColor.Clear();
-
-            if (pdata.ColorScale != null)
-            {
-                m_ColorScale = pdata.ColorScale;
-                //m_ColorScale.SetValueRange(vMin, vMax);
-            }
-            else
-            {
-                m_ColorScale = new CColorScale();
-                m_ColorScale.SetValueRange(vMin, vMax);
-            }            
             for (int i=0;i<m_ColorScale.Count; i++)
             {
                 pISOSurfaceExt.AddColor(m_ColorScale.GetColor(i));
@@ -4242,12 +4268,12 @@ namespace DataCollection
                     FLOAT_POINT_EXT p = GetEdgeCoordTest(ix, iy, iz, edno);
                     pISOSurfaceExt.pTriangleIndex.Add(GetCoordSize());
                     StoreEdgeIndex(ix, iy, iz, edno, GetCoordSize());
-                    AddCoord(p);
+                    AddCoordArray(p);
                 }
             }//for
             return 1;
         }
-        private int ExtractTriangleFromGrid(int ix, int iy, int iz, int typeIndex)
+        public virtual int ExtractTriangleFromGrid(int ix, int iy, int iz, int typeIndex)
         {
             //     |z
             //     4----f---5    
@@ -4257,6 +4283,7 @@ namespace DataCollection
             //  |d/      | /b
             //  3--------2
             //  /x  c
+            FLOAT_POINT_EXT p;
             int edno, edIndex;            
             // searching the edge table,till -1 end
             for (int i = 0; i < 24; i++)
@@ -4273,16 +4300,16 @@ namespace DataCollection
                 }   
                 else
                 {   //else if no stored, create new
-                    FLOAT_POINT_EXT p = GetEdgeCoord(ix, iy, iz, edno);
+                    p = GetEdgeIntersection(ix, iy, iz, edno,out bool crossed);
                     pISOSurfaceExt.pTriangleIndex.Add(GetCoordSize());
-                    StoreEdgeIndex(ix, iy, iz, edno, GetCoordSize());                    
-                    AddCoord(p);
+                    StoreEdgeIndex(ix, iy, iz, edno, GetCoordSize());
+                    AddCoordArray(p);
                 }                
             }//for
             return 1;
         }
         //bVertics[] 4 vertics show state,vertics[],4 Edges[](0-11)
-        private int ExtractTriangleFromFace(int ix, int iy, int iz, bool[] bVertics, int[]Vertics,int[] Edges)
+        public virtual int ExtractTriangleFromFace(int ix, int iy, int iz, bool[] bVertics, int[]Vertics,int[] Edges)
         {
             //    
             //  1----1---2
@@ -4332,7 +4359,7 @@ namespace DataCollection
                             i1 = GetCoordSize();
                             p = GetVerticCoord(ix, iy, iz, Relation[i].vertics);
                             StoreVerticIndex(ix, iy, iz, Relation[i].vertics, GetCoordSize());
-                            AddCoord(p);
+                            AddCoordArray(p);
                         }                        
                         //edge2
                         edgeIndex = GetStoredEdgeIndex(ix, iy, iz, Relation[i].edge2);
@@ -4344,9 +4371,9 @@ namespace DataCollection
                         else
                         {
                             i12 = GetCoordSize();
-                            p = GetEdgeCoord(ix, iy, iz, Relation[i].edge2);                            
+                            p = GetEdgeIntersection(ix, iy, iz, Relation[i].edge2, out bool crossed);                            
                             StoreEdgeIndex(ix, iy, iz, Relation[i].edge2, GetCoordSize());
-                            AddCoord(p);
+                            AddCoordArray(p);
                         }
                         //edge1
                         edgeIndex = GetStoredEdgeIndex(ix, iy, iz, Relation[i].edge1);
@@ -4358,9 +4385,9 @@ namespace DataCollection
                         else
                         {
                             i11 = GetCoordSize();
-                            p = GetEdgeCoord(ix, iy, iz, Relation[i].edge1);
+                            p = GetEdgeIntersection(ix, iy, iz, Relation[i].edge1, out bool crossed);
                             StoreEdgeIndex(ix, iy, iz, Relation[i].edge1, GetCoordSize());
-                            AddCoord(p);
+                            AddCoordArray(p);
                         }
                         //i11 i1 i12 
                         pISOSurfaceExt.pTriangleIndex.Add(i11);
@@ -4387,7 +4414,7 @@ namespace DataCollection
                             i1 = GetCoordSize();
                             p = GetVerticCoord(ix, iy, iz, Relation[n1].vertics);                            
                             StoreVerticIndex(ix, iy, iz, Relation[n1].vertics, GetCoordSize());
-                            AddCoord(p);
+                            AddCoordArray(p);
                         }
                         //n1-edge1
                         edgeIndex = GetStoredEdgeIndex(ix, iy, iz, Relation[n1].edge1);
@@ -4399,9 +4426,9 @@ namespace DataCollection
                         else
                         {
                             i11 = GetCoordSize();
-                            p = GetEdgeCoord(ix, iy, iz, Relation[n1].edge1);                            
+                            p = GetEdgeIntersection(ix, iy, iz, Relation[n1].edge1, out bool crossed);                            
                             StoreEdgeIndex(ix, iy, iz, Relation[n1].edge1, GetCoordSize());
-                            AddCoord(p);
+                            AddCoordArray(p);
                         }
 
                         //n2
@@ -4416,7 +4443,7 @@ namespace DataCollection
                             i2 = GetCoordSize();
                             p = GetVerticCoord(ix, iy, iz, Relation[n2].vertics);                            
                             StoreVerticIndex(ix, iy, iz, Relation[n2].vertics, GetCoordSize());
-                            AddCoord(p);
+                            AddCoordArray(p);
                         }
 
                         //n2-edge2
@@ -4429,9 +4456,9 @@ namespace DataCollection
                         else
                         {
                             i22 = GetCoordSize();
-                            p = GetEdgeCoord(ix, iy, iz, Relation[n2].edge2);                            
+                            p = GetEdgeIntersection(ix, iy, iz, Relation[n2].edge2, out bool crossed);                            
                             StoreEdgeIndex(ix, iy, iz, Relation[n2].edge2, GetCoordSize());
-                            AddCoord(p);
+                            AddCoordArray(p);
                         }
                         //i11 i1 i2,i2 i22 i11
                         pISOSurfaceExt.pTriangleIndex.Add(i11);
@@ -4457,7 +4484,7 @@ namespace DataCollection
                             i1 = GetCoordSize();
                             p = GetVerticCoord(ix, iy, iz, Relation[n1].vertics);
                             StoreVerticIndex(ix, iy, iz, Relation[n1].vertics, GetCoordSize());
-                            AddCoord(p);
+                            AddCoordArray(p);
                         }
                         //n2
                         verIndex = GetStoredVerticIndex(ix, iy, iz, Relation[n2].vertics);
@@ -4471,7 +4498,7 @@ namespace DataCollection
                             i2 = GetCoordSize();
                             p = GetVerticCoord(ix, iy, iz, Relation[n2].vertics);
                             StoreVerticIndex(ix, iy, iz, Relation[n2].vertics, GetCoordSize());
-                            AddCoord(p);
+                            AddCoordArray(p);
                         }
                         //n1 edge1
                         edgeIndex = GetStoredEdgeIndex(ix, iy, iz, Relation[n1].edge1);
@@ -4483,9 +4510,9 @@ namespace DataCollection
                         else
                         {
                             i11 = GetCoordSize();
-                            p = GetEdgeCoord(ix, iy, iz, Relation[n1].edge1);
+                            p = GetEdgeIntersection(ix, iy, iz, Relation[n1].edge1, out bool crossed);
                             StoreEdgeIndex(ix, iy, iz, Relation[n1].edge1, GetCoordSize());
-                            AddCoord(p);
+                            AddCoordArray(p);
                         }
                         //n1 edge2
                         edgeIndex = GetStoredEdgeIndex(ix, iy, iz, Relation[n1].edge2);
@@ -4497,9 +4524,9 @@ namespace DataCollection
                         else
                         {
                             i12 = GetCoordSize();
-                            p = GetEdgeCoord(ix, iy, iz, Relation[n1].edge2);
+                            p = GetEdgeIntersection(ix, iy, iz, Relation[n1].edge2, out bool crossed);
                             StoreEdgeIndex(ix, iy, iz, Relation[n1].edge2, GetCoordSize());
-                            AddCoord(p);
+                            AddCoordArray(p);
                         }
                         //n1 edge1
                         edgeIndex = GetStoredEdgeIndex(ix, iy, iz, Relation[n2].edge1);
@@ -4511,9 +4538,9 @@ namespace DataCollection
                         else
                         {
                             i21 = GetCoordSize();
-                            p = GetEdgeCoord(ix, iy, iz, Relation[n2].edge1);
+                            p = GetEdgeIntersection(ix, iy, iz, Relation[n2].edge1, out bool crossed);
                             StoreEdgeIndex(ix, iy, iz, Relation[n2].edge1, GetCoordSize());
-                            AddCoord(p);
+                            AddCoordArray(p);
                         }
                         //n2 edge2
                         edgeIndex = GetStoredEdgeIndex(ix, iy, iz, Relation[n2].edge2);
@@ -4525,9 +4552,9 @@ namespace DataCollection
                         else
                         {
                             i22 = GetCoordSize();
-                            p = GetEdgeCoord(ix, iy, iz, Relation[n2].edge2);
+                            p = GetEdgeIntersection(ix, iy, iz, Relation[n2].edge2, out bool crossed);
                             StoreEdgeIndex(ix, iy, iz, Relation[n2].edge2, GetCoordSize());
-                            AddCoord(p);
+                            AddCoordArray(p);
                         }
                         pISOSurfaceExt.pTriangleIndex.Add(i11);
                         pISOSurfaceExt.pTriangleIndex.Add(i1);
@@ -4561,7 +4588,7 @@ namespace DataCollection
                         i1 = GetCoordSize();
                         p = GetVerticCoord(ix, iy, iz, Relation[n1].vertics);
                         StoreVerticIndex(ix, iy, iz, Relation[n1].vertics, GetCoordSize());
-                        AddCoord(p);
+                        AddCoordArray(p);
                     }
                     verIndex = GetStoredVerticIndex(ix, iy, iz, Relation[n2].vertics);
                     if (verIndex >= 0)
@@ -4574,7 +4601,7 @@ namespace DataCollection
                         i2 = GetCoordSize();
                         p = GetVerticCoord(ix, iy, iz, Relation[n2].vertics);
                         StoreVerticIndex(ix, iy, iz, Relation[n2].vertics, GetCoordSize());
-                        AddCoord(p);
+                        AddCoordArray(p);
                     }
                     verIndex = GetStoredVerticIndex(ix, iy, iz, Relation[n3].vertics);
                     if (verIndex >= 0)
@@ -4587,7 +4614,7 @@ namespace DataCollection
                         i3 = GetCoordSize();
                         p = GetVerticCoord(ix, iy, iz, Relation[n3].vertics);
                         StoreVerticIndex(ix, iy, iz, Relation[n3].vertics, GetCoordSize());
-                        AddCoord(p);
+                        AddCoordArray(p);
                     }
                     //i11
                     edgeIndex = GetStoredEdgeIndex(ix, iy, iz, Relation[n1].edge1);
@@ -4599,9 +4626,9 @@ namespace DataCollection
                     else
                     {
                         i11 = GetCoordSize();
-                        p = GetEdgeCoord(ix, iy, iz, Relation[n1].edge1);
+                        p = GetEdgeIntersection(ix, iy, iz, Relation[n1].edge1, out bool crossed);
                         StoreEdgeIndex(ix, iy, iz, Relation[n1].edge1, GetCoordSize());
-                        AddCoord(p);
+                        AddCoordArray(p);
                     }
                     //i32
                     edgeIndex = GetStoredEdgeIndex(ix, iy, iz, Relation[n3].edge2);
@@ -4613,9 +4640,9 @@ namespace DataCollection
                     else
                     {
                         i32 = GetCoordSize();
-                        p = GetEdgeCoord(ix, iy, iz, Relation[n3].edge2);
+                        p = GetEdgeIntersection(ix, iy, iz, Relation[n3].edge2, out bool crossed);
                         StoreEdgeIndex(ix, iy, iz, Relation[n3].edge2, GetCoordSize());
-                        AddCoord(p);
+                        AddCoordArray(p);
                     }
                     pISOSurfaceExt.pTriangleIndex.Add(i11);
                     pISOSurfaceExt.pTriangleIndex.Add(i1);
@@ -4645,7 +4672,7 @@ namespace DataCollection
                             p = GetVerticCoord(ix, iy, iz, Relation[i].vertics);
                             vid[i] = GetCoordSize();
                             StoreVerticIndex(ix, iy, iz, Relation[i].vertics, GetCoordSize());
-                            AddCoord(p);
+                            AddCoordArray(p);
                         }
                     }
                     pISOSurfaceExt.pTriangleIndex.Add(vid[0]);
@@ -4658,20 +4685,21 @@ namespace DataCollection
             }
                        
             return 1;
-        }        
-        public int GetGridType(int ix,int iy,int iz)
+        }
+        public int GetGridType(int ix, int iy, int iz)
+        {
+            return GetGridType(p3DData, ix, iy, iz);
+        }
+        public int GetGridType(C3DGridData data, int ix,int iy,int iz)
         {
             int iType = 0;
-
             for (int k = 0; k < 8; k++)
             {
-                if (GetVerticShowState(ix, iy, iz, k))
+                if (GetVerticShowState(data, ix, iy, iz, k))
                 {
-                    iType |= (1 << k);
-                        
+                    iType |= (1 << k);                        
                 }
-            }
-            
+            }            
             return iType;
         }
         private void InitISOColor()
@@ -4735,7 +4763,7 @@ namespace DataCollection
         }
 
         //创建六个侧面的三角片
-        private void CreateSurfaces()
+        protected void CreateSurfaces()
         {
             int icube,iType = 0;
             int ix, iy, iz,id;
@@ -4766,10 +4794,10 @@ namespace DataCollection
                         else //edgeno
                         {
                             id = ms.topEdges[id];
-                            p1 = GetEdgeCoord(ix, iy, iz, id);
+                            p1 = GetEdgeIntersection(ix, iy, iz, id, out bool crossed);
                         }
                         AddTiangleIndex(GetCoordSize());
-                        AddCoord(p1);
+                        AddCoordArray(p1);
                     }//for( int i = 0 ; i < 9 ; i++ )
                 }//for (ix = 0; ix < xGridNum - 1; ix++)
 
@@ -4796,10 +4824,10 @@ namespace DataCollection
                         else //edgeno
                         {
                             id = ms.bottomEdges[id];
-                            p1 = GetEdgeCoord(ix, iy, iz, id);
+                            p1 = GetEdgeIntersection(ix, iy, iz, id, out bool crossed);
                         }
                         AddTiangleIndex(GetCoordSize());
-                        AddCoord(p1);
+                        AddCoordArray(p1);
                     }//for( int i = 0 ; i < 9 ; i++ )
                 }//for (ix = 0; ix < xGridNum - 1; ix++)
 
@@ -4826,10 +4854,10 @@ namespace DataCollection
                         else //edgeno
                         {
                             id = ms.leftEdges[id];
-                            p1 = GetEdgeCoord(ix, iy, iz, id);
+                            p1 = GetEdgeIntersection(ix, iy, iz, id, out bool crossed);
                         }
                         AddTiangleIndex(GetCoordSize());
-                        AddCoord(p1);
+                        AddCoordArray(p1);
                     }//for( int i = 0 ; i < 9 ; i++ )
                 }//for (ix = 0; ix < xGridNum - 1; ix++)
 
@@ -4856,10 +4884,10 @@ namespace DataCollection
                         else //edgeno
                         {
                             id = ms.rightEdges[id];
-                            p1 = GetEdgeCoord(ix, iy, iz, id);
+                            p1 = GetEdgeIntersection(ix, iy, iz, id, out bool crossed);
                         }
                         AddTiangleIndex(GetCoordSize());
-                        AddCoord(p1);
+                        AddCoordArray(p1);
                     }//for( int i = 0 ; i < 9 ; i++ )
                 }//for (ix = 0; ix < xGridNum - 1; ix++)
 
@@ -4886,10 +4914,10 @@ namespace DataCollection
                         else //edgeno
                         {
                             id = ms.frontEdges[id];
-                            p1 = GetEdgeCoord(ix, iy, iz, id);
+                            p1 = GetEdgeIntersection(ix, iy, iz, id, out bool crossed);
                         }
                         AddTiangleIndex(GetCoordSize());
-                        AddCoord(p1);
+                        AddCoordArray(p1);
                     }//for( int i = 0 ; i < 9 ; i++ )
                 }//for (ix = 0; ix < xGridNum - 1; ix++)
 
@@ -4916,15 +4944,15 @@ namespace DataCollection
                         else //edgeno
                         {
                             id = ms.backEdges[id];
-                            p1 = GetEdgeCoord(ix, iy, iz, id);
+                            p1 = GetEdgeIntersection(ix, iy, iz, id, out bool crossed);
                         }
                         AddTiangleIndex(GetCoordSize());
-                        AddCoord(p1);
+                        AddCoordArray(p1);
                     }//for( int i = 0 ; i < 9 ; i++ )
                 }//for (ix = 0; ix < xGridNum - 1; ix++)
 
         }//CreateSurfaces()
-        private void CreateFromSurface(int ix,int iy,int iz,int iType)
+        protected void CreateFromSurface(int ix,int iy,int iz,int iType)
         {            
             bool[] bVertic = new bool[4];
             int[] verIndex = new int[4];
@@ -4995,4 +5023,508 @@ namespace DataCollection
             }
         }  
     }
+    #endregion //Class of MarchingCubesExt
+
+    #region Class of MultiPropertiesMarchingCubes
+    public class MultiPropertiesMarchingCubes : MarchingCubesExt
+    {
+        vec3 []pEdgeCoords = null;  //每个网格3个边的交点坐标
+        Int32XYZ[] pEdgeCoordIndices = null;//每个网格3个边的交点坐标数组索引
+
+        C3DGridData allGrid3d = null;
+        int currentProperty = -1; //当前数据
+        public List<C3DGridData> Properties = new List<C3DGridData>();
+        public void AddProperty(C3DGridData data)
+        {
+            Properties.Add(data);
+        }
+        public override void Clear()
+        {
+            base.Clear();
+            Properties.Clear(); 
+        }
+        void CreateEdgeCoords()
+        {   
+            pEdgeCoords = new vec3[xGridNum*yGridNum*zGridNum];
+            for(int i=0;i<pEdgeCoords.Length;i++)
+            {
+                pEdgeCoords[i] = new vec3(float.NaN, float.NaN, float.NaN);
+            }
+            pEdgeCoordIndices = new Int32XYZ[xGridNum * yGridNum * zGridNum];
+            for (int i = 0; i < pEdgeCoordIndices.Length; i++)
+            {
+                pEdgeCoordIndices[i] = new Int32XYZ(-1,-1,-1);
+            }
+        }
+        bool IsExistEdgeCoord(int id, AxisEnum axis)
+        {
+            vec3 p = pEdgeCoords[id];
+            if (axis == AxisEnum.xAxis && !float.IsNaN(p.x)) return true;
+            if (axis == AxisEnum.yAxis && !float.IsNaN(p.y)) return true;
+            if (axis == AxisEnum.zAxis && !float.IsNaN(p.z)) return true;
+            return false;
+        }
+        bool IsExistEdgeCoordIndex(int id, AxisEnum axis)
+        {
+            Int32XYZ p = pEdgeCoordIndices[id];
+            if (axis == AxisEnum.xAxis && p.x >= 0 ) return true;
+            if (axis == AxisEnum.yAxis && p.y >= 0 ) return true;
+            if (axis == AxisEnum.zAxis && p.z >= 0 ) return true;
+            return false;
+        }
+        float GetEdgeCoord(int id, AxisEnum axis)
+        {
+            vec3 p = pEdgeCoords[id];
+            if (axis == AxisEnum.xAxis) return p.x;
+            if (axis == AxisEnum.yAxis) return p.y;
+            if (axis == AxisEnum.zAxis) return p.z;
+            return float.NaN;
+        }
+        int GetEdgeCoordIndex(int id, AxisEnum axis)
+        {
+            Int32XYZ p = pEdgeCoordIndices[id];
+            if (axis == AxisEnum.xAxis) return p.x;
+            if (axis == AxisEnum.yAxis) return p.y;
+            if (axis == AxisEnum.zAxis) return p.z;
+            return -1;            
+        }
+        void SetEdgeCoordIndex(int id, AxisEnum axis,int index)
+        {
+            Int32XYZ p = pEdgeCoordIndices[id];
+            if (axis == AxisEnum.xAxis) p.x = index;
+            if (axis == AxisEnum.yAxis) p.y = index;
+            if (axis == AxisEnum.zAxis) p.z = index;
+            pEdgeCoordIndices[id] = p;
+        }
+        /// <summary>
+        ///
+        /// </summary>
+        /// <param name="id"></param>
+        /// <param name="p"></param>
+        /// <param name="axis"></param>
+        /// <returns></returns>
+        bool SetEdgeCoord(int id, FLOAT_POINT_EXT p, AxisEnum axis)
+        {
+            bool modified = false;
+            vec3 vp = pEdgeCoords[id];
+            if (float.IsNaN(GetEdgeCoord(id, axis)))
+            {
+                if (axis == AxisEnum.xAxis) vp.x = p.x;
+                if (axis == AxisEnum.yAxis) vp.y = p.y;
+                if (axis == AxisEnum.zAxis) vp.z = p.z;
+                modified = true;
+            }
+            else            
+            {
+                bool blank0 = allGrid3d.GetShowState(id);
+                if (blank0) //保留低值
+                {
+                    if (axis == AxisEnum.xAxis && p.x < vp.x){ vp.x = p.x; modified = true;}
+                    if (axis == AxisEnum.yAxis && p.y < vp.y){ vp.y = p.y; modified = true;}
+                    if (axis == AxisEnum.zAxis && p.z < vp.z){ vp.z = p.z; modified = true;}
+                }
+                else //保留高值
+                {
+                    if (axis == AxisEnum.xAxis && p.x > vp.x) { vp.x = p.x; modified = true; }
+                    if (axis == AxisEnum.yAxis && p.y > vp.y) { vp.y = p.y; modified = true; }
+                    if (axis == AxisEnum.zAxis && p.z > vp.z) { vp.z = p.z; modified = true; }
+                }
+            }
+            pEdgeCoords[id] = vp;
+            return modified;
+        }
+        FLOAT_POINT_EXT SetEdgeCoord(int id, List<FLOAT_POINT_EXT>coords, AxisEnum axis)
+        {            
+            float v1 = 0, v2 = 0;
+            vec3 vp = pEdgeCoords[id];
+            FLOAT_POINT_EXT p0 = new FLOAT_POINT_EXT(vp.x, vp.y, vp.z, 0),p1;
+            if (axis == AxisEnum.xAxis && !float.IsNaN(vp.x)) coords.Add(p0);
+            else if (axis == AxisEnum.yAxis && !float.IsNaN(vp.y)) coords.Add(p0);
+            else if (axis == AxisEnum.zAxis && !float.IsNaN(vp.z)) coords.Add(p0);
+
+            if (axis == AxisEnum.xAxis)
+            {
+                coords.Sort((a, b) => { return a.x.CompareTo(b.x); });
+                v1 = coords[0].x;
+                v2 = coords[coords.Count - 1].x;
+            }
+            else if (axis == AxisEnum.yAxis)
+            {
+                coords.Sort((a, b) => { return a.y.CompareTo(b.y); });
+                v1 = coords[0].y;
+                v2 = coords[coords.Count - 1].y;
+            }
+            else if (axis == AxisEnum.zAxis)
+            {
+                coords.Sort((a, b) => { return a.z.CompareTo(b.z); });
+                v1 = coords[0].z;
+                v2 = coords[coords.Count - 1].z;
+            }
+            short icolor = 0;
+            bool blank0 = allGrid3d.GetShowState(id);
+            if (blank0) //保留低值
+            {
+                p1 = coords[0];
+                if (axis == AxisEnum.xAxis) vp.x = p1.x = v1; 
+                else if (axis == AxisEnum.yAxis) vp.y = p1.y = v1;
+                else if (axis == AxisEnum.zAxis) vp.z = p1.z = v1;
+                icolor = coords[0].icolor;
+                
+            }
+            else //保留高值
+            {
+                p1 = coords[coords.Count - 1];
+                if (axis == AxisEnum.xAxis) vp.x = p1.x = v2;
+                if (axis == AxisEnum.yAxis) vp.y = p1.y = v2;
+                if (axis == AxisEnum.zAxis) vp.z = p1.z = v2;
+                icolor = coords[coords.Count-1].icolor;
+            }
+            pEdgeCoords[id] = vp;
+            return p1;
+        }
+        public override void SetData(C3DGridData pdata)
+        {
+            if (allGrid3d == null) allGrid3d = pdata.Copy();
+            base.SetData(pdata);
+            pISOSurfaceExt.pColor.Clear();
+            pISOSurfaceExt.AddColor(Color.BlueViolet);
+            pISOSurfaceExt.AddColor(Color.LightSeaGreen);
+            pISOSurfaceExt.AddColor(Color.DarkOrange);
+            for (int i = 0; i < m_ColorScale.Count; i++)
+            {
+                pISOSurfaceExt.AddColor(m_ColorScale.GetColor(i));
+            }
+            allGrid3d.InitBlankTable();
+        }
+        void UpdatePropertyShowTable(C3DGridData data)
+        {
+            for (int i = 0; i < data.pgridShowTable.Length; i++)
+            {
+                if (allGrid3d.pgridShowTable[i] > 0 &&
+                    data.pgridShowTable[i] > 0)
+                {
+                    allGrid3d.pgridShowTable[i] = 1;
+                }
+                else allGrid3d.pgridShowTable[i] = 0;
+            }
+        }
+        void UpdatePropertyShowTables()
+        {
+            for(int i=0;i<Properties.Count;i++)
+            {
+                UpdatePropertyShowTable(Properties[i]);
+            }
+        }
+        void UpdatePropertyBlankedPoints()
+        {
+            allGrid3d.InitBlankTable();
+            for (int k = 0; k < Properties.Count; k++)
+            {
+                C3DGridData data = Properties[k];
+                if( data.pBlankedPoints.Count > 0 )
+                {
+                    allGrid3d.pBlankedPoints = new List<vec3>(data.pBlankedPoints);
+                    if (data.pBlankTable != null)
+                    {
+                        allGrid3d.pBlankTable = new bool[data.pBlankTable.Length];
+                        for (int i = 0; i < allGrid3d.pBlankTable.Length; i++)
+                            allGrid3d.pBlankTable[i] = data.pBlankTable[i];
+                    }
+                    if(data.pBlankedPointIndexes != null)
+                    {
+                        allGrid3d.pBlankedPointIndexes = new int[data.pBlankedPointIndexes.Length];
+                        for (int i = 0; i < allGrid3d.pBlankedPointIndexes.Length; i++)
+                            allGrid3d.pBlankedPointIndexes[i] = data.pBlankedPointIndexes[i];
+                    }
+                }
+            }
+        }
+        public bool DoSearchMultipleEdges1()
+        {
+            if (Properties.Count == 0) return false;
+            //     |z
+            //     4--------5    
+            //    /|       /|
+            //  7--------6  |
+            //  |  0-----|--1--->y
+            //  | /      | /
+            //  3--------2
+            //  /x
+            int iType = 0;
+            int ix, iy, iz;
+            pISOSurfaceExt.Clear();
+            searchedGridNo = 0;
+            if (allGrid3d != null) { allGrid3d.Clear(); allGrid3d = null; }
+            SetData(Properties[0]);
+            CreateEdgeCoords();
+            UpdatePropertyShowTables();
+            for (iz = 0; iz < zGridNum - 1; iz++)
+            {
+                for (iy = 0; iy < yGridNum - 1; iy++)
+                    for (ix = 0; ix < xGridNum - 1; ix++)
+                    {
+                        iType = GetGridType(allGrid3d, ix, iy, iz);                        
+                        if (iType != 0 && iType != 255)
+                        {
+                            ExtractTriangleFromGrid(ix, iy, iz, iType);
+                            //CreateFromSurface(ix, iy, iz, iType);
+                            searchedGridNo++;
+                        }
+                        if (iType != 0)CreateFromSurface(ix, iy, iz, iType);
+                    }//for (iy = 0; iy < yGridNum - 1; iy++)
+            }//for( iz = 0; iz < zGridNum - 1; iz++ )
+            //CreateSurfaces();
+            pISOSurfaceExt.UpdateRange();
+            return true;
+        }
+        public bool DoSearchMultipleEdges()
+        {
+            if (Properties.Count == 0) return false;            
+            //     |z
+            //     4--------5    
+            //    /|       /|
+            //  7--------6  |
+            //  |  0-----|--1--->y
+            //  | /      | /
+            //  3--------2
+            //  /x
+            int iType = 0;
+            int ix, iy, iz;
+            EDGE_POINT_INDEX[] pnext;
+            pISOSurfaceExt.Clear();            
+            searchedGridNo = 0;
+            if (allGrid3d != null) { allGrid3d.Clear(); allGrid3d = null; }
+            SetData(Properties[0]);
+            CreateEdgeCoords();
+            UpdatePropertyShowTables();
+            UpdatePropertyBlankedPoints();
+            InitEdgePointArray();
+            pCurEdgePointArray = pEdgePointArray1;
+            pPrevEdgePointArray = pEdgePointArray2;
+            for (int k = 0; k < Properties.Count; k++)
+            {  
+                if(k>0)SetData(Properties[k]);               
+                currentProperty = k;                
+                for (iz = 0; iz < zGridNum - 1; iz++)
+                {
+                    for (iy = 0; iy < yGridNum - 1; iy++)
+                        for (ix = 0; ix < xGridNum - 1; ix++)
+                        {
+                            iType = GetGridType(allGrid3d, ix, iy, iz);
+                            //if (iType == 0 || iType == 255) continue;
+                            //iType = GetGridType(ix, iy, iz);
+                            if (iType != 0 && iType != 255)
+                            {
+                                ExtractTriangleFromGrid1(ix, iy, iz, iType);
+                                //CreateFromSurface(ix, iy, iz, iType);
+                                searchedGridNo++;
+                            }
+                            //if (iType !=0 )
+                            //CreateFromSurface(ix, iy, iz, iType);
+                        }//for (iy = 0; iy < yGridNum - 1; iy++)
+
+                    pnext = pPrevEdgePointArray;
+                    pPrevEdgePointArray = pCurEdgePointArray;
+                    pCurEdgePointArray = pnext;
+                    ResetCurEdgePointArray();
+                }//for( iz = 0; iz < zGridNum - 1; iz++ )
+
+            }
+            //CreateSurfaces();            
+             ReleaseEdgePointArray();
+            pISOSurfaceExt.UpdateRange();
+            return true;
+        }
+        public int ExtractTriangleFromGrid1(int ix, int iy, int iz, int typeIndex)
+        {
+            //     |z
+            //     4----f---5    
+            //    /|       /|
+            //  7--------6  |
+            //  |  0---a-|--1--->y
+            //  |d/      | /b
+            //  3--------2
+            //  /x  c
+            FLOAT_POINT_EXT p;
+            List<FLOAT_POINT_EXT> coords = new List<FLOAT_POINT_EXT>();
+            int edno, coordIndex, id;
+            AxisEnum axis = AxisEnum.xAxis;
+            // searching the edge table,till -1 end
+            for (int i = 0; i < 24; i++)
+            {
+                edno = triTable[typeIndex, i];
+                if (edno < 0) break;//三角形结束
+                id = GetVerticIndexByEdge(ix, iy, iz, edno, out axis);
+                if (IsExistEdgeCoordIndex(id, axis))
+                {
+                    coordIndex = GetEdgeCoordIndex(id, axis);
+                    pISOSurfaceExt.AddTriangleIndex(coordIndex);
+                }
+                else
+                {
+                    coords = GetEdgeIntersections(ix,iy,iz,edno);
+                    p = SetEdgeCoord(id, coords, axis);
+                    SetEdgeCoordIndex(id, axis, GetCoordSize());
+                    pISOSurfaceExt.AddTriangleIndex(GetCoordSize());
+                    pISOSurfaceExt.AddCoord(p);
+                    coords.Clear();
+                }                
+
+            }//for
+            return 1;
+        }
+        public override int ExtractTriangleFromGrid(int ix, int iy, int iz, int typeIndex)
+        {
+            //     |z
+            //     4----f---5    
+            //    /|       /|
+            //  7--------6  |
+            //  |  0---a-|--1--->y
+            //  |d/      | /b
+            //  3--------2
+            //  /x  c
+            FLOAT_POINT_EXT p;
+            int edno, coordIndex,id;
+            AxisEnum axis = AxisEnum.xAxis;
+            // searching the edge table,till -1 end
+            for (int i = 0; i < 24; i++)
+            {
+                edno = triTable[typeIndex, i];
+                if (edno < 0) break;//三角形结束
+                id = GetVerticIndexByEdge(ix, iy, iz, edno, out axis);
+                if (currentProperty == 0)//第一遍,不比交点坐标
+                {                    
+                    if (IsExistEdgeCoordIndex(id, axis))
+                    {
+                        coordIndex = GetEdgeCoordIndex(id, axis);
+                        pISOSurfaceExt.AddTriangleIndex(coordIndex);
+                    }
+                    else 
+                    {
+                        p = GetEdgeIntersection(ix, iy, iz, edno, out bool crossed);
+                        if(crossed)SetEdgeCoord(id, p, axis);
+                        SetEdgeCoordIndex(id, axis, GetCoordSize());
+                        pISOSurfaceExt.AddTriangleIndex(GetCoordSize());
+                        pISOSurfaceExt.AddCoord(p);
+                    }                       
+                }
+                else //第2遍开始，修改交点坐标 
+                {                    
+                    p = GetEdgeIntersection(ix, iy, iz, edno,out bool crossed);
+                    if (crossed) 
+                    {
+                        if( SetEdgeCoord(id, p, axis) )
+                        {
+                            coordIndex = GetEdgeCoordIndex(id, axis);
+                           // if (coordIndex >= 0)
+                            {
+                                p = pISOSurfaceExt.pCoordArray[coordIndex];
+                                float val = GetEdgeCoord(id, axis);
+                                if (axis == AxisEnum.xAxis) p.x = val;
+                                if (axis == AxisEnum.yAxis) p.y = val;
+                                if (axis == AxisEnum.zAxis) p.z = val;
+                                pISOSurfaceExt.pCoordArray[coordIndex] = p;
+                            }
+                        }
+                    }                    
+                }                
+                
+            }//for
+            return 1;
+        }
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="ix"></param>
+        /// <param name="iy"></param>
+        /// <param name="iz"></param>
+        /// <param name="edno"></param>
+        /// <param name="crossed"></param>
+        /// <returns></returns>
+        /// <exception cref="Exception"></exception>
+        protected List<FLOAT_POINT_EXT> GetEdgeIntersections(int ix, int iy, int iz, int edno)
+        {
+            double v1, v2;
+            bool b1, b2,crossed;        
+            List<FLOAT_POINT_EXT>coords = new List<FLOAT_POINT_EXT>();            
+            int id1 = GetVerticIndex(ix, iy, iz, vertEdgeRelation[edno].x);
+            int id2 = GetVerticIndex(ix, iy, iz, vertEdgeRelation[edno].y);
+            bool blank1 = allGrid3d.IsBlankedGrid(id1);
+            bool blank2 = allGrid3d.IsBlankedGrid(id2);      
+            
+            for (int k=0;k<Properties.Count;k++)
+            {
+                p3DData = Properties[k];
+                InitClosedValue(p3DData.ColorScale);
+                //2 vertices value v1,v2 of this edge
+                v1 = p3DData.pGridData[id1];
+                v2 = p3DData.pGridData[id2];
+                //2 vertices show states
+                b1 = GetVerticShowState(p3DData, id1);
+                b2 = GetVerticShowState(p3DData, id2);
+                if( b1 == !b2) 
+                {
+                    FLOAT_POINT_EXT p = GetEdgeIntersection(ix, iy, iz, edno, out crossed);
+                    p.icolor = (short)k;
+                    coords.Add(p);
+                }
+            }
+            if(coords.Count == 0) 
+            {
+                throw (new Exception("no edge intersection found."));                
+            }
+            return coords;
+        }
+        
+        protected override FLOAT_POINT_EXT GetEdgeIntersection(int ix, int iy, int iz, int edno,out bool crossed)
+        {
+            crossed = false;
+            FLOAT_POINT_EXT p = new FLOAT_POINT_EXT(float.NaN, float.NaN, float.NaN);
+            //2 vertices value v1,v2 of this edge
+            int id1 = GetVerticIndex(ix, iy, iz, vertEdgeRelation[edno].x);
+            int id2 = GetVerticIndex(ix, iy, iz, vertEdgeRelation[edno].y);
+            double v1 = p3DData.pGridData[id1];
+            double v2 = p3DData.pGridData[id2];            
+            bool blank1 = p3DData.IsBlankedGrid(id1);
+            bool blank2 = p3DData.IsBlankedGrid(id2);
+
+            //2 vertices show states
+            bool b1 = GetVerticShowState(p3DData, id1);
+            bool b2 = GetVerticShowState(p3DData, id2);            
+            
+            double scale = 0, crossvalue;
+            if (v1 != v2)
+            {
+                crossed = GetCrossValue(v1, v2, b1, b2, out crossvalue);
+                if (crossed) 
+                { 
+                    scale = (crossvalue - v1) / (v2 - v1);
+                    //double scale = GetNearestValue(v1, v2, b1, b2);                
+                    //GetCrossValue(v1, v2, b1, b2, out crossvalue);                
+                    p = GetVerticCoord(ix, iy, iz, vertEdgeRelation[edno].x);
+                    p.x += (float)(xGridStep * scale * vertEdgeDirect[edno].x);
+                    p.y += (float)(yGridStep * scale * vertEdgeDirect[edno].y);
+                    p.z += (float)(zGridStep * scale * vertEdgeDirect[edno].z);
+                    p.icolor = (short)currentProperty;
+                    p.alpha = 255;
+                }
+            }
+
+            if (blank1 == !blank2)//get blanked point p1
+            {
+                FLOAT_POINT_EXT p1 =
+                GetBlankEdgeIntersetion(ix, iy, iz, edno, blank1, blank2, (float)scale, crossed);
+                p1.icolor = (short)currentProperty;
+                p1.alpha = 255;
+                p = p1;
+            }            
+
+            return p;
+        }
+        public TriangleObj toTiangleObj()
+        {
+            return pISOSurfaceExt.toTriangleObj();
+        }
+    }
+    #endregion //Class of MultiPropertiesMarchingCubes
 }
