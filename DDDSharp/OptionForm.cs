@@ -17,8 +17,28 @@ namespace DDDSharp
         public List<LightStruct> pLights = new List<LightStruct>();
         public OptionForm()
         {
-            InitializeComponent();            
+            InitializeComponent();
+            ApplyLanguage();
         }
+
+        public void ApplyLanguage()
+        {
+            bool zh = AppLocalization.IsChinese;
+            Text = zh ? "灯光选项" : "Lights Option";
+            groupBox1.Text = zh ? "灯光" : "Lights";
+            groupBox2.Text = zh ? "参数" : "Parameters";
+            enableLightCheckBox.Text = zh ? "启用" : "enabled";
+            OKbutton1.Text = zh ? "确定" : "OK";
+            Cancelbutton1.Text = zh ? "取消" : "Cancel";
+            label1.Text = zh ? "位置" : "position";
+            label2.Text = zh ? "漫反射" : "diffuse";
+            label3.Text = zh ? "环境光" : "ambient";
+            label4.Text = zh ? "镜面反射" : "specular";
+            label5.Text = "x / r";
+            label6.Text = "y / g";
+            label7.Text = "z / b";
+        }
+
         private bool ConvertToInt(string ss, out int ret)
         {
             try
@@ -60,9 +80,10 @@ namespace DDDSharp
         }
         private void OptionForm_Load(object sender, EventArgs e)
         {
+            ApplyLanguage();
             for(int i=0;i<pLights.Count && i<8;i++)
             {
-                lightsComboBox.Items.Add("Light"+i.ToString());
+                lightsComboBox.Items.Add(AppLocalization.IsChinese ? "灯光" + i.ToString() : "Light" + i.ToString());
             }
         }
         private void UpdateLightSelectedUI()
@@ -140,7 +161,7 @@ namespace DDDSharp
         {
             if( !UpdateLightSelectedArray() )
             {
-                MessageBox.Show("light set not correct.");
+                MessageBox.Show(AppLocalization.IsChinese ? "灯光参数不正确。" : "light set not correct.");
                 return;
             }
             this.DialogResult = DialogResult.OK;

@@ -3000,8 +3000,8 @@ namespace DDDSharp
                 if (p.X != 4) names += ";\n ";
             }
 
-            if (MessageBox.Show("删除" + SelectedArray.Count + "个对象：" + names,
-                "是否删除已选中对象？", MessageBoxButtons.YesNoCancel,
+            if (MessageBox.Show(AppLocalization.Translate("Delete selected objects: ") + SelectedArray.Count + " " + names,
+                AppLocalization.Translate("Delete selected objects?"), MessageBoxButtons.YesNoCancel,
                 MessageBoxIcon.Question) == DialogResult.Yes)
             {
                 DeleteSelected();
@@ -3097,7 +3097,7 @@ namespace DDDSharp
             }
             if (e.KeyCode == Keys.Delete)
             {
-                if (MessageBox.Show("是否删除已选中对象？", "是否删除已选中对象？", MessageBoxButtons.YesNoCancel,
+                if (MessageBox.Show(AppLocalization.Translate("Delete selected objects?"), AppLocalization.Translate("Delete selected objects?"), MessageBoxButtons.YesNoCancel,
                 MessageBoxIcon.Question) != DialogResult.Yes) return;
 
                 if (selectedPoint.X >= 1 && selectedPoint.Y >= 0 && selectedPointIndex < 0)
@@ -3146,7 +3146,7 @@ namespace DDDSharp
         {
             DialogResult ret = DialogResult.No;
             e.Cancel = false;
-            if (Modified) ret = MessageBox.Show("数据已经修改，是否保存已修改数据？", "是否保存数据？", MessageBoxButtons.YesNoCancel, MessageBoxIcon.Question);
+            if (Modified) ret = MessageBox.Show(AppLocalization.Translate("数据已经修改，是否保存已修改数据？"), AppLocalization.Translate("是否保存数据？"), MessageBoxButtons.YesNoCancel, MessageBoxIcon.Question);
             if (ret == DialogResult.Yes)
             {
                 DialogResult = DialogResult.OK;
@@ -3814,11 +3814,11 @@ namespace DDDSharp
                     try
                     {
                         slicer.BackgroundImage.Save(dlg.FileName);
-                        MessageBox.Show("图片导出成功！");
+                        MessageBox.Show(AppLocalization.Translate("图片导出成功！"));
                     }
                     catch (Exception ex)
                     {
-                        MessageBox.Show("图片导出失败！\n" + ex.Message);
+                        MessageBox.Show(AppLocalization.Translate("图片导出失败！") + "\n" + ex.Message);
                     }
 
                 }

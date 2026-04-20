@@ -748,9 +748,9 @@ namespace DDDSharp
                     this.Cursor = Cursors.WaitCursor;
 
                     if (Export(pathname))
-                        MessageBox.Show("data exported to file:" + pathname);
+                        MessageBox.Show((AppLocalization.IsChinese ? "数据已导出到文件：" : "Data exported to file: ") + pathname);
                     else
-                        MessageBox.Show("failed to export data to file:" + pathname);
+                        MessageBox.Show((AppLocalization.IsChinese ? "导出数据到文件失败：" : "Failed to export data to file: ") + pathname);
 
                     this.Cursor = DefaultCursor;
                 }

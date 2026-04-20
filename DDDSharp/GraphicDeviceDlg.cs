@@ -76,7 +76,7 @@ namespace DDDSharp
             int sel2 = comboBox2.SelectedIndex;
             if (sel2 < 0)
             {
-                MessageBox.Show("Invalid selection.");
+                MessageBox.Show(AppLocalization.IsChinese ? "选择无效。" : "Invalid selection.");
                 return;
             }
             gEngine engine = (gEngine)sel2;
@@ -89,7 +89,7 @@ namespace DDDSharp
             {
                 C3DData.graphics3D.SaveGraphicConfig();
 
-                MessageBox.Show("graphics configeration have been changed,please restart the application.");
+                MessageBox.Show(AppLocalization.IsChinese ? "图形配置已更改，请重新启动应用程序。" : "Graphics configuration has been changed, please restart the application.");
             }
             this.Close();
         }

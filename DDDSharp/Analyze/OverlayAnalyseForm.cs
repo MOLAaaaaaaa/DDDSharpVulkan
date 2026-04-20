@@ -481,7 +481,7 @@ namespace DDDSharp.Analyze
             UpdateCurPropertyParameter();
             if ( IsExisted(overlayPropertyPara) )
             {
-                MessageBox.Show("Same property is already existed.");
+                MessageBox.Show(AppLocalization.IsChinese ? "相同属性已存在。" : "The same property already exists.");
                 return;
             }
             Properties.Add(overlayPropertyPara);
@@ -1493,7 +1493,7 @@ namespace DDDSharp.Analyze
                 }
                 else
                 {
-                    MessageBox.Show("读取数据错误！" + Environment.NewLine + s.errMessage);
+                    MessageBox.Show(AppLocalization.Translate("读取数据错误！") + Environment.NewLine + s.errMessage);
                     br.Close();
                     return;
                 }
@@ -1560,7 +1560,7 @@ namespace DDDSharp.Analyze
                 bw.Write((int)s.Type);
                 if( !s.Write(bw)) 
                 {
-                    MessageBox.Show("保存数据错误！" + s.errMessage);
+                    MessageBox.Show(AppLocalization.Translate("保存数据错误！") + s.errMessage);
                     bw.Close();
                     return;
                 }
@@ -1666,7 +1666,7 @@ namespace DDDSharp.Analyze
                 C3DObjectBase obj = Objects[ops.ObjectSel];
                 if( !ops.IsValid(Objects) )
                 {
-                    MessageBox.Show(ops.toString() + Environment.NewLine + ops.errMessage, "参数无效！");
+                    MessageBox.Show(ops.toString() + Environment.NewLine + ops.errMessage, AppLocalization.Translate("参数无效！"));
                     return false;
                 }
                 if ( !IsPropertyDone(ops) )

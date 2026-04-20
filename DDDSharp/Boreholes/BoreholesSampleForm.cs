@@ -158,7 +158,7 @@ namespace DDDSharp.Boreholes
                     CBorehole bh = boreholes[k];
                     bh.StrataSampling(Points, k, targetStratums, sample_step, bksample_step, reset, bksample, target_value, bk_value);
                 }
-                MessageBox.Show("采样完成，采样点数：" + Points.Count);
+                MessageBox.Show(AppLocalization.Translate("采样完成，采样点数：") + Points.Count);
             }
             catch (Exception ex) 
             {
@@ -188,7 +188,7 @@ namespace DDDSharp.Boreholes
 
                     Cursor = Cursors.Default;
 
-                    MessageBox.Show("数据输出成功！" + Environment.NewLine + dlg.FileName);
+                    MessageBox.Show(AppLocalization.Translate("数据输出成功！") + Environment.NewLine + dlg.FileName);
                 }
             }
         }

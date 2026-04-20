@@ -10,6 +10,7 @@ using System.Threading.Tasks;
 using System.Windows.Forms;
 using static AviFile.Avi;
 
+using DDDSharp;
 namespace DataCollection
 {
     public partial class ColorScaleForm : Form
@@ -95,9 +96,9 @@ namespace DataCollection
                 {
                     this.Cursor = Cursors.WaitCursor;
                     if(nativeColorscale.SaveClr(dlg.FileName) )                    
-                        MessageBox.Show("color map saved to file: \n" + dlg.FileName);
+                        MessageBox.Show(AppLocalization.IsChinese ? "颜色映射已保存到文件：\n" + dlg.FileName : "Color map saved to file:\n" + dlg.FileName);
                     else
-                        MessageBox.Show("failed to save color map to file: \n" + dlg.FileName);
+                        MessageBox.Show(AppLocalization.IsChinese ? "保存颜色映射到文件失败：\n" + dlg.FileName : "Failed to save color map to file:\n" + dlg.FileName);
                     this.Cursor = DefaultCursor;
                 }
             }

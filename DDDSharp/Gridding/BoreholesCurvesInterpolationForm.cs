@@ -14,6 +14,7 @@ using CLInterpolation;
 using DataCollection;
 using DDDSharp.Dialogs;
 
+using DDDSharp;
 namespace DDDSharp.Gridding
 {
     public partial class BoreholesCurvesInterpolationForm : Form
@@ -674,7 +675,7 @@ namespace DDDSharp.Gridding
             }
             catch (Exception ex)
             {
-                MessageBox.Show("no enough memory,try to decrease grid numbers.\n" + ex.Message);
+                MessageBox.Show((AppLocalization.IsChinese ? "内存不足，请尝试减少网格数量。\n" : "Not enough memory, try decreasing the grid numbers.\n") + ex.Message);
                 ipmethod.Clear();
                 return;
             }
@@ -724,7 +725,7 @@ namespace DDDSharp.Gridding
                 if (data == null)
                 {
                     Cursor = Cursors.Default;
-                    MessageBox.Show("Load data failed.\n" + file);
+                    MessageBox.Show((AppLocalization.IsChinese ? "加载数据失败。\n" : "Load data failed.\n") + file);
                     return false;
                 }
 

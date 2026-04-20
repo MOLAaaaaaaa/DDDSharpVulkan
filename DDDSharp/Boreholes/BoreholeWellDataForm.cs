@@ -8,6 +8,7 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using DataCollection;
+using DDDSharp;
 namespace DDDSharp.Boreholes
 {
     public partial class BoreholeWellDataForm : Form
@@ -243,7 +244,7 @@ namespace DDDSharp.Boreholes
                 sel = listView1.SelectedIndices[0];
                 if (sel >= 0 && sel < borehole.Stratums.Count)
                 {
-                    DialogResult ret = MessageBox.Show("Remove " + borehole.Stratums[sel].Name, "Remove Stratum?",
+                    DialogResult ret = MessageBox.Show(AppLocalization.IsChinese ? "移除 " + borehole.Stratums[sel].Name : "Remove " + borehole.Stratums[sel].Name, AppLocalization.IsChinese ? "移除地层?" : "Remove Stratum?",
                                                      MessageBoxButtons.YesNo,
                                                      MessageBoxIcon.Warning,
                                                      MessageBoxDefaultButton.Button2);
@@ -294,7 +295,7 @@ namespace DDDSharp.Boreholes
         {
             if ( Modified )
             {
-                DialogResult ret = MessageBox.Show("data has been modified, abort it anyway?", "changes ignored?",
+                DialogResult ret = MessageBox.Show(AppLocalization.IsChinese ? "数据已经修改，仍要放弃吗？" : "Data has been modified, abort it anyway?", AppLocalization.IsChinese ? "忽略更改?" : "changes ignored?",
                                                      MessageBoxButtons.YesNoCancel,
                                                      MessageBoxIcon.Warning,
                                                      MessageBoxDefaultButton.Button3);
@@ -318,7 +319,7 @@ namespace DDDSharp.Boreholes
         {
             if ( Modified )
             {
-                DialogResult ret = MessageBox.Show("data has been modified, abort it anyway?", "changes ignored?",
+                DialogResult ret = MessageBox.Show(AppLocalization.IsChinese ? "数据已经修改，仍要放弃吗？" : "Data has been modified, abort it anyway?", AppLocalization.IsChinese ? "忽略更改?" : "changes ignored?",
                                                      MessageBoxButtons.YesNoCancel,
                                                      MessageBoxIcon.Warning,
                                                      MessageBoxDefaultButton.Button3);

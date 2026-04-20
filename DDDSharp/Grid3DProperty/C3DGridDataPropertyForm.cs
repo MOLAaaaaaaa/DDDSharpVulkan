@@ -350,14 +350,14 @@ namespace DDDSharp
                 RegisterAndEncrypt.RegisterVerify reg = new RegisterAndEncrypt.RegisterVerify(C3DData.UserID);
                 if (!reg.ReadFromRegister())
                 {
-                    MessageBox.Show("this is a unregistered version.");
+                    MessageBox.Show(AppLocalization.IsChinese ? "这是未注册版本。" : "This is an unregistered version.");
                     return;
                 }
                 Random rand = new Random();
                 RegisterAndEncrypt.HardWareInfo.InfoType type = (RegisterAndEncrypt.HardWareInfo.InfoType)rand.Next(3);
                 if (!reg.Verify(type))
                 {
-                    MessageBox.Show("Unreconginized register information.");
+                    MessageBox.Show(AppLocalization.IsChinese ? "无法识别的注册信息。" : "Unrecognized register information.");
                     return;
                 }
                 //Register Verify
@@ -614,9 +614,9 @@ namespace DDDSharp
                     this.Cursor = Cursors.WaitCursor;
                     
                     if (p3D.SaveAs(dlg.FileName))
-                        MessageBox.Show("data saved to file: \n" + dlg.FileName);
+                        MessageBox.Show(AppLocalization.IsChinese ? "数据已保存到文件：\n" + dlg.FileName : "Data saved to file:\n" + dlg.FileName);
                     else
-                        MessageBox.Show("failed to save to file: \n" + dlg.FileName);
+                        MessageBox.Show(AppLocalization.IsChinese ? "保存到文件失败：\n" + dlg.FileName : "Failed to save to file:\n" + dlg.FileName);
                     this.Cursor = DefaultCursor;
                 }
             }
@@ -668,8 +668,8 @@ namespace DDDSharp
                             ext != ".txt" ) filename += ".dat";
 
                         ret = p3D.ExportData(filename);
-                        if (ret) MessageBox.Show("exported to file successfully! \n" + dlg.FileName);
-                        else MessageBox.Show("failed to exported data to file: \n" + dlg.FileName);
+                        if (ret) MessageBox.Show(AppLocalization.IsChinese ? "已成功导出到文件：\n" + dlg.FileName : "Exported to file successfully:\n" + dlg.FileName);
+                        else MessageBox.Show(AppLocalization.IsChinese ? "导出到文件失败：\n" + dlg.FileName : "Failed to export data to file:\n" + dlg.FileName);
                     }
 
                     this.Cursor = DefaultCursor;
@@ -688,7 +688,7 @@ namespace DDDSharp
             RegisterAndEncrypt.RegisterVerify reg = new RegisterAndEncrypt.RegisterVerify(C3DData.UserID);
             if( !reg.ReadFromRegister() )
             {
-                MessageBox.Show("this is a unregistered version.");
+                MessageBox.Show(AppLocalization.IsChinese ? "这是未注册版本。" : "This is an unregistered version.");
                 return;
             }
             
@@ -696,7 +696,7 @@ namespace DDDSharp
             RegisterAndEncrypt.HardWareInfo.InfoType type = (RegisterAndEncrypt.HardWareInfo.InfoType)rand.Next(3);
             if ( !reg.Verify(type) )
             {
-                MessageBox.Show("Unreconginized register information.");
+                MessageBox.Show(AppLocalization.IsChinese ? "无法识别的注册信息。" : "Unrecognized register information.");
                 return;
             }
             

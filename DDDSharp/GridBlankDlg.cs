@@ -84,7 +84,7 @@ namespace DDDSharp
         {   
             if( !CheckIsMatched() )
             {
-                MessageBox.Show("meshes loaded not match this 3Dgrid data.","data not matched.", MessageBoxButtons.OK,MessageBoxIcon.Warning );
+                MessageBox.Show(AppLocalization.IsChinese ? "加载的网格与当前三维网格数据不匹配。" : "Loaded meshes do not match this 3D grid data.", AppLocalization.IsChinese ? "数据不匹配" : "data not matched.", MessageBoxButtons.OK,MessageBoxIcon.Warning );
             }
             
             comboBox1.Items.Add("Keep Z Lower");
@@ -98,13 +98,13 @@ namespace DDDSharp
         {
             if ( !CheckIsMatched() )
             {
-                MessageBox.Show("meshes does not match the 3D grid data.", "data not matched.", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                MessageBox.Show(AppLocalization.IsChinese ? "网格与三维网格数据不匹配。" : "Meshes do not match the 3D grid data.", AppLocalization.IsChinese ? "数据不匹配" : "data not matched.", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 return;
             }
             
             if( !double.TryParse(ZOffsetTextBox.Text, out zoffset) )
             {
-                MessageBox.Show("z scale is not valid.");
+                MessageBox.Show(AppLocalization.IsChinese ? "Z 比例无效。" : "Z scale is not valid.");
                 return;
             }
 

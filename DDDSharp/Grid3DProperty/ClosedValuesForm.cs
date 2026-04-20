@@ -68,7 +68,7 @@ namespace DDDSharp
             bool ret2 = float.TryParse(textBox2.Text, out float y);
             if( !ret1 || !ret2 )
             {
-                MessageBox.Show("Invalid values.");
+                MessageBox.Show(AppLocalization.IsChinese ? "值无效。" : "Invalid values.");
                 return;
             }
             vec2 p = new vec2(x,y);
@@ -83,7 +83,7 @@ namespace DDDSharp
             bool ret2 = float.TryParse(textBox2.Text, out float y);
             if (!ret1 || !ret2)
             {
-                MessageBox.Show("Invalid values.");
+                MessageBox.Show(AppLocalization.IsChinese ? "值无效。" : "Invalid values.");
                 return;
             }
             vec2 p = new vec2(x, y);

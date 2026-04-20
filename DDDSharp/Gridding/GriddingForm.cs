@@ -477,7 +477,7 @@ namespace DDDSharp
             {
                 if (pDataList.Row < 1 || pDataList.Col < 1)
                 {
-                    MessageBox.Show("No enough data.");
+                    MessageBox.Show(AppLocalization.IsChinese ? "数据不足。" : "Not enough data.");
                     return;
                 }
                 select1 = comboBox1.SelectedIndex;
@@ -486,7 +486,7 @@ namespace DDDSharp
                 select4 = comboBox4.SelectedIndex;
                 if (select1 < 0 || select2 < 0 || select3 < 0 || select4 < 0)
                 {
-                    MessageBox.Show("no valid columns selected.");
+                    MessageBox.Show(AppLocalization.IsChinese ? "未选择有效列。" : "No valid columns selected.");
                     return;
                 }
                 if (ipmethod.method == InterpolationMethod.BoreholesMineralInterpolation)
@@ -494,7 +494,7 @@ namespace DDDSharp
                     RBFBoreholesInterpolation ip = ipmethod as RBFBoreholesInterpolation;
                     if (ip.boreholeColumn < 0)
                     {
-                        MessageBox.Show("Please Set Borehole Column on Option.");
+                        MessageBox.Show(AppLocalization.IsChinese ? "请在选项中设置钻孔列。" : "Please set Borehole Column in Options.");
                         return;
                     }
                 }
@@ -525,7 +525,7 @@ namespace DDDSharp
                 }
                 else if( !ipmethod.BigGridData )
                 {
-                    MessageBox.Show("no enough memory available.");
+                    MessageBox.Show(AppLocalization.IsChinese ? "可用内存不足。" : "Not enough memory available.");
                     ipmethod.Clear();
                     return;
                 }
@@ -538,7 +538,7 @@ namespace DDDSharp
             }
             catch(Exception ex)
             {
-                MessageBox.Show("no enough memory,try to decrease grid numbers.\n" + ex.Message);
+                MessageBox.Show(AppLocalization.IsChinese ? "内存不足，请尝试减少网格数量。\n" + ex.Message : "Not enough memory, try to decrease grid numbers.\n" + ex.Message);
                 ipmethod.Clear();
                 return;
             }
@@ -571,19 +571,19 @@ namespace DDDSharp
                 RegisterAndEncrypt.RegisterVerify reg = new RegisterAndEncrypt.RegisterVerify(C3DData.UserID);
                 if (!reg.ReadFromRegister())
                 {
-                    MessageBox.Show("this is a unregistered version.");
+                    MessageBox.Show(AppLocalization.IsChinese ? "这是未注册版本。" : "This is an unregistered version.");
                     return;
                 }
                 Random rand = new Random();
                 RegisterAndEncrypt.HardWareInfo.InfoType type = (RegisterAndEncrypt.HardWareInfo.InfoType)rand.Next(3);
                 if (!reg.Verify(type))
                 {
-                    MessageBox.Show("Unreconginized register information.");
+                    MessageBox.Show(AppLocalization.IsChinese ? "无法识别的注册信息。" : "Unrecognized register information.");
                     return;
                 }
                 //Register Verify
 
-                if ( MessageBox.Show("Previous work not completed,load the previous task ?","Load the previous task?",MessageBoxButtons.YesNo,MessageBoxIcon.Question) == DialogResult.Yes )
+                if ( MessageBox.Show(AppLocalization.IsChinese ? "上次工作尚未完成，是否加载上次任务？" : "Previous work not completed, load the previous task?", AppLocalization.IsChinese ? "加载上次任务？" : "Load the previous task?", MessageBoxButtons.YesNo,MessageBoxIcon.Question) == DialogResult.Yes )
                 {
                     Cursor = Cursors.WaitCursor;
                     ipmethod.LoadProgress(ipmethod.progressFile);
@@ -687,7 +687,7 @@ namespace DDDSharp
             if (globalThread != null && globalThread.IsAlive)
                 globalThread.Suspend();            
 
-            if (MessageBox.Show("Are you sure to abort current progress?\n Works have done will not be saved.", "Abort the progress?",
+            if (MessageBox.Show(AppLocalization.IsChinese ? "确定要中止当前操作吗？\n已完成的工作不会保存。" : "Are you sure to abort current progress?\nWorks done will not be saved.", AppLocalization.IsChinese ? "中止操作？" : "Abort the progress?",
                  MessageBoxButtons.YesNo, MessageBoxIcon.Question, MessageBoxDefaultButton.Button2) != DialogResult.Yes)
             {
                 globalThread.Resume();                
@@ -696,7 +696,7 @@ namespace DDDSharp
             
             if ( ipmethod.progressStep > 0 )
             {
-                if (MessageBox.Show("work not completed,save the task?", "Save uncompleted task?",
+                if (MessageBox.Show(AppLocalization.IsChinese ? "工作尚未完成，是否保存任务？" : "Work not completed, save the task?", AppLocalization.IsChinese ? "保存未完成任务？" : "Save uncompleted task?",
                                      MessageBoxButtons.YesNo,
                                      MessageBoxIcon.Question) == DialogResult.Yes)
                 {
@@ -1276,7 +1276,7 @@ namespace DDDSharp
         {
             if(ipmethod.pointCount < 1 )
             {
-                MessageBox.Show("no valid points loaded.");
+                MessageBox.Show(AppLocalization.IsChinese ? "未加载有效点数据。" : "No valid points loaded.");
                 return;
             }
             using (var dlg = new SaveFileDialog())
@@ -1288,9 +1288,9 @@ namespace DDDSharp
                     this.Cursor = Cursors.WaitCursor;
 
                     if (SaveToFile(dlg.FileName))
-                        MessageBox.Show("data exported to file: \n" + dlg.FileName);
+                        MessageBox.Show((AppLocalization.IsChinese ? "数据已导出到文件：\n" : "Data exported to file:\n") + dlg.FileName);
                     else
-                        MessageBox.Show("failed to export to file: \n" + dlg.FileName);
+                        MessageBox.Show((AppLocalization.IsChinese ? "导出到文件失败：\n" : "Failed to export to file:\n") + dlg.FileName);
                     this.Cursor = DefaultCursor;
                 }
             }

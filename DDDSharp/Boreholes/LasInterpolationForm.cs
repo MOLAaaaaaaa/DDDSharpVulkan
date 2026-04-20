@@ -317,12 +317,12 @@ namespace DDDSharp
         {
             if( textOutputFile.Text.Length < 5 )
             {
-                MessageBox.Show("please specify the output file.");
+                MessageBox.Show(AppLocalization.IsChinese ? "请指定输出文件。" : "Please specify the output file.");
                 return;
             }
             if (!GetFromGeometry())
             {
-                MessageBox.Show("Interpolation geometry not correct.");
+                MessageBox.Show(AppLocalization.IsChinese ? "插值几何参数不正确。" : "Interpolation geometry is not correct.");
                 return;
             }
 
@@ -333,7 +333,7 @@ namespace DDDSharp
             data.pGridData = new float[nx*ny*nz];
             if(data.pGridData == null)
             {
-                MessageBox.Show("no enough memory.");
+                MessageBox.Show(AppLocalization.IsChinese ? "内存不足。" : "Not enough memory.");
                 return;
             }
 
@@ -635,7 +635,7 @@ namespace DDDSharp
                         {
                             UpdateDataGridview();
                         }
-                        else MessageBox.Show("load layer control data failed.");
+                        else MessageBox.Show(AppLocalization.IsChinese ? "加载图层控制数据失败。" : "Load layer control data failed.");
                     }
                 }
             }

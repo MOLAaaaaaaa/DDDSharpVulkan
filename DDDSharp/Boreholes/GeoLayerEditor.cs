@@ -1,5 +1,6 @@
 ﻿using DataCollection;
 using DDDSharp.Dialogs;
+using DDDSharp;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
@@ -175,7 +176,7 @@ namespace DDDSharp.Boreholes
                 sel = listView1.SelectedIndices[0];
                 if (sel >= 0 && sel < stratums.Count)
                 {
-                    DialogResult ret = MessageBox.Show("Remove " + stratums[sel].Name, "Remove Stratum?",
+                    DialogResult ret = MessageBox.Show(AppLocalization.IsChinese ? "移除 " + stratums[sel].Name : "Remove " + stratums[sel].Name, AppLocalization.IsChinese ? "移除地层?" : "Remove Stratum?",
                                                      MessageBoxButtons.YesNo,
                                                      MessageBoxIcon.Warning,
                                                      MessageBoxDefaultButton.Button2);
@@ -205,7 +206,7 @@ namespace DDDSharp.Boreholes
                 if( StratumDatas.ExportStratumScheme(stratums,dlg.FileName) )
                 {
                     Modified = false;
-                    MessageBox.Show("Stratum Color Scheme Save to \n" + dlg.FileName);
+                    MessageBox.Show(AppLocalization.IsChinese ? "地层颜色方案已保存到 \n" + dlg.FileName : "Stratum Color Scheme saved to \n" + dlg.FileName);
                 }
             }
         }
@@ -295,7 +296,7 @@ namespace DDDSharp.Boreholes
                 {
                     MessageBox.Show("Color scale saved to " + dlg.FileName);
                 }
-                else MessageBox.Show("Faild to save color scale." + scale.errMessage);
+                else MessageBox.Show(AppLocalization.IsChinese ? "保存颜色方案失败。" : "Failed to save color scale." + scale.errMessage);
             }
         }
 
@@ -303,7 +304,7 @@ namespace DDDSharp.Boreholes
         {
             if (Modified)
             {
-                DialogResult ret = MessageBox.Show("data has been modified, abort it anyway?", "changes ignored?",
+                DialogResult ret = MessageBox.Show(AppLocalization.IsChinese ? "数据已经修改，仍要放弃吗？" : "Data has been modified, abort it anyway?", AppLocalization.IsChinese ? "忽略更改?" : "changes ignored?",
                                                      MessageBoxButtons.YesNoCancel,
                                                      MessageBoxIcon.Warning,
                                                      MessageBoxDefaultButton.Button3);

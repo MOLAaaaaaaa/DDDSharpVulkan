@@ -43,6 +43,10 @@ namespace DDDSharp
         public CBoreholesPropertyForm m_BoreholesPropertyForm;
         public C3DLinePropertyForm m_3DLinePropertyForm;
         public ScatteredPointsPropertyForm m_ScatterPointsPropertyForm;
+        private ToolStripSeparator optionLanguageSeparator;
+        private ToolStripMenuItem languageToolStripMenuItem;
+        private ToolStripMenuItem englishLanguageToolStripMenuItem;
+        private ToolStripMenuItem chineseLanguageToolStripMenuItem;
 
         string CaptionTitle = "3D Surfer Plus";
         static int iBoxCreated = 1;
@@ -60,7 +64,192 @@ namespace DDDSharp
             m_BoreholesPropertyForm = new CBoreholesPropertyForm();
             m_3DLinePropertyForm = new C3DLinePropertyForm();
             m_ScatterPointsPropertyForm = new ScatteredPointsPropertyForm();
-            Text = CaptionTitle + "--data visualization";
+            BuildLanguageMenu();
+            ApplyLanguage();
+            AppLocalization.LanguageChanged += AppLocalization_LanguageChanged;
+        }
+
+        private void AppLocalization_LanguageChanged(object sender, EventArgs e)
+        {
+            ApplyLanguage();
+        }
+
+        private void BuildLanguageMenu()
+        {
+            if (languageToolStripMenuItem != null)
+            {
+                return;
+            }
+
+            optionLanguageSeparator = new ToolStripSeparator();
+            languageToolStripMenuItem = new ToolStripMenuItem();
+            englishLanguageToolStripMenuItem = new ToolStripMenuItem();
+            chineseLanguageToolStripMenuItem = new ToolStripMenuItem();
+
+            englishLanguageToolStripMenuItem.Click += englishLanguageToolStripMenuItem_Click;
+            chineseLanguageToolStripMenuItem.Click += chineseLanguageToolStripMenuItem_Click;
+
+            languageToolStripMenuItem.DropDownItems.AddRange(new ToolStripItem[]
+            {
+                englishLanguageToolStripMenuItem,
+                chineseLanguageToolStripMenuItem
+            });
+
+            optionToolStripMenuItem.DropDownItems.Add(optionLanguageSeparator);
+            optionToolStripMenuItem.DropDownItems.Add(languageToolStripMenuItem);
+        }
+
+        private void ApplyLanguage()
+        {
+            bool zh = AppLocalization.IsChinese;
+
+            Text = zh ? CaptionTitle + "--数据可视化" : CaptionTitle + "--data visualization";
+
+            文件FileToolStripMenuItem.Text = zh ? "文件" : "&File";
+            newProjectToolStripMenuItem.Text = zh ? "新建项目" : "&New Project";
+            OpenProjectToolStripMenuItem.Text = zh ? "打开项目" : "&Open Project";
+            SaveProjectToolStripMenuItem.Text = zh ? "保存" : "&Save";
+            saveAsToolStripMenuItem.Text = zh ? "另存为" : "Save &As";
+            exportToolStripMenuItem.Text = zh ? "导出" : "Export";
+            imageToolStripMenuItem.Text = zh ? "图像" : "Image";
+            vRMLModelsToolStripMenuItem.Text = zh ? "VRML 模型" : "VRML models";
+            dOBJECTSToolStripMenuItem.Text = zh ? "OBJ 模型" : "OBJ models";
+            pLYFilesToolStripMenuItem.Text = zh ? "PLY 模型" : "PLY files";
+            importToolStripMenuItem.Text = zh ? "导入" : "Import";
+            fromG3DToolStripMenuItem.Text = zh ? "从 G3D 导入" : "From G3D";
+            fromGeoToolStripMenuItem.Text = zh ? "从 Geo 导入" : "From Geo";
+
+            数据DataToolStripMenuItem.Text = zh ? "数据" : "&Data";
+            LoadGridData.Text = zh ? "载入三维网格" : "Load 3D Grid";
+            loadFormattedTriangleFile.Text = zh ? "载入格式化三角面" : "Load formatted triangle";
+            loadMeshToolStripMenuItem.Text = zh ? "载入网格" : "Load mesh";
+            fromFormattedToolStripMenuItem.Text = zh ? "从格式化文件" : "From formatted";
+            fromGrid2DToolStripMenuItem.Text = zh ? "从二维网格" : "From Grid2D";
+            fromImageFileToolStripMenuItem.Text = zh ? "从图像文件" : "From image file";
+            MeshLayersToolStripMenuItem.Text = zh ? "网格分层" : "Mesh layers";
+            loadSlicerToolStripMenuItem.Text = zh ? "载入切片" : "Load slicer";
+            SlicerFromFormattedFile.Text = zh ? "从格式化文件" : "From formatted file";
+            fromGrid2DToolStripMenuItem1.Text = zh ? "从二维网格" : "From Grid2D";
+            geologicalProfileToolStripMenuItem.Text = zh ? "地质剖面" : "Geological profile";
+            griddedProfileToolStripMenuItem.Text = zh ? "网格剖面" : "Gridded profile";
+            formattedGeoFileToolStripMenuItem.Text = zh ? "格式化地质文件" : "Formatted geo file";
+            loadPolygonToolStripMenuItem.Text = zh ? "载入多边形" : "Load polygon";
+            formattedPolygonFilesToolStripMenuItem.Text = zh ? "格式化多边形文件" : "Formatted polygon files";
+            fromGISExchangeFilesToolStripMenuItem.Text = zh ? "GIS 交换格式" : "From GIS exchange files";
+            PolygonFromDXFFilesToolStripMenuItem.Text = zh ? "从 DXF 导入" : "From DXF";
+            PolygonFromSHPFiles.Text = zh ? "从 SHP 导入" : "From SHP";
+            formattedPolygonSlicerFilesToolStripMenuItem.Text = zh ? "格式化多边形切片文件" : "Formatted polygon slicer files";
+            loadLineToolStripMenuItem.Text = zh ? "载入线" : "Load line";
+            FormattedLineToolStripMenuItem.Text = zh ? "格式化线文件" : "Formatted line file";
+            outlinesToolStripMenuItem.Text = zh ? "轮廓线" : "Outlines";
+            fromGISExchangeFilesToolStripMenuItem1.Text = zh ? "GIS 交换格式" : "From GIS exchange files";
+            linefromDXFItem.Text = zh ? "从 DXF 导入" : "From DXF";
+            linefromSHPItem.Text = zh ? "从 SHP 导入" : "From SHP";
+            lineFromSlicerToolStripMenuItem.Text = zh ? "从切片导入" : "From slicer";
+            loadCylinderToolStripMenuItem.Text = zh ? "载入圆柱" : "Load cylinder";
+            loadTextureToolStripMenuItem.Text = zh ? "载入纹理" : "Load texture";
+            loadScatteredPointsToolStripMenuItem.Text = zh ? "载入散点" : "Load scattered points";
+            loadBorholesToolStripMenuItem.Text = zh ? "载入钻孔" : "Load boreholes";
+            fromLASToolStripMenuItem.Text = zh ? "从 LAS 导入" : "From LAS";
+            fromWELLToolStripMenuItem.Text = zh ? "从 WELL 导入" : "From WELL";
+            钻孔分层文件ToolStripMenuItem.Text = zh ? "钻孔分层文件" : "Borehole stratums file";
+
+            editToolStripMenuItem.Text = zh ? "编辑" : "&Edit";
+            terrianBlankToolStripMenuItem.Text = zh ? "地形空白" : "Terrain blank";
+
+            viewViewToolStripMenuItem.Text = zh ? "视图" : "&View";
+            polygonModeToolStripMenuItem.Text = zh ? "多边形模式" : "Polygon mode";
+            fillToolStripMenuItem.Text = zh ? "填充" : "Fill";
+            wireFrameToolStripMenuItem.Text = zh ? "线框" : "Wire frame";
+            outerBoxToolStripMenuItem.Text = zh ? "外包框" : "Outer box";
+            selectedOutlineToolStripMenuItem.Text = zh ? "选中轮廓" : "Selected outline";
+            directionArrowToolStripMenuItem.Text = zh ? "方向箭头" : "Direction arrow";
+            lightsPositionToolStripMenuItem.Text = zh ? "灯光位置" : "Lights position";
+
+            optionToolStripMenuItem.Text = zh ? "设置" : "Option";
+            lightsMaterialToolStripMenuItem.Text = zh ? "灯光与材质" : "&Lights&&Material";
+            dataRangeToolStripMenuItem.Text = zh ? "数据范围" : "&Data Range";
+            graphicDeviceToolStripMenuItem.Text = zh ? "图形设备" : "&Graphic Device";
+            mouseControlToolStripMenuItem.Text = zh ? "鼠标控制" : "&Mouse Control";
+            stratumColorSchemeToolStripMenuItem.Text = zh ? "地层颜色方案" : "Stratum Color Scheme";
+            testToolStripMenuItem.Text = zh ? "测试" : "Test";
+            languageToolStripMenuItem.Text = zh ? "语言" : "Language";
+            englishLanguageToolStripMenuItem.Text = zh ? "English (默认)" : "English (Default)";
+            chineseLanguageToolStripMenuItem.Text = zh ? "中文" : "Chinese";
+            englishLanguageToolStripMenuItem.Checked = !zh;
+            chineseLanguageToolStripMenuItem.Checked = zh;
+
+            objectsToolStripMenuItem.Text = zh ? "对象" : "&Objects";
+            createToolStripMenuItem.Text = zh ? "创建" : "&Create";
+            meshesToolStripMenuItem.Text = zh ? "网格" : "Meshes";
+            fromLinesToolStripMenuItem.Text = zh ? "从线创建" : "From lines";
+            slicerToolStripMenuItem.Text = zh ? "切片" : "Slicer";
+            dOutlineToolStripMenuItem.Text = zh ? "轮廓" : "Outline";
+            shapeToolStripMenuItem.Text = zh ? "形状" : "Shape";
+            boxToolStripMenuItem1.Text = zh ? "盒体" : "Box";
+            cylinderToolStripMenuItem.Text = zh ? "圆柱" : "Cylinder";
+            coneToolStripMenuItem.Text = zh ? "圆锥" : "Cone";
+            shape3DModelerToolStripMenuItem.Text = zh ? "三维造型" : "Shape 3D modeler";
+            polygonToolStripMenuItem.Text = zh ? "多边形" : "Polygon";
+            textToolStripMenuItem.Text = zh ? "文字" : "Text";
+
+            cutingToolStripMenuItem.Text = zh ? "切割" : "Cutting";
+            IntersectWithToolStripMenuItem.Text = zh ? "相交" : "Intersect with";
+            withMeshesToolStripMenuItem.Text = zh ? "与网格" : "With meshes";
+
+            analyzeToolStripMenuItem.Text = zh ? "分析" : "&Analyze";
+            overlayAnalysisToolStripMenuItem.Text = zh ? "叠加分析" : "Overlay analysis";
+
+            coordinateToolStripMenuItem.Text = zh ? "坐标" : "Coordinate";
+            earthMappedSystemToolStripMenuItem.Text = zh ? "地理坐标系统" : "Earth mapped system";
+            CoordinateOptionsMenuItem.Text = zh ? "坐标选项" : "Coordinate options";
+            axisLabelsToolStripMenuItem.Text = zh ? "坐标轴选项" : "Axis options";
+
+            toolsToolStripMenuItem.Text = zh ? "工具" : "Tools";
+            coordsRotatingToolStripMenuItem.Text = zh ? "坐标旋转" : "Coordinate rotating";
+            crossValidationToolStripMenuItem.Text = zh ? "交叉验证" : "Cross validation";
+            interpolationToolStripMenuItem.Text = zh ? "插值" : "Interpolation";
+            scatteredPointsToolStripMenuItem.Text = zh ? "散点" : "Scattered points";
+            geophysicProfileToolStripMenuItem.Text = zh ? "地球物理剖面" : "Geophysic profile";
+            WellCurvesInterpolationMenuItem.Text = zh ? "钻孔曲线插值" : "Well curves interpolation";
+            mineralBoreholesToolStripMenuItem.Text = zh ? "矿物钻孔" : "Mineral boreholes";
+            modelingToolStripMenuItem.Text = zh ? "建模" : "Modeling";
+            slicersSamplingToolStripMenuItem.Text = zh ? "切片采样" : "Slicers sampling";
+            toDiscretedPointsToolStripMenuItem.Text = zh ? "转离散点" : "To discreted points";
+            to3DGridsToolStripMenuItem.Text = zh ? "转三维网格" : "To 3D grids";
+            toImageRecognizingToolStripMenuItem.Text = zh ? "图像识别" : "To image recognizing";
+            mergeGridsToolStripMenuItem.Text = zh ? "合并网格" : "Merge grids";
+            meshesCreatingToolStripMenuItem.Text = zh ? "网格生成" : "Meshes creating";
+            fromPolygonsToolStripMenuItem.Text = zh ? "从多边形" : "From polygons";
+            fromSlicersToolStripMenuItem.Text = zh ? "从切片" : "From slicers";
+            meshesFrom3DGridsToolStripMenuItem.Text = zh ? "从三维网格生成网格" : "Meshes from 3D grids";
+            layersFromMeshesToolStripMenuItem.Text = zh ? "从网格生成分层" : "Layers from meshes";
+            buffersOverlapToolStripMenuItem.Text = zh ? "缓冲区叠加" : "Buffers overlap";
+            convertToolStripMenuItem.Text = zh ? "转换" : "Convert";
+            toEarthTextureToolStripMenuItem.Text = zh ? "地球纹理" : "To earth texture";
+            CoordinatesMatToolStripMenuItem.Text = zh ? "坐标矩阵" : "Coordinates matrix";
+            Projection.Text = zh ? "投影" : "Projection";
+            lBHtoXYZToolStripMenuItem.Text = zh ? "LBH 转 XYZ" : "LBH to XYZ";
+            xYZtoLBHToolStripMenuItem.Text = zh ? "XYZ 转 LBH" : "XYZ to LBH";
+            scriptsToolStripMenuItem.Text = zh ? "脚本" : "Scripts";
+            loadScriptsToolStripMenuItem.Text = zh ? "载入脚本" : "Load scripts";
+            recordingToolStripMenuItem.Text = zh ? "屏幕录制" : "Screen recording";
+            settingToolStripMenuItem.Text = zh ? "设置" : "Setting";
+            startEndToolStripMenuItem.Text = zh ? "开始录制" : "Start recording";
+            stratumsEditorToolStripMenuItem.Text = zh ? "地层编辑器" : "Stratums editor";
+
+            helpToolStripMenuItem.Text = zh ? "帮助" : "&Help";
+            aboutToolStripMenuItem.Text = zh ? "关于" : "&About";
+        }
+
+        private void englishLanguageToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            AppLocalization.SetLanguage(AppLocalization.EnglishCultureName);
+        }
+
+        private void chineseLanguageToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            AppLocalization.SetLanguage(AppLocalization.ChineseCultureName);
         }
 
         /// <summary>
@@ -117,7 +306,7 @@ namespace DDDSharp
             }
             else
             {
-                if (m_InforForm != null) m_InforForm.AddInfo(info);
+                if (m_InforForm != null) m_InforForm.AddInfo(AppLocalization.Translate(info));
             }            
         }
         private bool CheckVialidation()
@@ -152,7 +341,7 @@ namespace DDDSharp
                 if ( !CGraphic3D.IsVulkanSupport() )
                 {
                     graphic.engine = gEngine.opengl;
-                    AddtoInfo("Vulkan not supported,auto switch to OpenGL.");
+                    AddtoInfo(AppLocalization.IsChinese ? "不支持 Vulkan，已自动切换到 OpenGL。" : "Vulkan not supported,auto switch to OpenGL.");
                 }
             }
             //这句必须要加上  //或者 dockPanel1.Parent = this;
@@ -191,7 +380,7 @@ namespace DDDSharp
             {
                 if (!VerifyRemote())
                 {
-                    MessageBox.Show("Remote verifying failed,please check the network.");
+                    MessageBox.Show(AppLocalization.IsChinese ? "远程验证失败，请检查网络。" : "Remote verifying failed,please check the network.");
                     this.Close();
                 }                
             }
@@ -232,7 +421,7 @@ namespace DDDSharp
 
                 if (ret)
                 {
-                    AddtoInfo("Load grid data successfully."+ dlg.FileName);
+                    AddtoInfo(AppLocalization.IsChinese ? "网格数据加载成功。" + dlg.FileName : "Load grid data successfully." + dlg.FileName);
 
                     /////this validation section//////////////
                     ///Validation
@@ -2130,12 +2319,12 @@ namespace DDDSharp
 
             if (SaveProject(C3DData.CurrentProjectFile))
             {
-                AddtoInfo("Project Saved to " + C3DData.CurrentProjectFile);
+                AddtoInfo(AppLocalization.IsChinese ? "项目已保存到 " + C3DData.CurrentProjectFile : "Project saved to " + C3DData.CurrentProjectFile);
                 Text = CaptionTitle +  " - " + C3DData.CurrentProjectFile;
             }
             else
             {
-                AddtoInfo("Failed to save Project. ");
+                AddtoInfo(AppLocalization.IsChinese ? "项目保存失败。" : "Failed to save project.");
             }
         }
         //save g3d to file
@@ -2156,12 +2345,12 @@ namespace DDDSharp
             {
                 if( SaveProject(C3DData.CurrentProjectFile) )
                 {
-                    AddtoInfo("Project Saved to " + C3DData.CurrentProjectFile);
+                    AddtoInfo(AppLocalization.IsChinese ? "项目已保存到 " + C3DData.CurrentProjectFile : "Project saved to " + C3DData.CurrentProjectFile);
                     Text = CaptionTitle + " - " + C3DData.CurrentProjectFile;
                 }
                 else
                 {
-                    AddtoInfo("Failed to save Project. ");
+                    AddtoInfo(AppLocalization.IsChinese ? "项目保存失败。" : "Failed to save project.");
                 }
             }                
         }
@@ -2170,8 +2359,8 @@ namespace DDDSharp
         {
             if (C3DData.objectsDiction.Count > 0 && C3DData.IsDataModified)
             {
-                string info = "Changes have not been saved, save it first?";
-                DialogResult ret = MessageBoxQestionYesNoCancel(info, "Save Changes？");
+                string info = AppLocalization.IsChinese ? "更改尚未保存，是否先保存？" : "Changes have not been saved, save it first?";
+                DialogResult ret = MessageBoxQestionYesNoCancel(info, AppLocalization.IsChinese ? "保存更改？" : "Save Changes?");
                 if (ret == DialogResult.Cancel) return;
                 else if (ret == DialogResult.Yes)
                 {
@@ -2933,7 +3122,7 @@ namespace DDDSharp
 
             if (!db.Connect("Data Source = registration.cdtracer.cn; Initial Catalog = DDDSURFER; user id = sa; password = giT26vJLR957QU; Network Library = DBMSSOCN; "))
             {
-                MessageBox.Show("Connect remote server failed.\r\n" + db.ErrMsg);
+                MessageBox.Show((AppLocalization.IsChinese ? "连接远程服务器失败。\r\n" : "Connect remote server failed.\r\n") + db.ErrMsg);
                 return false;
             }
 
@@ -2977,14 +3166,14 @@ namespace DDDSharp
             RegisterAndEncrypt.RegisterVerify reg = new RegisterAndEncrypt.RegisterVerify(C3DData.UserID);
             if (!reg.ReadFromRegister())
             {
-                MessageBoxWarning("This is a unregistered version.");
+                MessageBoxWarning(AppLocalization.IsChinese ? "这是未注册版本。" : "This is a unregistered version.");
                 return;
             }
             Random rand = new Random();
             RegisterAndEncrypt.HardWareInfo.InfoType type = (RegisterAndEncrypt.HardWareInfo.InfoType)rand.Next(3);
             if (!reg.Verify(type))
             {
-                MessageBoxWarning("Unreconginized register information.");
+                MessageBoxWarning(AppLocalization.IsChinese ? "无法识别的注册信息。" : "Unreconginized register information.");
                 return;
             }
             //Register Verify
@@ -3141,38 +3330,40 @@ namespace DDDSharp
         //-------常用对话框---------------------------
         public void MessageBoxErr(string errText, string captionText = "Error occurred!!!")
         {
-            MessageBox.Show(errText, captionText, MessageBoxButtons.OK, MessageBoxIcon.Error);
+            MessageBox.Show(AppLocalization.Translate(errText), AppLocalization.Translate(captionText), MessageBoxButtons.OK, MessageBoxIcon.Error);
         }
         public void MessageBoxWarning(string errText, string captionText = "Warning!!!")
         {
-            MessageBox.Show(errText, captionText, MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            MessageBox.Show(AppLocalization.Translate(errText), AppLocalization.Translate(captionText), MessageBoxButtons.OK, MessageBoxIcon.Warning);
         }
         public void MessageBoxInfo(string infoText, string captionText = "")
         {
-            MessageBox.Show(infoText, captionText, MessageBoxButtons.OK, MessageBoxIcon.Information);
+            MessageBox.Show(AppLocalization.Translate(infoText), AppLocalization.Translate(captionText), MessageBoxButtons.OK, MessageBoxIcon.Information);
         }
         public DialogResult MessageBoxQestionYesNo(string infoText, string captionText = "", int defaultChoose = 1)
         {
+            captionText = AppLocalization.Translate(captionText);
             if( defaultChoose == 1)
-            return MessageBox.Show( infoText, captionText, MessageBoxButtons.YesNo, 
+            return MessageBox.Show(AppLocalization.Translate(infoText), captionText, MessageBoxButtons.YesNo, 
                                     MessageBoxIcon.Question, 
                                     MessageBoxDefaultButton.Button1 );
-            else return MessageBox.Show(infoText, captionText, MessageBoxButtons.YesNo,
+            else return MessageBox.Show(AppLocalization.Translate(infoText), captionText, MessageBoxButtons.YesNo,
                                     MessageBoxIcon.Question,
                                     MessageBoxDefaultButton.Button2);
         }
         public DialogResult MessageBoxQestionYesNoCancel(string infoText, string captionText = "",int defaultChoose = 3)
         {
+            captionText = AppLocalization.Translate(captionText);
             if (defaultChoose == 1)
-                return MessageBox.Show(infoText, captionText, MessageBoxButtons.YesNoCancel,
+                return MessageBox.Show(AppLocalization.Translate(infoText), captionText, MessageBoxButtons.YesNoCancel,
                                         MessageBoxIcon.Question,
                                         MessageBoxDefaultButton.Button1);
             else if (defaultChoose == 2)
-                return MessageBox.Show(infoText, captionText, MessageBoxButtons.YesNoCancel,
+                return MessageBox.Show(AppLocalization.Translate(infoText), captionText, MessageBoxButtons.YesNoCancel,
                                         MessageBoxIcon.Question,
                                         MessageBoxDefaultButton.Button2);
             else
-                return MessageBox.Show(infoText, captionText, MessageBoxButtons.YesNoCancel,
+                return MessageBox.Show(AppLocalization.Translate(infoText), captionText, MessageBoxButtons.YesNoCancel,
                                         MessageBoxIcon.Question,
                                         MessageBoxDefaultButton.Button3);
 
@@ -3376,9 +3567,9 @@ namespace DDDSharp
                     if (dlg.ShowDialog() == DialogResult.OK)
                     {
                         File.Copy(C3DData.aviRecordFile, dlg.FileName, true);
-                        AddtoInfo("Recording saved to'" + dlg.FileName + "'");
+                        AddtoInfo(AppLocalization.IsChinese ? "录制已保存到 '" + dlg.FileName + "'" : "Recording saved to'" + dlg.FileName + "'");
                     }
-                    else AddtoInfo("Recording canceled!");
+                    else AddtoInfo(AppLocalization.IsChinese ? "录制已取消！" : "Recording canceled!");
                 }
 
                 //clear all temporary .jpg file
@@ -3394,7 +3585,7 @@ namespace DDDSharp
                 C3DData.tempRecordPath = Path.GetTempPath() + @"3DSurfer\Recording\";
                 DeleteFolderFiles(C3DData.tempRecordPath);
                 Directory.CreateDirectory(C3DData.tempRecordPath);
-                AddtoInfo("start recording...");
+                AddtoInfo(AppLocalization.IsChinese ? "开始录制..." : "start recording...");
                 m_DDDForm.StartScreenRecord(avifile, C3DData.framesPersecond);
 
             }// else
@@ -3404,11 +3595,11 @@ namespace DDDSharp
         {
             if (C3DData.Recording)
             {
-                startEndToolStripMenuItem.Text = "End recording";
+                startEndToolStripMenuItem.Text = AppLocalization.IsChinese ? "结束录制" : "End recording";
             }
             else 
             {
-                startEndToolStripMenuItem.Text = "Start recording";
+                startEndToolStripMenuItem.Text = AppLocalization.IsChinese ? "开始录制" : "Start recording";
             }
         }        
 
@@ -3617,8 +3808,8 @@ namespace DDDSharp
         {
             if(C3DData.objectsDiction.Count > 0 && C3DData.IsDataModified )
             {
-                string info = "Changes have not been saved, save it?";
-                DialogResult ret = MessageBoxQestionYesNoCancel(info, "Save Changes？");
+                string info = AppLocalization.IsChinese ? "更改尚未保存，是否保存？" : "Changes have not been saved, save it?";
+                DialogResult ret = MessageBoxQestionYesNoCancel(info, AppLocalization.IsChinese ? "保存更改？" : "Save Changes?");
                 if (ret == DialogResult.Cancel) e.Cancel = true;
                 else if (ret == DialogResult.Yes) 
                 {
@@ -3809,7 +4000,7 @@ namespace DDDSharp
             }
             catch(Exception ex)
             {
-                AddtoInfo("载入数据出错："+filename + ex.Message);
+                AddtoInfo(AppLocalization.IsChinese ? "载入数据出错：" + filename + ex.Message : "Error occurred while loading data: " + filename + ex.Message);
                 return false;
             }            
         }
@@ -3871,8 +4062,8 @@ namespace DDDSharp
         {
             if (C3DData.objectsDiction.Count > 0 && C3DData.IsDataModified)
             {
-                string info = "Changes have not been saved, save it first?";
-                DialogResult ret = MessageBoxQestionYesNoCancel(info, "Save Changes？");
+                string info = AppLocalization.IsChinese ? "更改尚未保存，是否先保存？" : "Changes have not been saved, save it first?";
+                DialogResult ret = MessageBoxQestionYesNoCancel(info, AppLocalization.IsChinese ? "保存更改？" : "Save Changes?");
                 if (ret == DialogResult.Cancel) return;
                 else if (ret == DialogResult.Yes)
                 {

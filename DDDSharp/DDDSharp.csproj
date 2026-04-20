@@ -245,6 +245,7 @@
     </Compile>
     <Compile Include="2D Drawing\Object2DBase.cs" />
     <Compile Include="2D Drawing\ScaledWindowRect.cs" />
+    <Compile Include="AppLocalization.cs" />
     <Compile Include="About.cs">
       <SubType>Form</SubType>
     </Compile>
@@ -1351,6 +1352,9 @@
       <Generator>ResXFileCodeGenerator</Generator>
       <LastGenOutput>Resource1.Designer.cs</LastGenOutput>
       <SubType>Designer</SubType>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Resource1.zh-CN.resx">
+      <DependentUpon>Resource1.resx</DependentUpon>
     </EmbeddedResource>
     <EmbeddedResource Include="ScatterPoint\ImportScatterPointsForm.resx">
       <DependentUpon>ImportScatterPointsForm.cs</DependentUpon>

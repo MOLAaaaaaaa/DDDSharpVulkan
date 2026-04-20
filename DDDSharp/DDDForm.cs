@@ -150,7 +150,7 @@ namespace DDDSharp
                 else
                 {
                     graphic.engine = gEngine.opengl;
-                    AddToMessage("Initiating Vulkan Device Failed.\n" + graphic.GetLastErrMessage());
+                    AddToMessage((AppLocalization.IsChinese ? "初始化 Vulkan 设备失败。\n" : "Initiating Vulkan device failed.\n") + graphic.GetLastErrMessage());
                 }
             }
 
@@ -164,7 +164,7 @@ namespace DDDSharp
                 else
                 {
                     graphic.engine = gEngine.opengles;
-                    AddToMessage("Initiating OpenGL Device Failed.\n" + graphic.GetLastErrMessage());
+                    AddToMessage((AppLocalization.IsChinese ? "初始化 OpenGL 设备失败。\n" : "Initiating OpenGL device failed.\n") + graphic.GetLastErrMessage());
                     return false;
                 }
             }
@@ -175,7 +175,7 @@ namespace DDDSharp
                 else
                 {
                     graphic.engine = gEngine.auto;
-                    AddToMessage("Initiating OpenGLES Device Failed.\n" + graphic.GetLastErrMessage());
+                    AddToMessage((AppLocalization.IsChinese ? "初始化 OpenGLES 设备失败。\n" : "Initiating OpenGLES device failed.\n") + graphic.GetLastErrMessage());
                     return false;
                 }
             }
@@ -216,7 +216,7 @@ namespace DDDSharp
                 graphic = new SharpGLNet();
                 if (!graphic.Initialize(this.Handle, "OPENGL", Width, Height))
                 {
-                    AddToMessage("Initiating OpenGL Failed.\n" + graphic.GetLastErrMessage());
+                    AddToMessage((AppLocalization.IsChinese ? "初始化 OpenGL 失败。\n" : "Initiating OpenGL failed.\n") + graphic.GetLastErrMessage());
                     return;
                 }
                 CreateEvents();
@@ -1515,7 +1515,7 @@ namespace DDDSharp
 
         public void AddToMessage(string info)
         {
-            Program.m_MainForm.AddtoInfo(info);
+            Program.m_MainForm.AddtoInfo(AppLocalization.Translate(info));
         }
         Vertex3D CreateVertex(Vector32 p)
         {
@@ -1745,7 +1745,7 @@ namespace DDDSharp
             if (obj.textureStruct.IsValidate())
             {
                 bmp = LoadTexture(obj.textureStruct);
-                if (bmp == null) AddToMessage("load texture failed.\n" + obj.textureStruct.TextureFile);
+                if (bmp == null) AddToMessage((AppLocalization.IsChinese ? "加载纹理失败。\n" : "Load texture failed.\n") + obj.textureStruct.TextureFile);
                 else
                 {
                     if (obj.texCoords.Count == 0)//计算纹理坐标
@@ -1863,7 +1863,7 @@ namespace DDDSharp
                 if (tri.textureStruct.IsValidate())
                 {
                     bmp = LoadTexture(tri.textureStruct);
-                    if (bmp == null) AddToMessage("load texture failed.\n" + tri.textureStruct.TextureFile);
+                    if (bmp == null) AddToMessage((AppLocalization.IsChinese ? "加载纹理失败。\n" : "Load texture failed.\n") + tri.textureStruct.TextureFile);
                     else
                     {
                         if (tri.texCoords.Count == 0)//计算纹理坐标
@@ -1958,7 +1958,7 @@ namespace DDDSharp
             }
             catch (Exception e)
             {
-                AddToMessage("out of memory while rendering meshes: " + obj.Name + ".");
+                AddToMessage(AppLocalization.IsChinese ? "渲染网格时内存不足： " + obj.Name + "." : "Out of memory while rendering meshes: " + obj.Name + ".");
                 return;
             }
             //begin draw
@@ -1976,7 +1976,7 @@ namespace DDDSharp
             if (obj.textureStruct.IsValidate())
             {
                 Bitmap bmp = LoadTexture(obj.textureStruct);
-                if (bmp == null) AddToMessage("load texture failed.\n" + obj.textureStruct.TextureFile);
+                if (bmp == null) AddToMessage((AppLocalization.IsChinese ? "加载纹理失败。\n" : "Load texture failed.\n") + obj.textureStruct.TextureFile);
                 else
                 {                    
                     enableTexture = true;
@@ -2358,7 +2358,7 @@ namespace DDDSharp
             if (tex.IsValidate())
             {
                 Bitmap bmp = LoadTexture(tex);
-                if (bmp == null) AddToMessage("load texture failed.\n" + tex.TextureFile);
+                if (bmp == null) AddToMessage((AppLocalization.IsChinese ? "加载纹理失败。\n" : "Load texture failed.\n") + tex.TextureFile);
                 else
                 {
                     enableTexture = true;
@@ -2653,7 +2653,7 @@ namespace DDDSharp
 
             if (obj.NetTopologySuiteTriangulate(true) == null) 
             {
-                AddToMessage("Triangulating failed of "+ obj.Name + "--" + obj.errMessage);
+                AddToMessage(AppLocalization.IsChinese ? "三角化失败：" + obj.Name + "--" + obj.errMessage : "Triangulating failed of " + obj.Name + "--" + obj.errMessage);
                 return; 
             }
 
@@ -2695,7 +2695,7 @@ namespace DDDSharp
 
             if (required > available)
             {
-                AddToMessage("Warning : no enough memory to render all the objects.");
+                AddToMessage(AppLocalization.IsChinese ? "警告：内存不足，无法渲染所有对象。" : "Warning: not enough memory to render all the objects.");
                 return;
             }
 
@@ -2753,7 +2753,7 @@ namespace DDDSharp
             indices = null;
             points = null;
 
-            if (Interval > 1) AddToMessage(obj.Name + ": not all the points are rendered,interval is " + Interval);
+            if (Interval > 1) AddToMessage(AppLocalization.IsChinese ? obj.Name + "：并非所有点都被渲染，间隔为 " + Interval : obj.Name + ": not all the points are rendered, interval is " + Interval);
         }
 
         void DrawScatteredPointsSymbles(ScatteredPoints obj)
@@ -2773,7 +2773,7 @@ namespace DDDSharp
 
             if (required > available)
             {
-                AddToMessage("Warning : no enough memory to render all the objects.");
+                AddToMessage(AppLocalization.IsChinese ? "警告：内存不足，无法渲染所有对象。" : "Warning: not enough memory to render all the objects.");
                 return;
             }
 
@@ -2788,7 +2788,7 @@ namespace DDDSharp
             if (obj.textureStruct.IsValidate())
             {
                 Bitmap bmp = LoadTexture(obj.textureStruct);
-                if (bmp == null) AddToMessage("load texture failed.\n" + obj.textureStruct.TextureFile);
+                if (bmp == null) AddToMessage((AppLocalization.IsChinese ? "加载纹理失败。\n" : "Load texture failed.\n") + obj.textureStruct.TextureFile);
                 else
                 {                   
                     graphic.EnableTexture(true);
@@ -2872,7 +2872,7 @@ namespace DDDSharp
             graphic.EndTriangles();            
 
             graphic.PopMatrix();
-            if (Interval > 1) AddToMessage(obj.Name + ": not all the points are rendered,interval is " + Interval);
+            if (Interval > 1) AddToMessage(AppLocalization.IsChinese ? obj.Name + "：并非所有点都被渲染，间隔为 " + Interval : obj.Name + ": not all the points are rendered, interval is " + Interval);
         }
         void DrawScatteredPointsLines(ScatteredPoints obj)
         {
@@ -3168,7 +3168,7 @@ namespace DDDSharp
             if (ply.textureStruct.IsValidate())
             {
                 Bitmap bmp = LoadTexture(ply.textureStruct);
-                if (bmp == null) AddToMessage("load texture failed.\n" + ply.textureStruct.TextureFile);
+                if (bmp == null) AddToMessage((AppLocalization.IsChinese ? "加载纹理失败。\n" : "Load texture failed.\n") + ply.textureStruct.TextureFile);
                 else
                 { 
                     graphic.EnableTexture(true);
@@ -3299,7 +3299,7 @@ namespace DDDSharp
             if (obj.textureStruct.IsValidate())
             {
                 Bitmap bmp = LoadTexture(obj.textureStruct);
-                if (bmp == null) AddToMessage("load texture failed.\n" + obj.textureStruct.TextureFile);
+                if (bmp == null) AddToMessage((AppLocalization.IsChinese ? "加载纹理失败。\n" : "Load texture failed.\n") + obj.textureStruct.TextureFile);
                 else
                 {                    
                     graphic.EnableTexture(true);
@@ -4010,14 +4010,14 @@ namespace DDDSharp
                 }
                 catch (Exception ex)
                 {
-                    AddToMessage("Writting to temporary files failed." + ex.Message);
+                    AddToMessage(AppLocalization.IsChinese ? "写入临时文件失败。" + ex.Message : "Writing to temporary files failed." + ex.Message);
                     return false;
                 }
             }
 
             if ( !Directory.Exists(C3DData.tempRecordPath) )
             {
-                AddToMessage("Writting to temporary files failed.");
+                AddToMessage(AppLocalization.IsChinese ? "写入临时文件失败。" : "Writing to temporary files failed.");
                 return false;
             }            
 
@@ -4055,7 +4055,7 @@ namespace DDDSharp
                 }
                 catch (Exception ex)
                 {
-                    AddToMessage("Recording breaked for errors." + ex.Message);
+                    AddToMessage(AppLocalization.IsChinese ? "录制因错误中断。" + ex.Message : "Recording stopped because of errors." + ex.Message);
                     C3DData.Recording = false;
                     break;
                 }
@@ -4068,7 +4068,7 @@ namespace DDDSharp
         {
             if ( !C3DData.Recording ) 
             {
-                AddToMessage("no actived screen recording.");
+                AddToMessage(AppLocalization.IsChinese ? "当前没有正在进行的屏幕录制。" : "No active screen recording.");
                 return false; 
             }
             
@@ -4133,7 +4133,7 @@ namespace DDDSharp
             }
             catch (Exception ex)
             {
-                AddToMessage("recording failed ! " + ex.Message);
+                AddToMessage(AppLocalization.IsChinese ? "录制失败！ " + ex.Message : "Recording failed! " + ex.Message);
                 ret = false;
             }           
 
@@ -4165,7 +4165,7 @@ namespace DDDSharp
                         FunctionStruct fs = sf.Parse(line, k);
                         if (fs.IsValid)
                         {
-                            AddToMessage("Doing function " + fs.Key.ToString());
+                            AddToMessage(AppLocalization.IsChinese ? "正在执行函数 " + fs.Key.ToString() : "Doing function " + fs.Key.ToString());
                             sf.DoFunction(fs);
                         }
                     }
@@ -4179,7 +4179,7 @@ namespace DDDSharp
             {
                 Thread scriptThread = new Thread(DoScriptThread);
                 scriptThread.Start(sf);
-                AddToMessage("scripts interpreter started...");
+                AddToMessage(AppLocalization.IsChinese ? "脚本解释器已启动..." : "Scripts interpreter started...");
             }
         }
 

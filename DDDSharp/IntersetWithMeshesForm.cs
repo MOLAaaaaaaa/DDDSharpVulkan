@@ -185,12 +185,12 @@ namespace DDDSharp
         {
             if( comboBox1.SelectedIndex < 0 )
             {
-                MessageBox.Show("No source object selected.");
+                MessageBox.Show(AppLocalization.IsChinese ? "未选择源对象。" : "No source object selected.");
                 return;
             }
             if (targets.Count < 1)
             {
-                MessageBox.Show("No target objects selected.");
+                MessageBox.Show(AppLocalization.IsChinese ? "未选择目标对象。" : "No target objects selected.");
                 return;
             }
             

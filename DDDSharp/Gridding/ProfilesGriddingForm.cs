@@ -196,7 +196,7 @@ namespace DDDSharp
                         GeoProfile profile = new GeoProfile();
                         if( !profile.LoadFrom(file) )
                         {
-                            MessageBox.Show("Load data failed.\n" + file + "\n" + profile.errMessage);
+                            MessageBox.Show(AppLocalization.IsChinese ? "加载数据失败。\n" + file + "\n" + profile.errMessage : "Load data failed.\n" + file + "\n" + profile.errMessage);
                             return;
                         }
                         
@@ -226,7 +226,7 @@ namespace DDDSharp
         {
             if( listBox1.SelectedIndices.Count < 1 )
             {
-                MessageBox.Show("no selections.");
+                MessageBox.Show(AppLocalization.IsChinese ? "未选择对象。" : "No selections.");
                 return;
             }
 
@@ -278,7 +278,7 @@ namespace DDDSharp
             }
             catch (Exception ex)
             {
-                MessageBox.Show("no enough memory,try to decrease grid numbers.\n" + ex.Message);
+                MessageBox.Show(AppLocalization.IsChinese ? "内存不足，请尝试减少网格数量。\n" + ex.Message : "Not enough memory, try to decrease grid numbers.\n" + ex.Message);
                 ipmethod.Clear();
                 return;
             }
@@ -537,13 +537,13 @@ namespace DDDSharp
                 localThread.Suspend();
 #pragma warning restore CS0618 // '“Thread.Suspend()”已过时:“Thread.Suspend has been deprecated.  Please use other classes in System.Threading, such as Monitor, Mutex, Event, and Semaphore, to synchronize Threads or protect resources.  http://go.microsoft.com/fwlink/?linkid=14202”
 
-            if (MessageBox.Show("Are you sure to abort current progress?\n Works have done will not be saved.", "Abort the progress?",
+            if (MessageBox.Show(AppLocalization.IsChinese ? "确定要中止当前操作吗？\n已完成的工作不会保存。" : "Are you sure to abort current progress?\nWorks done will not be saved.", AppLocalization.IsChinese ? "中止操作？" : "Abort the progress?",
                  MessageBoxButtons.YesNo, MessageBoxIcon.Question, MessageBoxDefaultButton.Button2) != DialogResult.Yes)
                 return;
 
             if (ipmethod.progressStep > 0)
             {
-                if (MessageBox.Show("work not completed,save the task?", "Save uncompleted task?",
+                if (MessageBox.Show(AppLocalization.IsChinese ? "工作尚未完成，是否保存任务？" : "Work not completed, save the task?", AppLocalization.IsChinese ? "保存未完成任务？" : "Save uncompleted task?",
                                      MessageBoxButtons.YesNo,
                                      MessageBoxIcon.Question) == DialogResult.Yes)
                 {
@@ -619,7 +619,7 @@ namespace DDDSharp
                             CSurferGrid cs = new CSurferGrid();
                             if (!cs.Read(file))
                             {
-                                MessageBox.Show("Load gridding data faild.\n" + cs.errMessage);
+                                MessageBox.Show(AppLocalization.IsChinese ? "加载网格数据失败。\n" + cs.errMessage : "Load gridding data failed.\n" + cs.errMessage);
                                 break;
                             }                            
                             CMesh mesh = new CMesh();
@@ -632,7 +632,7 @@ namespace DDDSharp
                             CMesh mesh = new CMesh();
                             if (!mesh.LoadFrom(file))
                             {
-                                MessageBox.Show("Load gridding data faild.\n" + mesh.errMessage);
+                                MessageBox.Show(AppLocalization.IsChinese ? "加载网格数据失败。\n" + mesh.errMessage : "Load gridding data failed.\n" + mesh.errMessage);
                                 break;
                             }
                             else
@@ -653,7 +653,7 @@ namespace DDDSharp
         {
             if (listBox2.SelectedIndices.Count < 1)
             {
-                MessageBox.Show("no selections.");
+                MessageBox.Show(AppLocalization.IsChinese ? "未选择对象。" : "No selections.");
                 return;
             }
 

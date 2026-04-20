@@ -214,7 +214,7 @@ namespace DDDSharp.Modeling
                     {
                         MessageBox.Show("Errors occurred whihe exporting to file.\n" + polygon.errMessage);                        
                     }
-                    else MessageBox.Show("data exported to file.\n" + dlg.FileName);
+                    else MessageBox.Show((AppLocalization.IsChinese ? "数据已导出到文件。\n" : "Data exported to file.\n") + dlg.FileName);
                 }
             }
         }

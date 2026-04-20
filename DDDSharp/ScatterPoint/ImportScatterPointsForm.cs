@@ -297,7 +297,7 @@ namespace DDDSharp
             if ( !PreLoadFile(datafile) )
             {
                 Cursor = Cursors.Default;
-                MessageBox.Show("打开文件错误！\n" + errMsg );
+                MessageBox.Show(AppLocalization.Translate("打开文件错误！") + "\n" + errMsg );
                 return;
             }
             Cursor = Cursors.Default;
@@ -420,7 +420,7 @@ namespace DDDSharp
             output = ImportFromFile(datafile);
             if ( output == null || output.Count < 1 )
             {
-                MessageBox.Show("导入数据错误！\n" + errMsg);
+                MessageBox.Show(AppLocalization.Translate("导入数据错误！") + "\n" + errMsg);
                 return;
             }
             else
@@ -519,7 +519,7 @@ namespace DDDSharp
                 if (!PreLoadFile(datafile))
                 {
                     Cursor = Cursors.Default;
-                    MessageBox.Show("打开文件错误！\n" + errMsg);
+                    MessageBox.Show(AppLocalization.Translate("打开文件错误！") + "\n" + errMsg);
                     Cursor = Cursors.Default;
                     return;
                 }             

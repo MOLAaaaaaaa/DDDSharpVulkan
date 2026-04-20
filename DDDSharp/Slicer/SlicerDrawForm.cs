@@ -500,11 +500,11 @@ namespace DDDSharp
                     //if (ExportSlicer(pSlicers[sel], pathname))
                     if (pSlicers[sel].ExportSlicer(pathname))
                     {
-                        MessageBox.Show("data exported to file:" + pathname);
+                        MessageBox.Show((AppLocalization.IsChinese ? "数据已导出到文件：" : "Data exported to file: ") + pathname);
                     }
                     else
                     {
-                        MessageBox.Show("failed to export data to file:" + pathname);
+                        MessageBox.Show((AppLocalization.IsChinese ? "导出数据到文件失败：" : "Failed to export data to file: ") + pathname);
                     }
                     this.Cursor = DefaultCursor;
                 }
@@ -933,7 +933,7 @@ namespace DDDSharp
             if (n < 1 || sel >= n) return;
             CSlicer slicer = pSlicers[sel];
 
-            if (MessageBox.Show("删除对象：" + slicer.Name, "是否删除该切片对象？", MessageBoxButtons.YesNoCancel, MessageBoxIcon.Question) == DialogResult.Yes)
+            if (MessageBox.Show(AppLocalization.Translate("删除对象：") + slicer.Name, AppLocalization.Translate("是否删除该切片对象？"), MessageBoxButtons.YesNoCancel, MessageBoxIcon.Question) == DialogResult.Yes)
             {
                 pSlicers.RemoveAt(sel);
                 nSelected = -1;

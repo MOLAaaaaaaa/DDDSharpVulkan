@@ -150,7 +150,7 @@ namespace DDDSharp
                 if (mesh.TrimWith(poly, keepoutside))
                 {
                     cutIndex = selectedTargetIndex;
-                    MessageBox.Show("Successed.");
+                    MessageBox.Show(AppLocalization.IsChinese ? "成功。" : "Succeeded.");
                 }
             }
             else if (selectedTarget.type == ShapeEnum.GeoMesh)
@@ -159,7 +159,7 @@ namespace DDDSharp
                 if (mesh.TrimWith(poly, keepoutside))
                 {
                     cutIndex = selectedTargetIndex;
-                    MessageBox.Show("Successed.");
+                    MessageBox.Show(AppLocalization.IsChinese ? "成功。" : "Succeeded.");
                 }
             }
             else if (selectedTarget.type == ShapeEnum.GeoLayerMeshes)
@@ -175,7 +175,7 @@ namespace DDDSharp
                     //C3DData.AddObject(poly2d);
                     //C3DData.objSelected = poly2d;
 
-                    MessageBox.Show("Successed.");
+                    MessageBox.Show(AppLocalization.IsChinese ? "成功。" : "Succeeded.");
                 }
             }
             progressState = 0;
@@ -207,13 +207,13 @@ namespace DDDSharp
             }
             if (! ret )
             {
-                MessageBox.Show("failed to trim with polygon object.\n" + clTrim.errMsg);
+                MessageBox.Show(AppLocalization.IsChinese ? "多边形裁剪失败。\n" + clTrim.errMsg : "Failed to trim with polygon object.\n" + clTrim.errMsg);
                 cutIndex = -1;
             }
             else
             {
                 cutIndex = selectedTargetIndex;
-                MessageBox.Show("Successed.");
+                MessageBox.Show(AppLocalization.IsChinese ? "成功。" : "Succeeded.");
             }
             
             progressState = 0;
@@ -242,7 +242,7 @@ namespace DDDSharp
             else
             {                
                 cutIndex = selectedTargetIndex;
-                MessageBox.Show("Successed.");
+                MessageBox.Show(AppLocalization.IsChinese ? "成功。" : "Succeeded.");
             }
             
             progressState = 0;
@@ -480,7 +480,7 @@ namespace DDDSharp
                 }
             }
 
-            if (MessageBox.Show("Are you sure to abort current progress?\n Works have done will not be saved.", "Abort the progress?",
+            if (MessageBox.Show(AppLocalization.IsChinese ? "确定要中止当前操作吗？\n已完成的工作不会保存。" : "Are you sure to abort current progress?\nWorks have done will not be saved.", AppLocalization.IsChinese ? "中止操作？" : "Abort the progress?",
                  MessageBoxButtons.YesNo, MessageBoxIcon.Question, MessageBoxDefaultButton.Button2) == DialogResult.Yes)
             {
                 try 
@@ -517,12 +517,12 @@ namespace DDDSharp
         {
             if (comboBox1.SelectedIndex < 0)
             {
-                MessageBox.Show("no model object selected.");
+                MessageBox.Show(AppLocalization.IsChinese ? "未选择模型对象。" : "No model object selected.");
                 return;
             }
             if (comboBox2.SelectedIndex < 0)
             {
-                MessageBox.Show("please select an object to cut.");
+                MessageBox.Show(AppLocalization.IsChinese ? "请选择一个要切割的对象。" : "Please select an object to cut.");
                 return;
             }
 
@@ -531,7 +531,7 @@ namespace DDDSharp
 
             if (id1 == id2)
             {
-                MessageBox.Show("please select two diffrent object.");
+                MessageBox.Show(AppLocalization.IsChinese ? "请选择两个不同的对象。" : "Please select two different objects.");
                 return;
             }
 
@@ -557,7 +557,7 @@ namespace DDDSharp
             }
             else 
             {
-                MessageBox.Show("selected target not a supported type.");
+                MessageBox.Show(AppLocalization.IsChinese ? "所选目标类型不受支持。" : "Selected target is not a supported type.");
                 return;
             }
                 #region 获取选定GPU设备 

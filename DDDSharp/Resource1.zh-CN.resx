@@ -1,0 +1,148 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
+    <xsd:import namespace="http://www.w3.org/XML/1998/namespace" />
+    <xsd:element name="root" msdata:IsDataSet="true">
+      <xsd:complexType>
+        <xsd:choice maxOccurs="unbounded">
+          <xsd:element name="metadata">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" />
+              </xsd:sequence>
+              <xsd:attribute name="name" use="required" type="xsd:string" />
+              <xsd:attribute name="type" type="xsd:string" />
+              <xsd:attribute name="mimetype" type="xsd:string" />
+              <xsd:attribute ref="xml:space" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="assembly">
+            <xsd:complexType>
+              <xsd:attribute name="alias" type="xsd:string" />
+              <xsd:attribute name="name" type="xsd:string" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="data">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+                <xsd:element name="comment" type="xsd:string" minOccurs="0" msdata:Ordinal="2" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" msdata:Ordinal="1" />
+              <xsd:attribute name="type" type="xsd:string" msdata:Ordinal="3" />
+              <xsd:attribute name="mimetype" type="xsd:string" msdata:Ordinal="4" />
+              <xsd:attribute ref="xml:space" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="resheader">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" />
+            </xsd:complexType>
+          </xsd:element>
+        </xsd:choice>
+      </xsd:complexType>
+    </xsd:element>
+  </xsd:schema>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <data name="AnalyzeParametersStructerFilter" xml:space="preserve">
+    <value>分析参数文件(*.analyze)|*.analyze</value>
+  </data>
+  <data name="BitmapFileFilter" xml:space="preserve">
+    <value>位图文件 (*.bmp;*.jpg;*.gif;*.png)|*.bmp;*.jpg;*.gif;*.png</value>
+  </data>
+  <data name="BoreholeInterpolationControlFile" xml:space="preserve">
+    <value>钻孔控制文件 (*.csv,*.dat,*.txt)|*.csv;*.dat;*.txt</value>
+  </data>
+  <data name="BoreholesInclinesFileFormatFilter" xml:space="preserve">
+    <value>格式化线文件(*.csv,*.dat,*.txt)|*.csv;*.dat;*.txt</value>
+  </data>
+  <data name="DXFFileFormatFilter" xml:space="preserve">
+    <value>DXF 文件 (*.dxf)|*.dxf</value>
+  </data>
+  <data name="FormatLASControlFileFilter" xml:space="preserve">
+    <value>格式化 LAS 文件(*.csv,*.dat,*.txt)|*.csv;*.dat;*.txt</value>
+  </data>
+  <data name="FormatLASFileFilter" xml:space="preserve">
+    <value>格式化 LAS 文件(*.las)|*.las</value>
+  </data>
+  <data name="G3dProjectFileFilter" xml:space="preserve">
+    <value>地质工程文件 (*.g3d)|*.g3d</value>
+  </data>
+  <data name="GeoMeshFileFormatFilter" xml:space="preserve">
+    <value>格式化地质网格文件 (*.gmesh)|*.gmesh</value>
+  </data>
+  <data name="Grid3DFileFormatFilter" xml:space="preserve">
+    <value>三维网格文件(*.3DGrid)|*.3DGrid</value>
+  </data>
+  <data name="ImageFilesFormatFilter" xml:space="preserve">
+    <value>图像文件(*.jpg,*.png,*.bmp,*.gif,*.tif)|*.jpg;*.png;*.bmp;*.gif;*.tif|所有文件(*.*)|*.*</value>
+  </data>
+  <data name="LineFileFormatFilter" xml:space="preserve">
+    <value>格式化线文件 (*.line)|*.line</value>
+  </data>
+  <data name="MeshFileFormatFilter" xml:space="preserve">
+    <value>格式化网格文件 (*.mesh)|*.mesh</value>
+  </data>
+  <data name="OBJFileFormatedFilter" xml:space="preserve">
+    <value>OBJ 三角面文件 (*.obj)|*.obj</value>
+  </data>
+  <data name="PLYFileFormatedFilter" xml:space="preserve">
+    <value>PLY 三角面文件 (*.ply)|*.ply</value>
+  </data>
+  <data name="PoligonSlicerFileFormatFilter" xml:space="preserve">
+    <value>格式化多边形文件 (*.polycer)|*.polycer</value>
+  </data>
+  <data name="Polygon2DFileFormatFilter" xml:space="preserve">
+    <value>格式化二维多边形文件 (*.poly2d)|*.poly2d</value>
+  </data>
+  <data name="PolygonSlicerPoly3DXYZ" xml:space="preserve">
+    <value>三维多边形 XYZ(*.csv,*.dat,*.txt)|*.csv;*.dat;*.txt</value>
+  </data>
+  <data name="SHPFileFormatFilter" xml:space="preserve">
+    <value>SHP 文件 (*.shp)|*.shp</value>
+  </data>
+  <data name="SlicerFileFormatFilter" xml:space="preserve">
+    <value>格式化切片文件 (*.slicer)|*.slicer</value>
+  </data>
+  <data name="STLFileFormatedFilter" xml:space="preserve">
+    <value>STL 三角面文件 (*.stl)|*.stl</value>
+  </data>
+  <data name="StratumColorSchemeFilter" xml:space="preserve">
+    <value>地层颜色方案文件(*.StratumColor,*.dat,*.txt)|*.StratumColor;*.dat;*.txt</value>
+  </data>
+  <data name="SurferGridFileFormatFilter" xml:space="preserve">
+    <value>Surfer 网格文件 (*.grd)|*.grd</value>
+  </data>
+  <data name="TriangleFileFormatFilter" xml:space="preserve">
+    <value>格式化三角面文件 (*.ply,*.obj,*.stl)|*.ply;*.obj;*.stl</value>
+  </data>
+  <data name="VRMLFileFormatFilter" xml:space="preserve">
+    <value>VRML 模型文件 (*.wrl)|*.wrl</value>
+  </data>
+  <data name="WellingCurveDataFilter" xml:space="preserve">
+    <value>钻孔测井数据文件(*.las)|*.las</value>
+  </data>
+  <data name="WellStratumDataFilter" xml:space="preserve">
+    <value>钻孔分层数据文件(*.csv,*.dat,*.txt)|*.csv;*.dat;*.txt</value>
+  </data>
+  <data name="XYZVFileFormatFilter" xml:space="preserve">
+    <value>XYZV ASCII 文件 (*.pcd,*.vtk,*.csv,*.dat,*.txt)|*.pcd;*.vtk;*.pnts;*.csv;*.dat;*.txt;</value>
+  </data>
+  <data name="XYZVFormatLineFilter" xml:space="preserve">
+    <value>格式化线文件(*.csv,*.dat,*.txt)|*.csv;*.dat;*.txt</value>
+  </data>
+</root>

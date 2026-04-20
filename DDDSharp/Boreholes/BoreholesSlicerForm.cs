@@ -9,6 +9,7 @@ using System.Threading.Tasks;
 using System.Windows.Forms;
 using DataCollection;
 
+using DDDSharp;
 namespace DDDSharp.Boreholes
 {
     public partial class BoreholesSlicerForm : Form
@@ -88,7 +89,7 @@ namespace DDDSharp.Boreholes
         {
             if( selectedIndices.Count < 2 )
             {
-                MessageBox.Show("no enough boreholes selected");
+                MessageBox.Show(AppLocalization.IsChinese ? "选择的钻孔数量不足。" : "Not enough boreholes selected.");
                 return;
             }
             
@@ -165,7 +166,17 @@ namespace DDDSharp.Boreholes
             miny = Boreholes.miny;
             maxx = Boreholes.maxx;
             maxy = Boreholes.maxy;
+            ApplyLanguage();
         }  
+
+        private void ApplyLanguage()
+        {
+            bool zh = AppLocalization.IsChinese;
+            Create.Text = zh ? "创建切片" : "Create Slicer";
+            Cancel.Text = zh ? "关闭" : "Close";
+            groupBox1.Text = zh ? "属性" : "Properties";
+            Text = zh ? "钻孔切片" : "Boreholes Slicer";
+        }
         
         private void BoreholesSlicerForm_Load(object sender, EventArgs e)
         {

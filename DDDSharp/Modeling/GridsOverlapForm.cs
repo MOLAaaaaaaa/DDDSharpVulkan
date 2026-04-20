@@ -234,7 +234,7 @@ namespace DDDSharp
                         data.maxv = maxv;
                     }
                     if (data.SaveAs(dlg.FileName))
-                        MessageBox.Show("data saved to file: \n" + dlg.FileName);
+                        MessageBox.Show((AppLocalization.IsChinese ? "数据已保存到文件：\n" : "Data saved to file:\n") + dlg.FileName);
                     else
                         MessageBox.Show("failed to save to file: \n" + dlg.FileName);
 
@@ -356,7 +356,7 @@ namespace DDDSharp
                         data1.minv = layer.minv;
                         data1.maxv = layer.maxv;
                         if (data1.SaveAs(dlg.FileName))
-                            MessageBox.Show("data saved to file: \n" + dlg.FileName);
+                            MessageBox.Show((AppLocalization.IsChinese ? "数据已保存到文件：\n" : "Data saved to file:\n") + dlg.FileName);
                         else
                             MessageBox.Show("failed to save to file: \n" + dlg.FileName);
                     }                   

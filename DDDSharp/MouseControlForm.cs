@@ -29,17 +29,17 @@ namespace DDDSharp
         {
             if( !float.TryParse(NormalTextBox.Text, out float v1) )
             {
-                MessageBox.Show("Invalid values !");
+                MessageBox.Show(AppLocalization.IsChinese ? "值无效！" : "Invalid values!");
                 return;
             }
             if (!float.TryParse(FastTextBox.Text, out float v2))
             {
-                MessageBox.Show("Invalid values !");
+                MessageBox.Show(AppLocalization.IsChinese ? "值无效！" : "Invalid values!");
                 return;
             }
             if (!float.TryParse(SlowTextBox.Text, out float v3))
             {
-                MessageBox.Show("Invalid values !");
+                MessageBox.Show(AppLocalization.IsChinese ? "值无效！" : "Invalid values!");
                 return;
             }
             

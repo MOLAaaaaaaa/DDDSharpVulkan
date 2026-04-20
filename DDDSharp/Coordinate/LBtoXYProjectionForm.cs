@@ -343,11 +343,11 @@ namespace DDDSharp
 
             if (!int.TryParse(LBFloatNumTextBox.Text, out LBfloatNum))
             {
-                MessageBox.Show("Invalid Float Number.");
+                MessageBox.Show(AppLocalization.IsChinese ? "无效的浮点数。" : "Invalid float number.");
             }
             if (!int.TryParse(XYFloatNumTextBox.Text, out XYfloatNum))
             {
-                MessageBox.Show("Invalid Float Number.");
+                MessageBox.Show(AppLocalization.IsChinese ? "无效的浮点数。" : "Invalid float number.");
             }
             stringRow rows;
             float B1 = 0, L1 = 0;
@@ -396,11 +396,11 @@ namespace DDDSharp
 
             if ( !int.TryParse(LBFloatNumTextBox.Text, out LBfloatNum))
             {
-                MessageBox.Show("Invalid Float Number.");
+                MessageBox.Show(AppLocalization.IsChinese ? "无效的浮点数。" : "Invalid float number.");
             }
             if ( !int.TryParse(XYFloatNumTextBox.Text, out XYfloatNum))
             {
-                MessageBox.Show("Invalid Float Number.");
+                MessageBox.Show(AppLocalization.IsChinese ? "无效的浮点数。" : "Invalid float number.");
             }   
             stringRow rows;
             float B1 = 0, L1 = 0;
@@ -503,7 +503,7 @@ namespace DDDSharp
             if (cgcsSel < 0 || stripSel < 0 || unitSel < 0) return false;
             if (!double.TryParse(CentralLongitudeTextBox.Text, out L0))
             {
-                MessageBox.Show("Central Longitude Missing !");
+                MessageBox.Show(AppLocalization.IsChinese ? "中央经线未填写！" : "Central longitude is missing!");
                 return false;
             }
             EnumProjectionCoordinate coord = (EnumProjectionCoordinate)Enum.Parse(typeof(EnumProjectionCoordinate), PlaneSystemcomboBox.SelectedItem.ToString());
@@ -544,12 +544,12 @@ namespace DDDSharp
             double L0, B =0, L = 0;            
             if (!double.TryParse(inBtextBox.Text, out B))
             {
-                MessageBox.Show("Latitude value missing !");
+                MessageBox.Show(AppLocalization.IsChinese ? "缺少纬度值！" : "Latitude value is missing!");
                 return;
             }
             if (!double.TryParse(inLtextBox.Text, out L))
             {
-                MessageBox.Show("Longitude value missing !");
+                MessageBox.Show(AppLocalization.IsChinese ? "缺少经度值！" : "Longitude value is missing!");
                 return;
             }           
 
@@ -572,11 +572,11 @@ namespace DDDSharp
                     this.Cursor = Cursors.WaitCursor;
                     if ( ascRows.Export(dlg.FileName))
                     {
-                        MessageBox.Show("data exported to file:" + dlg.FileName);
+                        MessageBox.Show((AppLocalization.IsChinese ? "数据已导出到文件：" : "Data exported to file: ") + dlg.FileName);
                     }
                     else
                     {
-                        MessageBox.Show("failed to export data to file." + ascRows.errMessage);
+                        MessageBox.Show((AppLocalization.IsChinese ? "导出数据到文件失败。" : "Failed to export data to file.") + ascRows.errMessage);
                     }
                     this.Cursor = DefaultCursor;
                 }

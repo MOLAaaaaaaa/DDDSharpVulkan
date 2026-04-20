@@ -1203,9 +1203,9 @@ namespace DDDSharp
                     if (dlg.FilterIndex == 1 || dlg.FilterIndex == 2)
                     {
                         if (obj.ExportData(dlg.FileName))                    
-                            MessageBox.Show("data saved to file:" + dlg.FileName);
+                            MessageBox.Show((AppLocalization.IsChinese ? "数据已保存到文件：" : "Data saved to file: ") + dlg.FileName);
                         else
-                            MessageBox.Show("failed to save data to file.\n" + obj.errMessage);
+                            MessageBox.Show((AppLocalization.IsChinese ? "保存数据到文件失败。\n" : "Failed to save data to file.\n") + obj.errMessage);
                     }                    
 
                     this.Cursor = DefaultCursor;
@@ -1226,9 +1226,9 @@ namespace DDDSharp
                     this.Cursor = Cursors.WaitCursor;
 
                     if (obj.ExportData(pathname))
-                        MessageBox.Show("data exported to file:" + pathname);
+                        MessageBox.Show((AppLocalization.IsChinese ? "数据已导出到文件：" : "Data exported to file: ") + pathname);
                     else
-                        MessageBox.Show("failed to export data to file:" + pathname);
+                        MessageBox.Show((AppLocalization.IsChinese ? "导出数据到文件失败：" : "Failed to export data to file: ") + pathname);
 
                     this.Cursor = DefaultCursor;
                 }
@@ -1262,9 +1262,9 @@ namespace DDDSharp
                     else if (dlg.FilterIndex == 4)//.grd
                     {
                         if (obj.ExportToGrid2D(dlg.FileName))
-                            MessageBox.Show("data exported to file:" + dlg.FileName);
+                            MessageBox.Show((AppLocalization.IsChinese ? "数据已导出到文件：" : "Data exported to file: ") + dlg.FileName);
                         else
-                            MessageBox.Show("failed to export data to file.\n" + obj.errMessage);
+                            MessageBox.Show((AppLocalization.IsChinese ? "导出数据到文件失败。\n" : "Failed to export data to file.\n") + obj.errMessage);
                     }
                     else if (dlg.FilterIndex == 5)//AscII XYZV(*.dat)
                     {
@@ -1303,9 +1303,9 @@ namespace DDDSharp
                     else if (dlg.FilterIndex == 4)//.grd
                     {
                         if (obj.ExportToGrid2D(dlg.FileName))
-                            MessageBox.Show("data exported to file:" + dlg.FileName);
+                            MessageBox.Show((AppLocalization.IsChinese ? "数据已导出到文件：" : "Data exported to file: ") + dlg.FileName);
                         else
-                            MessageBox.Show("failed to export data to file.\n" + obj.errMessage);
+                            MessageBox.Show((AppLocalization.IsChinese ? "导出数据到文件失败。\n" : "Failed to export data to file.\n") + obj.errMessage);
                     }
                     else if (dlg.FilterIndex == 5)//AscII XYZV(*.dat)
                     {
@@ -1341,9 +1341,9 @@ namespace DDDSharp
                     if (dlg.FilterIndex == 1 || dlg.FilterIndex == 2)//polygon2D file .poly2D
                     {
                         if (obj.ExportData(dlg.FileName))
-                            MessageBox.Show("data saved to file:" + dlg.FileName);
+                            MessageBox.Show((AppLocalization.IsChinese ? "数据已保存到文件：" : "Data saved to file: ") + dlg.FileName);
                         else
-                            MessageBox.Show("failed to save data to file.\n" + obj.errMessage);
+                            MessageBox.Show((AppLocalization.IsChinese ? "保存数据到文件失败。\n" : "Failed to save data to file.\n") + obj.errMessage);
                     }                    
 
                     this.Cursor = DefaultCursor;
@@ -1365,30 +1365,30 @@ namespace DDDSharp
                     if (dlg.FilterIndex == 1)//polygon slicer file .poly
                     {
                         if ( obj.SaveAs(dlg.FileName) )
-                            MessageBox.Show("data saved to file:" + dlg.FileName);
+                            MessageBox.Show((AppLocalization.IsChinese ? "数据已保存到文件：" : "Data saved to file: ") + dlg.FileName);
                         else
-                            MessageBox.Show("failed to save data to file.\n" + obj.errMessage);
+                            MessageBox.Show((AppLocalization.IsChinese ? "保存数据到文件失败。\n" : "Failed to save data to file.\n") + obj.errMessage);
                     }                    
                     else if (dlg.FilterIndex == 2)//.dat scatterred XYZ 
                     {
                         if (obj.ExportLayerPropertyToXYZ(dlg.FileName))
-                            MessageBox.Show("data exported to file:" + dlg.FileName);
+                            MessageBox.Show((AppLocalization.IsChinese ? "数据已导出到文件：" : "Data exported to file: ") + dlg.FileName);
                         else
-                            MessageBox.Show("failed to export data to file.\n" + obj.errMessage);
+                            MessageBox.Show((AppLocalization.IsChinese ? "导出数据到文件失败。\n" : "Failed to export data to file.\n") + obj.errMessage);
                     }
                     else if (dlg.FilterIndex == 3)//.dat scatterred XYZ 
                     {
                         if (obj.ExportData(dlg.FileName))
-                            MessageBox.Show("data exported to file:" + dlg.FileName);
+                            MessageBox.Show((AppLocalization.IsChinese ? "数据已导出到文件：" : "Data exported to file: ") + dlg.FileName);
                         else
-                            MessageBox.Show("failed to export data to file.\n" + obj.errMessage);
+                            MessageBox.Show((AppLocalization.IsChinese ? "导出数据到文件失败。\n" : "Failed to export data to file.\n") + obj.errMessage);
                     }
                     else if (dlg.FilterIndex == 4)//.ImageFiles
                     {
                         if (obj.ExportImage(dlg.FileName))
-                            MessageBox.Show("data exported to file:" + dlg.FileName);
+                            MessageBox.Show((AppLocalization.IsChinese ? "数据已导出到文件：" : "Data exported to file: ") + dlg.FileName);
                         else
-                            MessageBox.Show("failed to export data to file.\n" + obj.errMessage);
+                            MessageBox.Show((AppLocalization.IsChinese ? "导出数据到文件失败。\n" : "Failed to export data to file.\n") + obj.errMessage);
                     }
                     this.Cursor = DefaultCursor;
                 }
@@ -1443,16 +1443,16 @@ namespace DDDSharp
                     if (dlg.FilterIndex == 1) //3D grid
                     {
                         if (obj.SaveAs(pathname))
-                            MessageBox.Show("data saved to file:" + pathname);
+                            MessageBox.Show((AppLocalization.IsChinese ? "数据已保存到文件：" : "Data saved to file: ") + pathname);
                         else
-                            MessageBox.Show("failed to save data to file.\n" + obj.errMessage);
+                            MessageBox.Show((AppLocalization.IsChinese ? "保存数据到文件失败。\n" : "Failed to save data to file.\n") + obj.errMessage);
                     }
                     else if (dlg.FilterIndex == 2)//ascii ascii data
                     {
                         if (obj.ExportData(pathname))
-                            MessageBox.Show("data exported to file:" + pathname);
+                            MessageBox.Show((AppLocalization.IsChinese ? "数据已导出到文件：" : "Data exported to file: ") + pathname);
                         else
-                            MessageBox.Show("failed to export data to file.\n" + obj.errMessage);
+                            MessageBox.Show((AppLocalization.IsChinese ? "导出数据到文件失败。\n" : "Failed to export data to file.\n") + obj.errMessage);
                     }
                     else if (dlg.FilterIndex == 3 || dlg.FilterIndex == 4)//3d or vrml
                     {

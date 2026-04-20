@@ -15,6 +15,8 @@ namespace DDDSharp
         [STAThread]
         static void Main()
         {
+            AppLocalization.ApplySavedLanguage();
+            AppLocalization.InstallAutoLocalization();
             Application.EnableVisualStyles();
             Application.SetCompatibleTextRenderingDefault(false);
             m_MainForm = new MainForm();

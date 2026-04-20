@@ -9,6 +9,7 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 
+using DDDSharp;
 namespace DDDSharp.Grid3DProperty
 {
     public partial class Grid3DSampleForm : Form
@@ -33,13 +34,13 @@ namespace DDDSharp.Grid3DProperty
                 string path = textBox4.Text;    
                 if(path.Length < 1 || stepx <=0 || stepy <=0 || stepz<=0 )
                 {
-                    MessageBox.Show("Parameters not correct.");
+                    MessageBox.Show(AppLocalization.IsChinese ? "参数不正确。" : "Parameters are not correct.");
                     return;
                 }
                 Cursor = Cursors.WaitCursor; 
                 data.SampleTo(path, stepx, stepy, stepz);
                 Cursor = Cursors.Default;
-                MessageBox.Show("gridded data sampled!");
+                MessageBox.Show(AppLocalization.IsChinese ? "网格数据已完成采样！" : "Gridded data sampled!");
             }
             catch (Exception ex) 
             {

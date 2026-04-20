@@ -173,7 +173,7 @@ namespace DDDSharp
                             Center_x_textBox.Text = ((minx + maxx) / 2.0).ToString();
                             Center_y_textBox.Text = ((miny + maxy) / 2.0).ToString();
                         }
-                        else MessageBox.Show("Load coordinate data failed.");
+                        else MessageBox.Show(AppLocalization.IsChinese ? "加载坐标数据失败。" : "Load coordinate data failed.");
                     }
                 }
             }
@@ -186,7 +186,7 @@ namespace DDDSharp
         {
             if( pCoordsRotated.Count < 1 )
             {
-                MessageBox.Show("no coordinates rotated.");
+                MessageBox.Show(AppLocalization.IsChinese ? "没有坐标被旋转。" : "No coordinates rotated.");
                 return;
             }
             try
@@ -209,7 +209,7 @@ namespace DDDSharp
             catch (Exception e)
 #pragma warning restore CS0168 // 声明了变量“e”，但从未使用过
             {
-                MessageBox.Show("save to file failed.");
+                MessageBox.Show(AppLocalization.IsChinese ? "保存到文件失败。" : "Save to file failed.");
             }
         }
         private void saveAsToolStripMenuItem_Click(object sender, EventArgs e)
@@ -234,17 +234,17 @@ namespace DDDSharp
             double x0, y0, angle;
             if (!double.TryParse(Angle_textBox.Text, out angle))
             {
-                MessageBox.Show("Invalidate angle.");
+                MessageBox.Show(AppLocalization.IsChinese ? "角度无效。" : "Invalid angle.");
                 return;
             }            
             if (!double.TryParse(Center_x_textBox.Text, out x0))
             {
-                MessageBox.Show("Invalidate angle.");
+                MessageBox.Show(AppLocalization.IsChinese ? "角度无效。" : "Invalid angle.");
                 return;
             }
             if (!double.TryParse(Center_y_textBox.Text, out y0))
             {
-                MessageBox.Show("Invalidate angle.");
+                MessageBox.Show(AppLocalization.IsChinese ? "角度无效。" : "Invalid angle.");
                 return;
             }
             pCoordsRotated.Clear();

@@ -127,7 +127,7 @@ namespace DDDSharp
             int yIndex = comboBox2.SelectedIndex;
             if( xIndex < 0 || yIndex < 0 )
             {
-                MessageBox.Show("No Coluwn Selected");
+                MessageBox.Show(AppLocalization.IsChinese ? "未选择列。" : "No column selected.");
                 return;
             }
 
@@ -135,7 +135,7 @@ namespace DDDSharp
             {
                 if( curveList[i].yIndex == yIndex )
                 {
-                    MessageBox.Show(curveList[i].Name + " already exist.");
+                    MessageBox.Show(curveList[i].Name + (AppLocalization.IsChinese ? " 已存在。" : " already exists."));
                     return;
                 }
             }
@@ -164,7 +164,7 @@ namespace DDDSharp
         {
             if( curveList.Count < 1 )
             {
-                MessageBox.Show("No Curve Selected.");
+                MessageBox.Show(AppLocalization.IsChinese ? "未选择曲线。" : "No curve selected.");
                 return;
             }
 
@@ -172,7 +172,7 @@ namespace DDDSharp
             int ndepth = comboBox1.SelectedIndex;
             if (ndepth < 0)
             {
-                MessageBox.Show("No Depth Selected");
+                MessageBox.Show(AppLocalization.IsChinese ? "未选择深度列。" : "No depth selected.");
                 return;
             }            
 

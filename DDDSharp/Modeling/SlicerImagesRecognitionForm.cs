@@ -408,7 +408,7 @@ namespace DDDSharp.Modeling
         {
             if(Points.Count < 1) 
             {
-                MessageBox.Show("无有效采样点数据！");
+                MessageBox.Show(AppLocalization.Translate("无有效采样点数据！"));
                 return;
             }            
             using (var dlg = new SaveFileDialog())
@@ -430,7 +430,7 @@ namespace DDDSharp.Modeling
                     
                     Cursor = Cursors.Default;
                     
-                    MessageBox.Show("数据输出成功！" + Environment.NewLine + dlg.FileName);
+                    MessageBox.Show(AppLocalization.Translate("数据输出成功！") + Environment.NewLine + dlg.FileName);
                 }
             }            
         }
@@ -573,7 +573,7 @@ namespace DDDSharp.Modeling
             }
 
             
-            MessageBox.Show("采样完成，采样点数" + Points.Count);
+            MessageBox.Show(AppLocalization.Translate("采样完成，采样点数") + Points.Count);
             Stop = true;
         }
         void SampleThread(Object obj)
@@ -625,7 +625,7 @@ namespace DDDSharp.Modeling
                 exports = null;
                 curSlicer++;
             }
-            MessageBox.Show("采样完成，采样点数" + Points.Count);
+            MessageBox.Show(AppLocalization.Translate("采样完成，采样点数") + Points.Count);
             Stop = true;
         }
 

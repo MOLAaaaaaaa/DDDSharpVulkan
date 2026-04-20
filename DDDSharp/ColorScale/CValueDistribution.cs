@@ -7,6 +7,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
+using DDDSharp;
 namespace DataCollection
 {
     public partial class CValueDistribution : Form
@@ -117,7 +118,7 @@ namespace DataCollection
             double filter;
             if( !double.TryParse(FilterValue_textBox.Text, out filter) )
             {
-                MessageBox.Show("filter value not correct.");
+                MessageBox.Show(AppLocalization.IsChinese ? "过滤值不正确。" : "Filter value not correct.");
                 return;
             }
             

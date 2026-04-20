@@ -10,6 +10,7 @@ using System.Threading.Tasks;
 using System.Windows.Forms;
 using static System.Windows.Forms.VisualStyles.VisualStyleElement;
 
+using DDDSharp;
 namespace DDDSharp.Dialogs
 {
     public partial class TopographyBlankForm : Form
@@ -91,12 +92,12 @@ namespace DDDSharp.Dialogs
         {
             if(objects2.Count < 1) 
             {
-                MessageBox.Show("no objects selected.");
+                MessageBox.Show(AppLocalization.IsChinese ? "未选择对象。" : "No objects selected.");
                 return;
             }
             if (comboBox1.SelectedIndex < 0)
             {
-                MessageBox.Show("no topography objects loaded.");
+                MessageBox.Show(AppLocalization.IsChinese ? "未加载地形对象。" : "No topography objects loaded.");
                 return;
             }
 

@@ -544,11 +544,11 @@ namespace DDDSharp
                     this.Cursor = Cursors.WaitCursor;
                     if (asc1.Export(dlg.FileName))
                     {
-                        MessageBox.Show("data exported to file:" + dlg.FileName);
+                        MessageBox.Show((AppLocalization.IsChinese ? "数据已导出到文件：" : "Data exported to file: ") + dlg.FileName);
                     }
                     else
                     {
-                        MessageBox.Show("failed to export data to file." + asc1.errMessage);
+                        MessageBox.Show((AppLocalization.IsChinese ? "导出数据到文件失败。" : "Failed to export data to file.") + asc1.errMessage);
                     }
                     this.Cursor = DefaultCursor;
                 }
@@ -566,11 +566,11 @@ namespace DDDSharp
                     this.Cursor = Cursors.WaitCursor;
                     if (asc2.Export(dlg.FileName))
                     {
-                        MessageBox.Show("data exported to file:" + dlg.FileName);
+                        MessageBox.Show((AppLocalization.IsChinese ? "数据已导出到文件：" : "Data exported to file: ") + dlg.FileName);
                     }
                     else
                     {
-                        MessageBox.Show("failed to export data to file." + asc1.errMessage);
+                        MessageBox.Show((AppLocalization.IsChinese ? "导出数据到文件失败。" : "Failed to export data to file.") + asc1.errMessage);
                     }
                     this.Cursor = DefaultCursor;
                 }

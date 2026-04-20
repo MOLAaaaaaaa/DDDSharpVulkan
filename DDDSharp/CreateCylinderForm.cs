@@ -64,7 +64,7 @@ namespace DDDSharp
         {
             if( !GetFromUI() )
             {
-                MessageBox.Show("Invalid parameters.");
+                MessageBox.Show(AppLocalization.IsChinese ? "参数无效。" : "Invalid parameters.");
                 return;
             }            
 

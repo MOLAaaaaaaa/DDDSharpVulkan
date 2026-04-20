@@ -1,0 +1,732 @@
+﻿-
+  
+         
+ Reset view to fit screen
+#No.
+%
+&Add
+&Add new
+&Add Traces
+&Cancel
+&Color Picker
+&Cutting
+&Data Range
+&Delete Grid Point
+&Delete Selected Objects
+&Distribution
+&Draw
+&Draw Curve
+&DXF Files
+&Editor
+&Export
+&Export Color Level
+&Export Image
+&Export to file
+&Formatted File
+&Formatted Line Files
+&Formatted Slicer File
+&Geological Profile
+&Geophysic profile
+&Geophysical Welling
+&Graphic Device
+&Import
+&Import from file
+&Import Image
+&Inclines
+&Insert before
+&Interpolation
+&Intersect With
+&Load from
+&Load Slicers
+&Mouse Control
+&New Line
+&New Project
+&New Stratum
+&Open Project
+&Property Edit
+&Refresh
+&Reverse
+&Scattered points
+&Smoothing Line
+&Snap
+&Strata
+&Stratums
+&Text Picker
+&ToUnclosed/Closed
+&Trace
+&Unselect All
+(x,y)
+...
++
+<
+<--
+<<
+<==
+==>
+=>CopyFrom
+>
+-->
+>>
+↑
+↓
+…
+0
+0 - 324
+00:00:00
+2D Meshes
+3D OBJECTS
+3D Shape
+3DGrid data
+3DGrid Properties
+3DGrid property
+Add Columns
+Add Slicers
+AdgeDetecting
+alpha
+ambient
+Analyze
+angle
+Anticlockwise
+aplly
+as
+As New
+As pixels
+As Same
+Axis
+AxisLableForm
+B
+Back
+Backgound sample
+Background Sampling
+Background value
+Baseline from Coordinates
+BigNumber
+Blank
+blank 
+blue
+Border &Tracing
+Border keeping
+Border Sampling
+Borehole Properties
+BoreholeCurvesForm
+BoreholeListForm
+Boreholes
+Boreholes Property
+Boreholes Slicer
+BoreholesCurvesInterpolationForm
+BoreholesInclinesEditor
+BoreholesSampleForm
+BoreholeWellDataForm
+BottomLeft
+BottomRight
+Box
+BringTo
+Buffer Files
+buffer geometry
+Buffer Size
+Buffers Overlap
+BuffersOverlapForm
+button1
+by
+By pixels
+C2DSlicerViewer
+C3DLinePropertyForm
+Cartesian Coordinates
+Center Position
+centor x
+centor y
+Central
+centre
+Centre Line
+ChangeOverlapColor
+Channel
+Checked Layers
+Chengdu University of Technology. 
+Choose
+Circles numbers
+Clear
+ClosedValuesForm
+Clr
+CModelRangeForm
+Color Deviation
+Color Legend
+Color Picker
+Color Scale
+ColorAndTextPickerForm
+ColorPickerDlg
+Colors Picker
+ColorScaleEditForm
+ColorScaleForm
+Column Data Importing...
+Column Properties
+Colums
+Company
+Compute Devices
+Cone
+Convert
+ConvertImageToEarthForm
+Coordinate Project
+Coordinate X
+Coordinate Y
+CoordinateConvertingForm
+Coordinates
+Coordinates From
+Coords Rotating
+CoordsRotatingForm
+CopyFrom<=
+Copyright(C) 2012 - 2026
+Corners Location
+Create
+Create &Buffer
+Create 3D Polygon
+Create contour
+Create Intersection Line
+Create Line
+Create Line Meshe
+Create Mesh
+Create Mesh From Grid
+Create Mesh From Lines
+Create Slicers
+Create Triangles
+CreateAll
+CreateMeshBufferForm
+CreateMeshLayersFrom
+CrossLine Num
+CrossLine Num(x)
+CrossValidation
+CrossValidationForm
+CSlicerPropertyForm
+Current 3D Engine
+current position
+Curves Lists
+CValueDistribution
+Cylinder
+CylinderIntersectForm
+data from
+Data Path
+Data Ranges
+DataRange
+Depth
+Destination
+Deviation
+diffuse
+Direction Arrow
+distance scale
+Do Overlap
+DoMatching
+DotSize
+Down
+Drawing2D
+DXF Files
+E
+Earth Revise
+Edge Detect
+Elevation
+Enable Layer Restricting
+Enable Layer Value
+enabled
+End
+ensure you have connect to Internet befor registering this product.
+Exchange X/Y
+Export 
+Export Color
+Export Geometry
+Export To
+Export Uncertainties 3DGrid
+Export3DGridForm
+ExportLasdataForm
+ExportTo
+Expot
+Expport
+Faces
+Farest Value
+Fault Meshes
+Fault2DPropertyMoreForm
+Fill Tool
+Filter
+First
+Flip
+Flip Horizontal
+Flip Vertical
+Float Number
+FloatNumber
+Formatted Triangles
+from &Baseline&&Gridded data
+From &Grid
+from &Grid2D
+From &Image File
+From Excel File
+from file
+From G3D
+From Geo
+from GIS Exchange Files
+from LAS
+From Lines
+from list
+From Meshes
+from Polygon Files
+from Polygon Slicer Files
+from Polygon2D
+from Polygons
+From Slicer
+from Slicers
+from Traced Polygon
+from WELL
+Front
+full fill
+GEO File
+Geo Informaton
+GeoInterConvertForm
+GeoLayerEditor
+Geological Coordinates
+Geological Profiles
+Geometry
+Geometry of Interpolation
+Global Coordinate
+GPUInterpo
+Graphic Devices Information
+Graphics Objects
+green
+Grid
+grid data infomation
+Grid Informarion
+Grid List
+Grid Property
+Grid Sample
+Grid Setting
+Grid3DOverlayForm
+Grid3DSampleForm
+Grid3DTransformForm
+Gridded Data
+Gridding
+Gridding Geometry
+Gridding Method
+griding
+GridOverlayForm
+Grids Merging
+Grids Overlay
+GridsOverlapForm
+Hgiht Axis
+hide unvisible
+Hight
+Horizont Grid
+Horizontal
+How to do with terrain?
+Ignore deform
+Ignore First Row
+IgnoreFirst
+Image
+Image Trim
+Images
+Imerging
+Import Image
+ImportFromMeshesForm
+Importing Scattered Points
+Incline
+Incline Angles
+Incline Parameters
+Information Selection
+InLine Num
+InLine Num(y)
+Input data
+Input Points 
+InterpolatedSlicerModelingForm
+Interpolation
+Interpolation Option
+Intersected Objects
+IntersetWithMeshesForm
+Inv
+Invalid Filter
+Invalid Value
+Inverse Z Upwards
+Keeping
+L
+Label
+label1
+LAS file
+LasInterpolationForm
+layer restrict
+LayerRecognition
+Layers from Meshes
+Layers Triming
+LayersFromMeshesForm
+LBHtoXYZ
+Lights
+Lights Option
+Lights Position
+Line
+Line Property
+Lines
+Lines List
+Load &Formatted Triangles
+Load &Grid Data
+Load Borholes
+Load Cylinder
+Load image
+Load Lines
+Load Mesh
+Load Polygon
+Load Scattered Points
+Load Slicer
+LoadProfileFromGRDForm
+LoadTexture
+Location
+log
+Longitude/Latitude to XY
+MapEarthForm
+Matching
+Maximum
+Memory Required
+menuStrip1
+Mesh Grid Num
+Mesh Plan
+Mesh Property
+MeshCreateFromSlicersForm
+Meshed Layers
+Meshed Layers--from top to bottom
+Meshes
+Meshes Creating
+Meshes From 3DGrids
+Meshes Sorted by Z values Asc
+MeshesFrom3DGridsForm
+MeshToSolidForm
+MeshTransform
+MessageBoxInputDlg
+MessageBoxOnListForm
+Messages
+Method
+MineralBoreholes
+Minimum
+model
+Modeling Method
+Modify
+MouseControlForm
+Move Object
+N
+Navigation
+Nearest Value
+NearestInterpolation
+New Cylinder
+New Folder
+NewSlicerConfirmForm
+No#
+Normalize
+Normals
+NullValue
+Num
+nx
+ny
+nz
+Object Property
+ObjectPropertyForm
+on
+Options
+Original Copy
+original x size
+OuterBorder Keeping
+Outline Box
+Outlines
+OutlinesModelingForm
+Output
+Output Format
+Output Grid file
+Output Grid files
+Overlap Option
+Overlap with
+Overlay Analysis
+P32
+Pan Screen
+Password
+Paste From
+PatternForm
+Pause
+Percentage
+Percentages
+PlaceOn
+Plane
+Play
+PlayerSettingForm
+PLY Files
+PLY Property
+PlyElementMatchForm
+PlyPropertyForm
+PointsSimplifyDlg
+Polygon
+Polygon 2D
+Polygon Mode
+Polygon2D
+Profile Coordinate
+Profile Coordinate matching
+Profile/PointsSet
+ProfilesGriddingForm
+progress titles
+Property
+Radius
+Re&fresh
+Re&name
+RectangleInputDlg
+red
+RedundantFilter
+Refresh
+Register
+Reload
+Rendering
+Replace
+Replace With
+ReplaceWithInputForm
+Resample
+Resample Size
+Reset
+Reset background value
+Reset BKValue
+Reset Grid As
+Reset Layer value
+Reset Property
+Restricted interfaces
+Retate 90
+Reverse
+Revise
+Rotate ==>
+RotateAngle
+Sample
+Sample Grid
+Sample Interval
+Sample Numbers
+Sample On
+sampled interval
+Sampled Num(z)
+sampled number
+SampleToGrid
+Sampling
+Sampling Steps
+Save &As
+Scatted Points Property
+Scattered Points Property
+ScatteredPointsLoadForm
+ScatteredPointsPropertyForm
+ScatterPointsResampleForm
+Screen Coordinate
+Scripts
+Search
+Searching option
+Select tool
+SelectAll
+Selected Faults
+Selected Grids
+Selected objects
+Selected Outline
+Selected slicer faults
+Set As &Bottom(Ctl+B)
+Set As &Top(Ctl+T)
+Sgey File
+SGEY Infomation
+Shape3D Modeler
+Shape3DModeling
+ShapeModeling
+Show &Background
+Show &Grid Point
+Show &Layers
+Show &Matched Points
+Show &Property Grid
+Show Background
+Show Grid Point
+Show Layers
+Show Location
+Show Property Grid
+SHP Files
+Slicer Property
+SlicerDataRangeForm
+SlicerDrawForm
+SlicerImageRangeLable
+SlicerImagesRecognitionForm
+Slicers list
+Slicers Sampling
+Slicers Sampling Step
+Slicers Selection
+SlicersSamplingForm
+Smooth Line
+Smoothed
+Sobel
+Source
+Source Column
+Space
+Spacing
+specular
+Start/End
+step
+Step%
+stepX
+stepY
+Stop
+Strata
+Strata Interfaces -- from the top down based on ground
+Stratum
+Stratum Objects
+Stratums Color Scheme
+Stratums list
+Stratums Modeling
+Stratums Select
+Stratums selection
+Strip
+SymbolModelingForm
+System
+Target
+Terrain Blanking With Meshes
+Terrain line
+TestForm
+Text
+Text encoding
+Text Picker
+Texture coordinates
+Thickness
+time left(s)
+to
+To &Solid
+to 3DGrids
+To Center
+To create a solid object from mesh grids
+to Discreted Points
+to Earth Texture
+to Image Recognition
+to Polygon2D
+to Sampled Layer Bottom
+to Sampled Points
+To This Object
+to Traced Polygon
+Tool
+toolStrip1
+toolStripButton1
+toolStripButton2
+toolStripButton3
+toolStripButton4
+toolStripButton5
+Top Interface
+TopLeft
+Topography
+Topography Blank
+TopographyBlankForm
+TopRight
+total points of each borehole
+Total Tracks
+Trace Angles
+TracedObjectPropertyForm
+Transform
+Transform To
+Trapezoid Revise
+Trim Object
+Trim Option
+Trim with
+TrimMeshWithPoly2DForm
+Type
+Unit/Meters/Km
+Unregistered version
+Unregistered version--Registration
+Unselect
+UnselectAll
+Up
+Use Filtering
+UserID
+V
+Val:
+value
+Value 
+Value1
+Value2
+Values
+Version
+Vertic Colors
+Vertic properties
+Vertical
+Vertical Grid
+Vertical Num(z)
+View(&View)
+Visualization
+VRML file
+VRML models
+Well Curves
+Well Curves Opotion
+WellDataForm
+WireFrame
+With &Meshes
+x
+x-
+x / r
+x range
+X Size
+X STEP
+X(East)
+X,Y = 
+X:
+x+
+XNum
+XOY
+XOZ
+XSpace
+XYZtoLBH
+XYZV ASCII File
+Y
+y-
+y / g
+y range
+Y Size
+Y STEP
+Y(North)
+Y:
+y+
+YNum
+YOZ
+YSpace
+Z
+z-
+z / b
+Z Coordinate
+z offset
+z range
+Z Scale
+Z Size
+Z(Elevation)
+Z:
+z+
+ZNum
+Zoom In
+Zoom Out
+背景采样
+背景地层
+背景地层属性值
+边界色
+裁剪范围
+裁剪内部
+裁剪外部
+采样步长
+导数
+地质填充
+顶角
+顶角（倾角）
+二维轮廓编辑
+反向
+方位角
+方位角（倾向）
+封闭对象选择
+横向二阶导数
+横向一阶导数
+渐变色填充
+孔深
+类  型
+名  称
+目标地层
+目标地层属性值
+平  滑
+切割
+实心填充
+属性值
+填充方案
+填充色
+图像裁剪
+纹理填充
+序号
+阴影填充
+重设地层属性
+纵向二阶导数
+纵向一阶导数
+钻孔分层文件
+钻孔名
