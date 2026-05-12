@@ -1,0 +1,68 @@
+[
+  {
+    "file": "C:\\Users\\A\\Documents\\xwechat_files\\wxid_q45kpg8puh1j21_2732\\msg\\file\\2026-03\\DDDSharpVulkan-2026-3-24\\DDDSharpVulkan\\terrain_build\\reservoir_volume_top_srtm_bottom_z400.3DGrid",
+    "nx": 217,
+    "ny": 139,
+    "nz": 101,
+    "x_range": [
+      0.0,
+      6474.880000000005
+    ],
+    "y_range": [
+      0.0,
+      4153.4199999999255
+    ],
+    "z_range": [
+      400.0,
+      1563.0707164803252
+    ],
+    "valid_cells": 1534924,
+    "total_cells": 3046463,
+    "valid_ratio": 0.5038380574456345,
+    "bytes": 12185932
+  },
+  {
+    "file": "C:\\Users\\A\\Documents\\xwechat_files\\wxid_q45kpg8puh1j21_2732\\msg\\file\\2026-03\\DDDSharpVulkan-2026-3-24\\DDDSharpVulkan\\terrain_build\\reservoir_volume_top_srtm_bottom_z800.3DGrid",
+    "nx": 217,
+    "ny": 139,
+    "nz": 101,
+    "x_range": [
+      0.0,
+      6474.880000000005
+    ],
+    "y_range": [
+      0.0,
+      4153.4199999999255
+    ],
+    "z_range": [
+      800.0,
+      1563.0707164803252
+    ],
+    "valid_cells": 767174,
+    "total_cells": 3046463,
+    "valid_ratio": 0.2518244928627067,
+    "bytes": 12185932
+  },
+  {
+    "file": "C:\\Users\\A\\Documents\\xwechat_files\\wxid_q45kpg8puh1j21_2732\\msg\\file\\2026-03\\DDDSharpVulkan-2026-3-24\\DDDSharpVulkan\\terrain_build\\reservoir_volume_top_srtm_bottom_z1000.3DGrid",
+    "nx": 217,
+    "ny": 139,
+    "nz": 101,
+    "x_range": [
+      0.0,
+      6474.880000000005
+    ],
+    "y_range": [
+      0.0,
+      4153.4199999999255
+    ],
+    "z_range": [
+      1000.0,
+      1563.0707164803252
+    ],
+    "valid_cells": 377740,
+    "total_cells": 3046463,
+    "valid_ratio": 0.12399297152140039,
+    "bytes": 12185932
+  }
+]

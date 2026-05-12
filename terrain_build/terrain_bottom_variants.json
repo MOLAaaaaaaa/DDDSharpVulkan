@@ -1,0 +1,26 @@
+[
+  {
+    "file": "C:\\Users\\A\\Documents\\xwechat_files\\wxid_q45kpg8puh1j21_2732\\msg\\file\\2026-03\\DDDSharpVulkan-2026-3-24\\DDDSharpVulkan\\terrain_build\\terrain_bottom_flat_z500_local_meter.grd",
+    "z": 500.0,
+    "min_top_minus_bottom": 236.6317739089435,
+    "max_top_minus_bottom": 1063.0707164803252
+  },
+  {
+    "file": "C:\\Users\\A\\Documents\\xwechat_files\\wxid_q45kpg8puh1j21_2732\\msg\\file\\2026-03\\DDDSharpVulkan-2026-3-24\\DDDSharpVulkan\\terrain_build\\terrain_bottom_flat_z400_local_meter.grd",
+    "z": 400.0,
+    "min_top_minus_bottom": 336.6317739089435,
+    "max_top_minus_bottom": 1163.0707164803252
+  },
+  {
+    "file": "C:\\Users\\A\\Documents\\xwechat_files\\wxid_q45kpg8puh1j21_2732\\msg\\file\\2026-03\\DDDSharpVulkan-2026-3-24\\DDDSharpVulkan\\terrain_build\\terrain_bottom_flat_z300_local_meter.grd",
+    "z": 300.0,
+    "min_top_minus_bottom": 436.6317739089435,
+    "max_top_minus_bottom": 1263.0707164803252
+  },
+  {
+    "file": "C:\\Users\\A\\Documents\\xwechat_files\\wxid_q45kpg8puh1j21_2732\\msg\\file\\2026-03\\DDDSharpVulkan-2026-3-24\\DDDSharpVulkan\\terrain_build\\terrain_bottom_flat_z0_local_meter.grd",
+    "z": 0.0,
+    "min_top_minus_bottom": 736.6317739089435,
+    "max_top_minus_bottom": 1563.0707164803252
+  }
+]

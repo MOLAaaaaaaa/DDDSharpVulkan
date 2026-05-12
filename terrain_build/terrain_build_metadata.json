@@ -1,0 +1,50 @@
+{
+  "input_gcj02": {
+    "lower_left_lon_lat": [
+      103.521595,
+      31.00196379
+    ],
+    "upper_right_lon_lat": [
+      103.5841012,
+      31.04416508
+    ]
+  },
+  "converted_wgs84_for_dem_sampling": {
+    "lower_left_lon_lat": [
+      103.5194753832103,
+      31.004434510910446
+    ],
+    "upper_right_lon_lat": [
+      103.5820895679607,
+      31.046727943440157
+    ]
+  },
+  "ovital_projected_xy_used_in_grd": {
+    "lower_left_xy": [
+      -503521.7,
+      3479074.06
+    ],
+    "upper_right_xy": [
+      -497046.82,
+      3483227.48
+    ]
+  },
+  "source": "https://s3.amazonaws.com/elevation-tiles-prod/skadi/N31/N31E103.hgt.gz",
+  "tile": "N31E103",
+  "hgt_side_samples": 3601,
+  "grid": {
+    "cols": 217,
+    "rows": 139,
+    "x_min": -503521.7,
+    "x_max": -497046.82,
+    "y_min": 3479074.06,
+    "y_max": 3483227.48,
+    "z_min": 736.6317739089435,
+    "z_max": 1563.0707164803252,
+    "flat_bottom_z": 630.0
+  },
+  "files": {
+    "surface_grd": "C:\\Users\\A\\Documents\\xwechat_files\\wxid_q45kpg8puh1j21_2732\\msg\\file\\2026-03\\DDDSharpVulkan-2026-3-24\\DDDSharpVulkan\\terrain_build\\terrain_srtm_gcj_rect_xy.grd",
+    "bottom_grd": "C:\\Users\\A\\Documents\\xwechat_files\\wxid_q45kpg8puh1j21_2732\\msg\\file\\2026-03\\DDDSharpVulkan-2026-3-24\\DDDSharpVulkan\\terrain_build\\terrain_bottom_flat_xy.grd"
+  }
+}

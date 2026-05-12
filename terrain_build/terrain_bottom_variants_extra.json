@@ -1,0 +1,40 @@
+[
+  {
+    "file": "C:\\Users\\A\\Documents\\xwechat_files\\wxid_q45kpg8puh1j21_2732\\msg\\file\\2026-03\\DDDSharpVulkan-2026-3-24\\DDDSharpVulkan\\terrain_build\\terrain_bottom_flat_z1000_local_meter.grd",
+    "z": 1000.0,
+    "nx": 217,
+    "ny": 139,
+    "x_range": [
+      0.0,
+      6474.880000000005
+    ],
+    "y_range": [
+      0.0,
+      4153.4199999999255
+    ],
+    "surface_z_range": [
+      736.6317739089435,
+      1563.0707164803252
+    ],
+    "bytes": 120708
+  },
+  {
+    "file": "C:\\Users\\A\\Documents\\xwechat_files\\wxid_q45kpg8puh1j21_2732\\msg\\file\\2026-03\\DDDSharpVulkan-2026-3-24\\DDDSharpVulkan\\terrain_build\\terrain_bottom_flat_z800_local_meter.grd",
+    "z": 800.0,
+    "nx": 217,
+    "ny": 139,
+    "x_range": [
+      0.0,
+      6474.880000000005
+    ],
+    "y_range": [
+      0.0,
+      4153.4199999999255
+    ],
+    "surface_z_range": [
+      736.6317739089435,
+      1563.0707164803252
+    ],
+    "bytes": 120708
+  }
+]
