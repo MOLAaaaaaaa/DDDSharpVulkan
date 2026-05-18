@@ -56,6 +56,11 @@
             this.polygonToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.showPropertyGridToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.resetViewToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.visualPlaneToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.visualPlaneAutoToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.visualPlaneXOYToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.visualPlaneXOZToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.visualPlaneYOZToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.snapToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.borderTracingToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.drawToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
@@ -261,6 +266,7 @@
             this.showLayersToolStripMenuItem,
             this.showPropertyGridToolStripMenuItem,
             this.resetViewToolStripMenuItem,
+            this.visualPlaneToolStripMenuItem,
             this.snapToolStripMenuItem,
             this.borderTracingToolStripMenuItem});
             this.viewToolStripMenuItem.Name = "viewToolStripMenuItem";
@@ -352,6 +358,45 @@
             this.resetViewToolStripMenuItem.Size = new System.Drawing.Size(201, 22);
             this.resetViewToolStripMenuItem.Text = "&Reset View";
             this.resetViewToolStripMenuItem.Click += new System.EventHandler(this.toolStripButton5Reset_Click);
+            // 
+            // visualPlaneToolStripMenuItem
+            // 
+            this.visualPlaneToolStripMenuItem.DropDownItems.AddRange(new System.Windows.Forms.ToolStripItem[] {
+            this.visualPlaneAutoToolStripMenuItem,
+            this.visualPlaneXOYToolStripMenuItem,
+            this.visualPlaneXOZToolStripMenuItem,
+            this.visualPlaneYOZToolStripMenuItem});
+            this.visualPlaneToolStripMenuItem.Name = "visualPlaneToolStripMenuItem";
+            this.visualPlaneToolStripMenuItem.Size = new System.Drawing.Size(201, 22);
+            this.visualPlaneToolStripMenuItem.Text = "Visual Plane";
+            // 
+            // visualPlaneAutoToolStripMenuItem
+            // 
+            this.visualPlaneAutoToolStripMenuItem.Name = "visualPlaneAutoToolStripMenuItem";
+            this.visualPlaneAutoToolStripMenuItem.Size = new System.Drawing.Size(103, 22);
+            this.visualPlaneAutoToolStripMenuItem.Text = "Auto";
+            this.visualPlaneAutoToolStripMenuItem.Click += new System.EventHandler(this.visualPlaneAutoToolStripMenuItem_Click);
+            // 
+            // visualPlaneXOYToolStripMenuItem
+            // 
+            this.visualPlaneXOYToolStripMenuItem.Name = "visualPlaneXOYToolStripMenuItem";
+            this.visualPlaneXOYToolStripMenuItem.Size = new System.Drawing.Size(103, 22);
+            this.visualPlaneXOYToolStripMenuItem.Text = "XOY";
+            this.visualPlaneXOYToolStripMenuItem.Click += new System.EventHandler(this.visualPlaneXOYToolStripMenuItem_Click);
+            // 
+            // visualPlaneXOZToolStripMenuItem
+            // 
+            this.visualPlaneXOZToolStripMenuItem.Name = "visualPlaneXOZToolStripMenuItem";
+            this.visualPlaneXOZToolStripMenuItem.Size = new System.Drawing.Size(103, 22);
+            this.visualPlaneXOZToolStripMenuItem.Text = "XOZ";
+            this.visualPlaneXOZToolStripMenuItem.Click += new System.EventHandler(this.visualPlaneXOZToolStripMenuItem_Click);
+            // 
+            // visualPlaneYOZToolStripMenuItem
+            // 
+            this.visualPlaneYOZToolStripMenuItem.Name = "visualPlaneYOZToolStripMenuItem";
+            this.visualPlaneYOZToolStripMenuItem.Size = new System.Drawing.Size(103, 22);
+            this.visualPlaneYOZToolStripMenuItem.Text = "YOZ";
+            this.visualPlaneYOZToolStripMenuItem.Click += new System.EventHandler(this.visualPlaneYOZToolStripMenuItem_Click);
             // 
             // snapToolStripMenuItem
             // 
@@ -948,6 +993,11 @@
         private System.Windows.Forms.ToolStripMenuItem showBackgroundToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem showLayersToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem resetViewToolStripMenuItem;
+        private System.Windows.Forms.ToolStripMenuItem visualPlaneToolStripMenuItem;
+        private System.Windows.Forms.ToolStripMenuItem visualPlaneAutoToolStripMenuItem;
+        private System.Windows.Forms.ToolStripMenuItem visualPlaneXOYToolStripMenuItem;
+        private System.Windows.Forms.ToolStripMenuItem visualPlaneXOZToolStripMenuItem;
+        private System.Windows.Forms.ToolStripMenuItem visualPlaneYOZToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem simplifyToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem showPropertyGridToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem griddingToolStripMenuItem;

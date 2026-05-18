@@ -38,6 +38,16 @@ namespace DDDSharp
         Test = 100,
     }
 
+    public enum SlicerVisualPlane
+    {
+        Auto = 0,
+        Rotate0 = 1,
+        Rotate90 = 2,
+        Rotate180 = 3,
+        Rotate270 = 4,
+        Rotate360 = 5,
+    }
+
     public struct DrawData //数据结构，用于保存当前绘图状态数据
     {
         public PolygonSlicer slicer;
@@ -138,6 +148,7 @@ namespace DDDSharp
         bool bShowTerrainLine = false;     //显示地形线
         //---------图像边界追踪--------------
         bool bEnableBoderTracing = false; //网格捕捉
+        SlicerVisualPlane visualPlane = SlicerVisualPlane.Auto;
         int traceRadiu = 20;              //追踪半径
         Point tracedPoint = new Point(-1, -1);//已追踪到的点
         //---------网格捕捉--------------
@@ -194,9 +205,27 @@ namespace DDDSharp
             floodFiller = new QueueLinearFloodFiller(floodFiller);
 
             pictureBox1.MouseWheel += new MouseEventHandler(pictureBox1_MouseWheel);
+            InitializeVisualPlaneMenu();
 
             WindowState = FormWindowState.Maximized;
 
+        }
+        private void InitializeVisualPlaneMenu()
+        {
+            visualPlaneToolStripMenuItem.DropDownItems.Clear();
+            AddVisualPlaneMenuItem("Auto", SlicerVisualPlane.Auto);
+            AddVisualPlaneMenuItem("0°", SlicerVisualPlane.Rotate0);
+            AddVisualPlaneMenuItem("90°", SlicerVisualPlane.Rotate90);
+            AddVisualPlaneMenuItem("180°", SlicerVisualPlane.Rotate180);
+            AddVisualPlaneMenuItem("270°", SlicerVisualPlane.Rotate270);
+            AddVisualPlaneMenuItem("360°", SlicerVisualPlane.Rotate360);
+        }
+        private void AddVisualPlaneMenuItem(string text, SlicerVisualPlane plane)
+        {
+            ToolStripMenuItem item = new ToolStripMenuItem(text);
+            item.Tag = plane;
+            item.Click += visualPlaneToolStripMenuItem_Click;
+            visualPlaneToolStripMenuItem.DropDownItems.Add(item);
         }
 
         void ResetRect()
@@ -206,10 +235,8 @@ namespace DDDSharp
                                      pictureBox1.Height - topMargin - bottomMargin);
             if (slicer == null) return;
 
-            double x1 = slicer.minx;
-            double x2 = slicer.maxx;
-            double y1 = slicer.miny;
-            double y2 = slicer.maxy;
+            double x1, x2, y1, y2;
+            GetViewRange(out x1, out x2, out y1, out y2);
             double x0 = (x1 + x2) / 2.0;
             double y0 = (y1 + y2) / 2.0;
 
@@ -1106,9 +1133,7 @@ namespace DDDSharp
             if (!bShowBackgroundImages) return;
             //if (RecognizedLayers != null) return;
             double x1, y1, x2, y2;
-            double width, height;
-            double scale0 = 1;
-            Rectangle sourceRect, destRect;
+            Rectangle sourceRect;
             foreach (ImageStruct im in slicer.backImages)
             {
                 //图像RECT范围
@@ -1117,21 +1142,27 @@ namespace DDDSharp
                 y1 = im.rect.Y1;
                 y2 = im.rect.Y2;
 
-                scale0 = Math.Abs(x2 - x1) / Math.Abs(y2 - y1);
+                double left = Math.Min(x1, x2);
+                double right = Math.Max(x1, x2);
+                double bottom = Math.Min(y1, y2);
+                double top = Math.Max(y1, y2);
 
-                LPtoDP(ref x1, ref y1);
-                LPtoDP(ref x2, ref y2);
+                double ulx = left, uly = top;
+                double urx = right, ury = top;
+                double llx = left, lly = bottom;
+                LPtoDP(ref ulx, ref uly);
+                LPtoDP(ref urx, ref ury);
+                LPtoDP(ref llx, ref lly);
 
-                height = Math.Abs(y2 - y1);
-                width = Math.Abs(x2 - x1);//scale0 * height;
-
-                if (x1 > x2) x1 = x2;
-                if (y1 > y2) y1 = y2;
-
-                destRect = new Rectangle((int)x1, (int)y1, (int)width, (int)height);
+                PointF[] destPoints =
+                {
+                    new PointF((float)ulx, (float)uly),
+                    new PointF((float)urx, (float)ury),
+                    new PointF((float)llx, (float)lly),
+                };
                 sourceRect = new Rectangle(0, 0, im.bmp.Width, im.bmp.Height);
 
-                g.DrawImage(im.bmp, destRect, sourceRect, GraphicsUnit.Pixel);
+                g.DrawImage(im.bmp, destPoints, sourceRect, GraphicsUnit.Pixel);
             }
 
         }
@@ -2011,7 +2042,6 @@ namespace DDDSharp
                 if (slicer.XWidth > slicer.ZWidth)
                     x = slicer.minx + (slicer.maxx - slicer.minx) * (p.X - slicer.Minx) / slicer.XWidth;
                 else x = slicer.minx + (slicer.maxx - slicer.minx) * (p.Z - slicer.Minz) / slicer.ZWidth;
-                    x = slicer.minx + (slicer.maxx - slicer.minx) * (p.X - slicer.Minx) / slicer.XWidth;
                 y = slicer.miny + (slicer.maxy - slicer.miny) * (p.Y - slicer.Miny) / slicer.YWidth;
             }
             if (slicer.axis == AxisEnum.zAxis)//
@@ -2023,8 +2053,82 @@ namespace DDDSharp
             }
             return new Vector64(x,y,0);
         }
+        SlicerVisualPlane EffectiveVisualPlane
+        {
+            get
+            {
+                if (visualPlane != SlicerVisualPlane.Auto) return visualPlane;
+                return SlicerVisualPlane.Rotate0;
+            }
+        }
+        void LocalToView(ref double x, ref double y)
+        {
+            double tx = x;
+            double ty = y;
+            switch (EffectiveVisualPlane)
+            {
+                case SlicerVisualPlane.Rotate90:
+                    x = ty;
+                    y = -tx;
+                    break;
+                case SlicerVisualPlane.Rotate180:
+                    x = -tx;
+                    y = -ty;
+                    break;
+                case SlicerVisualPlane.Rotate270:
+                    x = -ty;
+                    y = tx;
+                    break;
+                case SlicerVisualPlane.Rotate360:
+                case SlicerVisualPlane.Rotate0:
+                default:
+                    x = tx;
+                    y = ty;
+                    break;
+            }
+        }
+        void ViewToLocal(ref double x, ref double y)
+        {
+            double tx = x;
+            double ty = y;
+            switch (EffectiveVisualPlane)
+            {
+                case SlicerVisualPlane.Rotate90:
+                    x = -ty;
+                    y = tx;
+                    break;
+                case SlicerVisualPlane.Rotate180:
+                    x = -tx;
+                    y = -ty;
+                    break;
+                case SlicerVisualPlane.Rotate270:
+                    x = ty;
+                    y = -tx;
+                    break;
+                case SlicerVisualPlane.Rotate360:
+                case SlicerVisualPlane.Rotate0:
+                default:
+                    x = tx;
+                    y = ty;
+                    break;
+            }
+        }
+        void GetViewRange(out double x1, out double x2, out double y1, out double y2)
+        {
+            double vx1 = slicer.minx;
+            double vy1 = slicer.miny;
+            double vx2 = slicer.maxx;
+            double vy2 = slicer.maxy;
+            LocalToView(ref vx1, ref vy1);
+            LocalToView(ref vx2, ref vy2);
+            x1 = Math.Min(vx1, vx2);
+            x2 = Math.Max(vx1, vx2);
+            y1 = Math.Min(vy1, vy2);
+            y2 = Math.Max(vy1, vy2);
+        }
         void LPtoDP(ref double x, ref double y)
         {
+            LocalToView(ref x, ref y);
             x = DrawRect.Left + DrawRect.Width * (x - DataRect.X1) / DataRect.Width;
             y = DrawRect.Bottom - DrawRect.Height * (y - DataRect.Y1) / DataRect.Height;
         }
@@ -2032,6 +2136,7 @@ namespace DDDSharp
         {
             x = DataRect.X1 + DataRect.Width * (x - DrawRect.Left) / DrawRect.Width;
             y = DataRect.Y1 + DataRect.Height * (DrawRect.Bottom - y) / DrawRect.Height;
+            ViewToLocal(ref x, ref y);
         }
         private void Zoom(double x0, double y0, double scale = 0.8)
         {
@@ -3138,6 +3243,14 @@ namespace DDDSharp
             showLayersToolStripMenuItem.Checked = bShowLayers;
             showLocationToolStripMenuItem.Checked = bShowLocation;
             showPropertyGridToolStripMenuItem.Checked = bShowSampledGrids;
+            foreach (ToolStripItem item in visualPlaneToolStripMenuItem.DropDownItems)
+            {
+                ToolStripMenuItem menuItem = item as ToolStripMenuItem;
+                if (menuItem != null && menuItem.Tag is SlicerVisualPlane)
+                {
+                    menuItem.Checked = (SlicerVisualPlane)menuItem.Tag == visualPlane;
+                }
+            }
             snapToolStripMenuItem.Checked = bEnableSnap;
             showLayersToolStripMenuItem.Checked = bEnableBoderTracing;
         }
@@ -3174,6 +3287,40 @@ namespace DDDSharp
         {
             bShowSampledGrids = !bShowSampledGrids;
             UpdateDraw();
+        }
+
+        private void SetVisualPlane(SlicerVisualPlane plane)
+        {
+            visualPlane = plane;
+            ResetRect();
+            UpdateDraw();
+        }
+
+        private void visualPlaneToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            ToolStripMenuItem menuItem = sender as ToolStripMenuItem;
+            if (menuItem == null || !(menuItem.Tag is SlicerVisualPlane)) return;
+            SetVisualPlane((SlicerVisualPlane)menuItem.Tag);
+        }
+
+        private void visualPlaneAutoToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            SetVisualPlane(SlicerVisualPlane.Auto);
+        }
+
+        private void visualPlaneXOYToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            SetVisualPlane(SlicerVisualPlane.Rotate0);
+        }
+
+        private void visualPlaneXOZToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            SetVisualPlane(SlicerVisualPlane.Rotate270);
+        }
+
+        private void visualPlaneYOZToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            SetVisualPlane(SlicerVisualPlane.Rotate90);
         }
 
 
@@ -3377,7 +3524,7 @@ namespace DDDSharp
             if (sf.ShowDialog() == DialogResult.OK)
             {
                 Modified = true;
-                UpdateDataRange();
+                ResetRect();
                 UpdateBackImageRange();
                 UpdateDraw();
             }
