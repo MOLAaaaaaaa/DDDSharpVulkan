@@ -175,6 +175,11 @@ namespace DataCollection
             scale.y = (float)y;
             scale.z = (float)z;            
         }
+        protected void MarkRedrawNeeded()
+        {
+            UpdateNeeded = true;
+            RenderMode = RenderingUpdateMode.Redraw;
+        }
         //added by jian 2021-1-2,对象绘制成绘图缓冲区key列表        
         public bool UpdateNeeded = false; //数据更改，是否需要更新显示？
         public RenderingUpdateMode RenderMode = RenderingUpdateMode.None; //是否需要重绘？
@@ -422,41 +427,42 @@ namespace DataCollection
                 if (ss.Length > 2) double.TryParse(ss[2], out miny);
                 if (ss.Length > 3) double.TryParse(ss[3], out maxy);
                 if (ss.Length > 4) double.TryParse(ss[4], out minz);
-                if (ss.Length > 5) double.TryParse(ss[5], out maxz);                
+                if (ss.Length > 5) double.TryParse(ss[5], out maxz);
+                MarkRedrawNeeded();
             } 
         }
 
         [CategoryAttribute("Geometries"), DisplayNameAttribute("X Minimum"),Browsable(true)]
-        public virtual double Minx { get { return minx; } set { minx = value; } }
+        public virtual double Minx { get { return minx; } set { minx = value; MarkRedrawNeeded(); } }
 
         [CategoryAttribute("Geometries"), DisplayNameAttribute("X Maximum"), Browsable(true)]
-        public virtual double Maxx { get { return maxx; } set { maxx = value; } }
+        public virtual double Maxx { get { return maxx; } set { maxx = value; MarkRedrawNeeded(); } }
 
         [CategoryAttribute("Geometries"), DisplayNameAttribute("X Length"), Browsable(false)]
         public virtual double XWidth{ get { return Maxx - Minx; } }
 
         [CategoryAttribute("Geometries"), DisplayNameAttribute("Y Minimum"), Browsable(true)]
-        public virtual double Miny { get { return miny; } set { miny = value; } }
+        public virtual double Miny { get { return miny; } set { miny = value; MarkRedrawNeeded(); } }
 
         [CategoryAttribute("Geometries"), DisplayNameAttribute("Y Maximum"), Browsable(true)]
-        public virtual double Maxy { get { return maxy; } set { maxy = value; } }
+        public virtual double Maxy { get { return maxy; } set { maxy = value; MarkRedrawNeeded(); } }
 
         [CategoryAttribute("Geometries"), DisplayNameAttribute("Y Length"), Browsable(false)]
         public virtual double YWidth { get { return Maxy - Miny; } }
 
         [CategoryAttribute("Geometries"), DisplayNameAttribute("Z Minimum"), Browsable(true)]
-        public virtual double Minz { get { return minz; } set { minz = value; } }
+        public virtual double Minz { get { return minz; } set { minz = value; MarkRedrawNeeded(); } }
 
         [CategoryAttribute("Geometries"), DisplayNameAttribute("Z Maximum"), Browsable(true)]
-        public virtual double Maxz { get { return maxz; } set { maxz = value; } }
+        public virtual double Maxz { get { return maxz; } set { maxz = value; MarkRedrawNeeded(); } }
 
         [CategoryAttribute("Geometries"), DisplayNameAttribute("Z Length"), Browsable(false)]
         public virtual double ZWidth { get { return Maxz - Minz; } }
 
         [CategoryAttribute("Geometries"), DisplayNameAttribute("V Minimum"), Browsable(true)]
-        public virtual double Minv { get { return minv; } set { minv = value; } }
+        public virtual double Minv { get { return minv; } set { minv = value; MarkRedrawNeeded(); } }
         [CategoryAttribute("Geometries"), DisplayNameAttribute("V Maximum"), Browsable(true)]
-        public virtual double Maxv { get { return maxv; } set { maxv = value; } }
+        public virtual double Maxv { get { return maxv; } set { maxv = value; MarkRedrawNeeded(); } }
 
         [CategoryAttribute("Geometries"), DisplayNameAttribute("V Length"), Browsable(false)]
         public virtual double VWidth { get { return Maxv - Minv; } }

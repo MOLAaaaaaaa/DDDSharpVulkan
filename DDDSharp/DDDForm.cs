@@ -2454,6 +2454,7 @@ namespace DDDSharp
             for (int i = 0; i < obj.Count; i++)
             {
                 CMesh mesh = obj[i];
+                if (!mesh.Visible) continue;
                 if (mesh.ShowMesh)
                 {
                     if (mesh.CoordIntersections.Count < 1) DrawMeshGrid(mesh);
@@ -2466,6 +2467,7 @@ namespace DDDSharp
             {
                 GeoMesh top = obj[i];
                 GeoMesh bottom = obj[i + 1];
+                if (!top.Visible || !bottom.Visible) continue;
                 // DrawGeoMeshesFace(obj, top, bottom);
                 TriangleObj tri = top.toBlankedTriangleObj(bottom);
                 DrawTriangles(tri);

@@ -30,6 +30,7 @@ namespace DDDSharp
         TreeNode rootNode = new TreeNode("Objects");
         TreeNode lastTreeNode = null;
         List<C3DObjectBase> objectsSelected = new List<C3DObjectBase>();
+        bool updatingTreeCheckState = false;
 
         public ObjectForm()
         {
@@ -920,6 +921,7 @@ namespace DDDSharp
                 obj.RenderMode = RenderingUpdateMode.Redraw;
                 return obj;
             }
+            if (obj.RenderMode != RenderingUpdateMode.None) return obj;
             return null;
         }
         //删除对象列表
@@ -1919,19 +1921,20 @@ namespace DDDSharp
         /// <param name="e"></param>
         private void treeView1_AfterCheck(object sender, TreeViewEventArgs e)
         {
-            if (treeView1.SelectedNode == null) return;
-            if ( e.Node != treeView1.SelectedNode) return; //引发重复check事件
+            if (updatingTreeCheckState) return;
+            if (e.Node == null) return;
 
-            //if (C3DData.objSelected == null) return;
-
-                //C3DObjectBase obj = C3DData.objSelected;
-                //obj.Visible = treeView1.SelectedNode.Checked;            
-                //propertyGrid1.SelectedObject = obj;
-
-                Cursor = Cursors.WaitCursor;
-            DoCheckUpdated(treeView1.SelectedNode, treeView1.SelectedNode.Checked);
-            Cursor = Cursors.Default;
-            //UpdateDraw(obj);
+            Cursor = Cursors.WaitCursor;
+            updatingTreeCheckState = true;
+            try
+            {
+                DoCheckUpdated(e.Node, e.Node.Checked);
+            }
+            finally
+            {
+                updatingTreeCheckState = false;
+                Cursor = Cursors.Default;
+            }
         }        
 
         void DoCheckUpdated(TreeNode node,bool check)
@@ -1949,7 +1952,19 @@ namespace DDDSharp
                 C3DObjectBase obj = node.Tag as C3DObjectBase;
                 obj.Visible = check;
                 obj.RenderMode = RenderingUpdateMode.Visible;
-                UpdateDraw(obj);
+                if (obj.type == ShapeEnum.GeoMesh && obj.Parent != null)
+                {
+                    C3DObjectBase parent = obj.Parent as C3DObjectBase;
+                    if (parent != null)
+                    {
+                        parent.RenderMode = RenderingUpdateMode.Redraw;
+                        UpdateDraw(parent);
+                    }
+                }
+                else
+                {
+                    UpdateDraw(obj);
+                }
                 return;
             }
         }
